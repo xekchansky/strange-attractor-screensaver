@@ -99,9 +99,26 @@ do {
     exit(1)
 }
 
+// Overlay any simulation hyperparameter overrides on top of the selection.
+let baseSettings = selection.settings
+let overrides = arguments.overrides
+let effectiveSettings = SimulationSettings(
+    stepSize: overrides.stepSize ?? baseSettings.stepSize,
+    simulationSpeed: overrides.simulationSpeed ?? baseSettings.simulationSpeed,
+    cameraRotationSpeed: overrides.cameraRotationSpeed ?? baseSettings.cameraRotationSpeed,
+    trailColorSpeed: overrides.trailColorSpeed ?? baseSettings.trailColorSpeed,
+    trailLength: overrides.trailLength ?? baseSettings.trailLength
+)
+let effectiveSelection = AttractorSelection(
+    descriptor: selection.descriptor,
+    parameters: selection.parameters,
+    settings: effectiveSettings,
+    initialState: selection.initialState
+)
+
 let model: AttractorModel
 do {
-    model = try selection.buildModel()
+    model = try effectiveSelection.buildModel()
 } catch {
     FileHandle.standardError.write(Data("error: failed to build model: \(error)\n".utf8))
     exit(1)
@@ -109,14 +126,14 @@ do {
 
 let engine = AttractorEngine(
     model: model,
-    initialState: selection.initialState,
-    stepSize: selection.settings.stepSize,
-    trailCapacity: selection.settings.trailLength
+    initialState: effectiveSelection.initialState,
+    stepSize: effectiveSelection.settings.stepSize,
+    trailCapacity: effectiveSelection.settings.trailLength
 )
 
 // ---- Launch the AppKit application ----
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
-let delegate = AppDelegate(selection: selection, engine: engine)
+let delegate = AppDelegate(selection: effectiveSelection, engine: engine)
 app.delegate = delegate
 app.run()
