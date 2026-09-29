@@ -40,7 +40,19 @@ public enum Randomizer {
             trailLength: Int.random(in: descriptor.simulation.trailLength.closedRange, using: &rng)
         )
 
-        return AttractorSelection(descriptor: descriptor, parameters: parameters, settings: settings)
+        let range = descriptor.initialState
+        let initialState = State(
+            x: Double.random(in: range.x.closedRange, using: &rng),
+            y: Double.random(in: range.y.closedRange, using: &rng),
+            z: Double.random(in: range.z.closedRange, using: &rng)
+        )
+
+        return AttractorSelection(
+            descriptor: descriptor,
+            parameters: parameters,
+            settings: settings,
+            initialState: initialState
+        )
     }
 
     /// Pick a random attractor, parameter values, and hyperparameters using

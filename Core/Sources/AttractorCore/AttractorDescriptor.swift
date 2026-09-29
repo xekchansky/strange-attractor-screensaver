@@ -21,6 +21,8 @@ public struct AttractorDescriptor: Codable, Equatable, Sendable {
     public let parameters: [Parameter]
     /// Ranges governing the simulation/visualization.
     public let simulation: SimulationHyperparameters
+    /// Ranges for the initial state coordinates.
+    public let initialState: StateRange
 
     public init(
         id: String,
@@ -29,7 +31,8 @@ public struct AttractorDescriptor: Codable, Equatable, Sendable {
         dy: String,
         dz: String,
         parameters: [Parameter],
-        simulation: SimulationHyperparameters
+        simulation: SimulationHyperparameters,
+        initialState: StateRange
     ) {
         self.id = id
         self.name = name
@@ -38,5 +41,6 @@ public struct AttractorDescriptor: Codable, Equatable, Sendable {
         self.dz = dz
         self.parameters = parameters
         self.simulation = simulation
+        self.initialState = initialState
     }
 }

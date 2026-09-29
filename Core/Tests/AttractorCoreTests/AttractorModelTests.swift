@@ -53,7 +53,12 @@ struct AttractorModelTests {
             dy: "x",
             dz: "y",
             parameters: [],
-            simulation: SimulationHyperparameters()
+            simulation: SimulationHyperparameters(),
+            initialState: StateRange(
+                x: MinMax(min: -1, max: 1),
+                y: MinMax(min: -1, max: 1),
+                z: MinMax(min: -1, max: 1)
+            )
         )
         #expect(throws: FormulaError.self) {
             try AttractorModel(descriptor: descriptor, parameters: [:])

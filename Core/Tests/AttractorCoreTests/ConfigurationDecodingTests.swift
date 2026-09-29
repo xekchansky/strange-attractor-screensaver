@@ -18,6 +18,11 @@ private func lorenzJSON() -> String {
           { "name": "b", "min": 2.5, "max": 3.0 },
           { "name": "r", "min": 24.0, "max": 30.0 }
         ],
+        "initialState": {
+          "x": { "min": -1.0, "max": 1.0 },
+          "y": { "min": -1.0, "max": 1.0 },
+          "z": { "min": -1.0, "max": 1.0 }
+        },
         "simulation": {
           "stepSize": { "min": 0.004, "max": 0.01 },
           "simulationSpeed": { "min": 1.0, "max": 3.0 },
@@ -43,7 +48,12 @@ private func lorenzJSONWithoutSimulation() -> String {
         "dz": "x * y - b * z",
         "parameters": [
           { "name": "a", "min": 9.0, "max": 10.0 }
-        ]
+        ],
+        "initialState": {
+          "x": { "min": -1.0, "max": 1.0 },
+          "y": { "min": -1.0, "max": 1.0 },
+          "z": { "min": -1.0, "max": 1.0 }
+        }
       }
     ]
     """
@@ -81,6 +91,10 @@ struct ConfigurationDecodingTests {
         #expect(sim.trailLength.min == 2000)
         #expect(sim.trailLength.max == 8000)
         #expect(sim.trailLength.closedRange == 2000...8000)
+
+        #expect(descriptor.initialState.x.closedRange == -1.0...1.0)
+        #expect(descriptor.initialState.y.closedRange == -1.0...1.0)
+        #expect(descriptor.initialState.z.closedRange == -1.0...1.0)
     }
 
     @Test("Missing required field throws a decoding error")

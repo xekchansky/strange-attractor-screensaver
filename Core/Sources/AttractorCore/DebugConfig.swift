@@ -39,10 +39,20 @@ public enum DebugConfig {
         }
 
         let concreteSettings = settings ?? SimulationSettings(midpointsOf: descriptor.simulation)
+        let initialState = State(
+            x: Self.midpoint(of: descriptor.initialState.x),
+            y: Self.midpoint(of: descriptor.initialState.y),
+            z: Self.midpoint(of: descriptor.initialState.z)
+        )
         return AttractorSelection(
             descriptor: descriptor,
             parameters: concreteParameters,
-            settings: concreteSettings
+            settings: concreteSettings,
+            initialState: initialState
         )
+    }
+
+    private static func midpoint(of range: MinMax<Double>) -> Double {
+        (range.min + range.max) / 2
     }
 }
