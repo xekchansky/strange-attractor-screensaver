@@ -14,13 +14,15 @@
 
 ## Рабочая команда сборки/тестов ядра (из Core/)
 ```bash
-LIBCACHE=/Library/Developer/CommandLineTools/Library/Developer/usr/lib
 swift test --disable-sandbox --scratch-path "$TMPDIR/attractor-scratch" \
-  -Xlinker -L -Xlinker "$LIBCACHE" -Xlinker -rpath -Xlinker "$LIBCACHE"
+  -Xlinker -L -Xlinker /Library/Developer/CommandLineTools/Library/Developer/usr/lib \
+  -Xlinker -rpath -Xlinker /Library/Developer/CommandLineTools/Library/Developer/usr/lib
 ```
 Почему именно так:
 - `--disable-sandbox` — снимает вложенную SPM-песочницу компиляции `Package.swift` (внешняя песочница блокирует её `sandbox_apply`). Флаг согласован с пользователем.
 - `--scratch-path "$TMPDIR/..."` — обязателен: иначе зависимости клонируются в `Core/.build/checkouts/*/.git`, а запись во вложенные `.git` в рабочем дереве песочницей запрещена.
 - `-Xlinker -L/-rpath .../Developer/usr/lib` — `lib_TestingInterop.dylib` (нужна Swift Testing) лежит там, но SPM сам не добавляет этот путь в этой среде.
+- **ВАЖНО (зафиксировано 2026-09-29): путь к `usr/lib` писать литералом, НЕ через инлайн-префикс `LIBCACHE=... swift ...`** — в этой среде переменная через такой префикс не подставляется: линковщик получает пустые `-L`/`-rpath`, и `swift test` падает с `ld: library '_TestingInterop' not found`. `swift build` (без тестов) при этом зелёный.
+- Если `swift test` долго пересобирает `swift-testing` из `checkouts/` — это нормально после чистки scratch; инкрементальная сборка потом быстрая.
 
 Предупреждение незначительное: macOS-деплой 13.0 против dylib, собранной под 14.0 — не блокирует.
