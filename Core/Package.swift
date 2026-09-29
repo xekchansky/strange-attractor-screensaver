@@ -22,7 +22,11 @@ let package = Package(
     ],
     targets: [
         // Pure Swift core with no UI dependencies; fully testable via SPM.
-        .target(name: "AttractorCore"),
+        // Bundles attractors.json so descriptors load from the module bundle.
+        .target(
+            name: "AttractorCore",
+            resources: [.process("Resources")]
+        ),
         .testTarget(
             name: "AttractorCoreTests",
             dependencies: [
