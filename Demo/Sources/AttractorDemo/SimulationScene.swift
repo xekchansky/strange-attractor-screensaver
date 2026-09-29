@@ -5,7 +5,8 @@ import AttractorCore
 
 /// Owns the SceneKit view and the running simulation: it steps the engine each
 /// frame, repaints the trace as a gradient polyline, orbits the camera, and
-/// shows the current formulas and parameters in a corner overlay.
+/// shows the current formulas, parameters and the live position in a corner
+/// overlay.
 @MainActor
 final class SimulationScene: NSObject {
     /// The SceneKit view backing this simulation. Embed it in a window.
@@ -78,7 +79,7 @@ final class SimulationScene: NSObject {
             overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16)
         ])
-        overlay.stringValue = Self.overlayText(for: selection)
+        overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
     }
 
     /// Begin the per-frame animation loop. Call from the main thread.
@@ -135,13 +136,14 @@ final class SimulationScene: NSObject {
         )
 
         if now - lastOverlayUpdate > 0.5 {
-            overlay.stringValue = Self.overlayText(for: selection)
+            overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
             lastOverlayUpdate = now
         }
     }
 
-    /// Build the multi-line overlay text for a selection.
-    private static func overlayText(for selection: AttractorSelection) -> String {
+    /// Build the multi-line overlay text: attractor name, formulas, parameter
+    /// values and the current state (the position of the newest point).
+    private static func overlayText(for selection: AttractorSelection, state: State) -> String {
         let descriptor = selection.descriptor
         let parameters = selection
             .parameters
@@ -149,12 +151,14 @@ final class SimulationScene: NSObject {
             .map { "\($0.key) = \(Self.format($0.value))" }
             .joined(separator: "   ")
 
-        let labels = [
+        let position = "(x, y, z) = (\(Self.format(state.x)), \(Self.format(state.y)), \(Self.format(state.z)))"
+
+        let formulas = [
             "dX/dt = \(descriptor.dx)",
             "dY/dt = \(descriptor.dy)",
             "dZ/dt = \(descriptor.dz)"
         ]
-        return ([descriptor.name] + labels + [parameters]).joined(separator: "\n")
+        return ([descriptor.name] + formulas + [parameters, position]).joined(separator: "\n")
     }
 
     private static func format(_ value: Double) -> String {
