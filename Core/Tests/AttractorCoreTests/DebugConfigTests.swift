@@ -64,12 +64,14 @@ struct DebugConfigTests {
         _ = try selection.buildModel()
     }
 
-    @Test("Initial state defaults to range midpoints")
-    func initialStateDefaultToMidpoints() throws {
+    @Test("Initial state is nudged off the degraded center midpoint")
+    func initialStateIsOffDegenerateMidpoint() throws {
         let selection = try DebugConfig.selection(for: "thomas", in: catalog)
         let range = TestSupport.thomasDescriptor().initialState
-        #expect(selection.initialState.x == (range.x.min + range.x.max) / 2)
-        #expect(selection.initialState.y == (range.y.min + range.y.max) / 2)
-        #expect(selection.initialState.z == (range.z.min + range.z.max) / 2)
+        let midX = (range.x.min + range.x.max) / 2
+        // The midpoint of a center-symmetric range is an equilibrium for Thomas;
+        // DebugConfig must start off it so the simulation actually moves.
+        #expect(selection.initialState.x != midX)
+        #expect(selection.initialState.x > range.x.min && selection.initialState.x < range.x.max)
     }
 }

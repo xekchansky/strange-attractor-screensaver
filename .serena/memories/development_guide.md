@@ -12,7 +12,10 @@
 SPM работает в этой среде — основная проверка логики происходит именно здесь, без Xcode.
 
 ### Визуализация (демо-приложение, AppKit + SceneKit)
-- Собирается в Xcode (таргет демо-приложения), либо из командной строки, если Xcode будет установлен.
+- Отдельный SPM-пакет `Demo/` (исполняемый `AttractorDemo`), зависящий от `Core/` по локальному пути. Собирается/запускается из CLI: `cd Demo && swift build` / `swift run AttractorDemo`.
+- AppKit/SceneKit успешно импортируются из CLI-сdk (проверено 2026-09-29): Xcode для демо НЕ нужен (нужен только для хост-`.appex` в M5). Правки в `Demo/` — нативными инструментами (см. `mem:architecture`, LSP недоступен).
+- Аргументы: `--attractor <id>`, `--param name=value` (или голые `name=value` токены); без аргументов — случайный выбор (Randomizer).
+- Оверрайды гиперпараметров симуляции поверх выбранной селекции: `--trail-length <n>`, `--speed <v>`, `--step <v>`, `--cam-speed <v>`, `--trail-color-speed <v>` (см. `mem:architecture` → `SimulationOverrides`). Применяются в `main.swift` сборкой новой `AttractorSelection` с переопределёнными settings.
 
 ### Хост-скринсейвер (`.appex`) — требует Xcode
 - Таргет «Screen Saver» (`.appex`), главный класс `ScreenSaverView`.
@@ -65,7 +68,7 @@ SPM работает в этой среде — основная проверк�
 - **M1 — Модель данных и конфиг.** ✅ `AttractorDescriptor`, `Parameter`, `MinMax`, `SimulationHyperparameters` (Codable); `attractors.json` (Лоренц/Рёсслер/Томас) как ресурс; `AttractorCatalog` loader; тесты декодинга.
 - **M2 — Математическое ядро.** ✅ `State`/`Derivatives`, `FormulaParser`+`Expression` (свой парсер, тригонометрия), `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (поток точек + кольцевой буфер `trace`); численные тесты.
 - **M3 — Выбор.** ✅ `SplitMix64` (seedable ГПСЧ), `SimulationSettings`, `AttractorSelection`, `Randomizer` (инжектируемый RNG), `DebugConfig` (фабрика с дефолтами-серединами); тесты диапазонов и seed; раздел выбор включает начальное состояние (`StateRange` + `initialState`); `swift test` зелёный (48 тестов, 9 сьюит).
-- **M4 — Визуализация в демо-приложении.** SCNView, `TraceRenderer`, `CameraController`, запуск/остановка, ручные параметры; визуальная проверка.
+- **M4 — Визуализация в демо-приложении.** ✅ SPM-пакет `Demo/` (исполняемый `AttractorDemo`, AppKit+SceneKit): `TraceRenderer` (полилиния+градиент), `CameraController` (орбита+автокадрирование), `SimulationScene` (движок+таймер+оверлей формул/параметров), CLI `--attractor`/`--param` или случайный выбор; `swift build` в `Demo/`; рендер проверяется вручную.
 - **M5 — Хост `.appex`.** Таргет Screen Saver, `ScreenSaverView`, подключение ядра, вывод формул/параметров в углу; проверка в System Settings.
 - **M6 — Полировка.** Производительность, крайние случаи (деление на ноль/нестабильные параметры), упаковка и документация.
 
