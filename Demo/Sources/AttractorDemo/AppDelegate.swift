@@ -1,5 +1,6 @@
 import AppKit
 import AttractorCore
+import AttractorRender
 
 /// Entry point of the demo app: parses arguments, builds a selection (manual
 /// via `--attractor`/`--param`, or random by default), constructs the engine
