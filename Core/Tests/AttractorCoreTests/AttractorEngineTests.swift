@@ -68,4 +68,25 @@ struct AttractorEngineTests {
             #expect(engine.state.z.isFinite)
         }
     }
+
+    @Test("Every bundled catalog attractor stays finite under its debug defaults")
+    func allCatalogAttractorsFinite() throws {
+        let catalog = try AttractorCatalog.bundled()
+        for descriptor in catalog {
+            let selection = try DebugConfig.selection(for: descriptor.id, in: catalog)
+            let model = try selection.buildModel() // parses all formulas, incl. Aizawa's `^`
+            var engine = AttractorEngine(
+                model: model,
+                initialState: selection.initialState,
+                stepSize: selection.settings.stepSize,
+                trailCapacity: 2000
+            )
+            for _ in 0..<2000 {
+                try engine.advance()
+            }
+            #expect(engine.state.x.isFinite)
+            #expect(engine.state.y.isFinite)
+            #expect(engine.state.z.isFinite)
+        }
+    }
 }

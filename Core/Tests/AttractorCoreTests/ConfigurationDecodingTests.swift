@@ -145,9 +145,9 @@ struct ConfigurationDecodingTests {
     func bundledCatalog() throws {
         let catalog = try AttractorCatalog.bundled()
 
-        #expect(catalog.count == 4)
-        #expect(catalog.map(\.id) == ["lorenz", "rossler", "thomas", "chen"])
-        #expect(catalog.map(\.name) == ["Lorenz", "Rössler", "Thomas", "Chen"])
+        #expect(catalog.count == 5)
+        #expect(catalog.map(\.id) == ["lorenz", "rossler", "thomas", "chen", "aizawa"])
+        #expect(catalog.map(\.name) == ["Lorenz", "Rössler", "Thomas", "Chen", "Aizawa"])
 
         let lorenz = try #require(catalog.first { $0.id == "lorenz" })
         #expect(lorenz.parameters.map(\.name) == ["a", "b", "r"])
@@ -155,5 +155,7 @@ struct ConfigurationDecodingTests {
         #expect(thomas.parameters.map(\.name) == ["b"])
         let chen = try #require(catalog.first { $0.id == "chen" })
         #expect(chen.parameters.map(\.name) == ["a", "b", "c"])
+        let aizawa = try #require(catalog.first { $0.id == "aizawa" })
+        #expect(aizawa.parameters.map(\.name) == ["a", "b", "c", "d", "e", "f"])
     }
 }
