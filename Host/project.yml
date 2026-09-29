@@ -1,0 +1,56 @@
+# xcodegen spec for the .appex screensaver host (M5).
+# Regenerate the project with:  xcodegen generate   (from Host/)
+name: AttractorHost
+options:
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+packages:
+  AttractorCore:
+    path: ../Core
+  AttractorRender:
+    path: ../Render
+
+targets:
+  AttractorScreensaver:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Sources
+    dependencies:
+      - package: AttractorCore
+        product: AttractorCore
+      - package: AttractorRender
+        product: AttractorRender
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: AttractorScreensaver
+        CFBundlePackageType: XPC!
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSHighResolutionCapable: true
+        # Modern Screen Saver app-extension: the system loads the principal
+        # class derived from $(PRODUCT_MODULE_NAME) to display the saver.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.ScreenSaver.Saver
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorScreensaver
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: "NO"
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: "YES"
+
+schemes:
+  AttractorScreensaver:
+    build:
+      targets:
+        AttractorScreensaver: all
+    run:
+      config: Debug
