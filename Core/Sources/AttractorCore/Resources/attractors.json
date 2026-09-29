@@ -44,7 +44,7 @@
       "simulationSpeed": { "min": 1.0, "max": 3.0 },
       "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
       "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
+      "trailLength": { "min": 8000, "max": 20000 }
     }
   },
   {
@@ -66,7 +66,7 @@
       "simulationSpeed": { "min": 1.0, "max": 3.0 },
       "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
       "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
+      "trailLength": { "min": 8000, "max": 20000 }
     }
   }
 ]
