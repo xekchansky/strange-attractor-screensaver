@@ -35,6 +35,18 @@ enum TraceRenderer {
             colors.append(Float(b))
         }
 
+        // Explicit paired line indices: SceneKit draws one segment per pair
+        // (0,1), (1,2), ..., giving a single connected strip. An empty
+        // index buffer (bytesPerIndex: 0) is not reliably handled by the
+        // Metal renderer and can crash in drawIndexedPrimitives.
+        var indices: [UInt32] = []
+        indices.reserveCapacity((trace.count - 1) * 2)
+        for i in 0..<(trace.count - 1) {
+            indices.append(UInt32(i))
+            indices.append(UInt32(i + 1))
+        }
+        let indexData = indices.withUnsafeBytes { Data($0) }
+
         let positionSource = SCNGeometrySource(vertices: positions)
         let colorSource = SCNGeometrySource(
             data: Data(bytes: colors, count: colors.count * MemoryLayout<Float>.size),
@@ -46,13 +58,11 @@ enum TraceRenderer {
             dataOffset: 0,
             dataStride: MemoryLayout<Float>.size * 3
         )
-        // No index data: `primitiveCount` line segments connect consecutive
-        // vertex pairs in order, forming a single continuous strip.
         let element = SCNGeometryElement(
-            data: Data(),
+            data: indexData,
             primitiveType: .line,
             primitiveCount: trace.count - 1,
-            bytesPerIndex: 0
+            bytesPerIndex: MemoryLayout<UInt32>.size
         )
         let geometry = SCNGeometry(sources: [positionSource, colorSource], elements: [element])
         // Vertex colors feed the diffuse channel; disable lighting so the
