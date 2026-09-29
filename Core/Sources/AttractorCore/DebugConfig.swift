@@ -12,6 +12,12 @@ public enum DebugConfigError: Error, Equatable {
 /// lets the demo app pin specific parameter and hyperparameter values and fills
 /// any omitted value with the midpoint of its declared range.
 public enum DebugConfig {
+    /// Small deterministic offset applied to the initial state so it never sits
+    /// exactly on the range midpoint. For center-symmetric ranges (Thomas,
+    /// Lorenz) the midpoint is an equilibrium point where every derivative is
+    /// zero, so a start at the exact midpoint produces no motion at all.
+    private static let initialStateOffset = State(x: 0.01, y: -0.01, z: 0.01)
+
     /// Build a selection for the attractor with `id`.
     ///
     /// - Parameters:
@@ -40,9 +46,9 @@ public enum DebugConfig {
 
         let concreteSettings = settings ?? SimulationSettings(midpointsOf: descriptor.simulation)
         let initialState = State(
-            x: Self.midpoint(of: descriptor.initialState.x),
-            y: Self.midpoint(of: descriptor.initialState.y),
-            z: Self.midpoint(of: descriptor.initialState.z)
+            x: Self.midpoint(of: descriptor.initialState.x) + initialStateOffset.x,
+            y: Self.midpoint(of: descriptor.initialState.y) + initialStateOffset.y,
+            z: Self.midpoint(of: descriptor.initialState.z) + initialStateOffset.z
         )
         return AttractorSelection(
             descriptor: descriptor,
