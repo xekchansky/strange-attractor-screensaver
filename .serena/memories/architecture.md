@@ -2,53 +2,50 @@
 
 macOS-скринсейвер, который рендерит странные аттракторы (детерминированные хаотические системы) в 3D. При запуске случайно выбирается аттрактор, его параметры и гиперпараметры симуляции; траектория визуализируется с вращающейся камерой.
 
-> Даты: анализ 2026-09-29, M2 завершён 2026-09-29, M3 завершён 2026-09-29, M4 завершён 2026-09-29. Стек утверждён пользователем: современный `.appex`, SceneKit, собственный парсер формул.
+> Даты: анализ 2026-09-29, M2 завершён 2026-09-29, M3 завершён 2026-09-29, M4 завершён 2026-09-29, **M5 завершён 2026-09-30** (хост-заставка собрана и установлена/проверена вручную как `.saver`). Стек: современный `.appex`-путь остался для App Store, локальная установка идёт классическим `.saver`.
 
 ## Принятые ключевые решения (утверждены)
-- **Формат скринсейвера:** современный `.appex` (app-extension, macOS 10.15+). Не легаси `.saver`.
+- **Формат скринсейвера:** заявлен современный `.appex`; на практике ручная установка на macOS идёт классическим **`.saver`**-бандлом в `~/Library/Screen Savers/` (расширения `.appex` → `com.apple.screensaver` подхватываются только из приложений App Store). Оба используют один `ScreensaverView`.
 - **Рендеринг:** SceneKit (SCNView), траектория — точки/линии, анимируемая камера.
-- **Парсинг формул:** собственный рекурсивный парсер `FormulaParser` → AST `Expression` (решение принято 2026-09-29: стандартный `NSExpression` НЕ поддерживает `sin/cos/tan`, а аттрактор Томаса их использует; свой парсер даёт полный контроль и тестируемость в SPM-ядре).
+- **Парсинг формул:** собственный рекурсивный парсер `FormulaParser` → AST `Expression` (NSExpression не поддерживает `sin/cos/tan`).
 - **Конфиг:** JSON + Codable (без внешних зависимостей).
-- **Зависимости:** внешние отсутствуют, только Apple-фреймворки.
+- **Зависимости:** внешние отсутствуют, только Apple-фреймворки. Исключения: `swift-testing` (тест-таргет), dev-инструмент `xcodegen` (генерация Xcode-проекта).
+- **Общий рендер-модуль:** `AttractorRender` — один источник рендер-кода для `Demo/` и хоста (без дублирования).
 
 ## Окружение
-- macOS 26.6.2, arm64 (Apple Silicon), Swift 6.3.
-- Установлены только Command Line Tools (`swift`/SPM доступны), полного Xcode / `xcodebuild` нет → сборка `.appex` выполняется в Xcode; общее ядро собирается и тестируется через SPM.
-- **LSP недоступен** (см. `mem:development_guide`): символьные write-инструменты на существующих файлах не работают; новые файлы создаём `create_text_file`.
+- macOS 26.6.2, arm64 (Apple Silicon), Swift 6.x.
+- **Полный Xcode 27.0 установлен (с 2026-09-30)** — `.appex`/`.saver` собираются локально. Ранее был только Command Line Tools.
+- Внешняя песочница сессии: `xcodebuild` с локальными SPM-пакетами падает на `sandbox-exec: sandbox_apply: Operation not permitted` при Resolve Package Graph → сборку хоста выполняем вне песочницы (терминал пользователя или префикс `!`).
+- **LSP недоступен**: символьные write-инструменты на существующих Swift-файлах не работают; новые файлы — `create_text_file`, существующие — нативный точечный `Edit`.
 
 ## Компоненты
 
-### Общее ядро (SPM-модуль) — чистое, тестируемое
-1. **Config-слой**
-   - `attractors.json` — ресурс в бандле. Для каждого аттрактора: id, имя, строки формул dX/dY/dZ (переменные = параметры), определения параметров `{имя, min, max}`, диапазоны гиперпараметров симуляции.
-   - Загружается как `[AttractorDescriptor]` (Codable) через `AttractorCatalog`.
-2. **Доменное/математическое ядро**
-   - `State` — явный тип вектора состояния (x,y,z). `Derivatives` — вектор производных.
-   - `Expression` + `FormulaParser` — рекурсивный спуск: числа, переменные, `+ - * / ^`, унарный минус, скобки, функции `sin/cos/tan/sqrt/abs/exp/ln/log`.
-   - `AttractorModel` — состояние + набор числовых параметров + три `Expression` (dX/dY/dZ из строк конфига); метод `rate(of:)`.
-   - `ODESolver` — численное интегрирование: RK4 (основной) + Euler. Методы `step(from:dt:method:rate:)`.
-   - `AttractorEngine` — принимает модель + параметры + гиперпараметры (шаг, метод), шагает систему, ведёт кольцевой буфер последних точек `trace`.
-3. **Выбор** (M3)
-   - `SplitMix64` — seedable детерминированный ГПСЧ (алгоритм SplitMix64) для воспроизводимых прогонов.
-   - `SimulationSettings` — «размороженные» конкретные значения гиперпараметров (Double/Int вместо MinMax); `init(midpointsOf:)` — середины диапазонов.
-   - `AttractorSelection` — готовый результат выбора: descriptor + параметры `[String: Double]` + `SimulationSettings` + начальное состояние `State`; метод `buildModel() throws -> AttractorModel`.
-   - `StateRange` — диапазон начального состояния (x/y/z как `MinMax<Double>`) в дескрипторе (`descriptor.initialState`); Randomizer сэмплирует из него конкретный `State`, DebugConfig берёт середины.
-   - `Randomizer` — при старте случайный аттрактор + параметры из [min,max] + гиперпараметры из диапазонов; инжектируемый `inout some RandomNumberGenerator` (`select(from:using:)`) + convenience `select(from:)` на SystemRNG.
-   - `DebugConfig` — фабрика `selection(for:in:parameters:settings:)`; пропущенные параметры/гиперпараметры — середины диапазонов; ошибка `unknownAttractor`.
+### 1. Общее ядро (SPM-модуль `AttractorCore`) — чистое, тестируемое
+- **Config:** `attractors.json` (ресурс бандла) → `[AttractorDescriptor]` через `AttractorCatalog`.
+- **Мат. ядро:** `State`, `Derivatives`, `Expression`+`FormulaParser`, `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (шаг + кольцевой буфер `trace`).
+- **Выбор:** `SplitMix64`, `SimulationSettings`, `AttractorSelection` (`buildModel()`), `StateRange`/`initialState`, `Randomizer`, `DebugConfig`.
 
-### Рендер (SceneKit)
-- `SCNView`-сцена: узел камеры, `TraceRenderer` (кольцевой буфер последних точек → геометрия линий/точек, цветовая градация вдоль следа), `CameraController` (медленное вращение/орбита под заданную скорость). Реализовано в отдельном SPM-пакете `Demo/` (исполняемый `AttractorDemo`, AppKit+SceneKit, зависит от ядра по пути) + `SimulationScene` (движок+таймер+оверлей формул/параметров) и CLI-аргументы `--attractor`/`--param` (M4).
-- Луп — через display link (QuartzCore).
+### 2. Рендер (SPM-модуль `AttractorRender`, AppKit+SceneKit)
+- `TraceRenderer` — полилиния трейса с градиентом (`TraceRenderer.geometry(for:colorOffset:)`).
+- `CameraController` — орбита + автокадрирование (`update(dt:rotationSpeed:around:cameraNode:)`).
+- `SimulationScene` — @MainActor, `public init(engine:selection:)`, `start()`, `stop()`, `public let view: SCNView`, `public let selection`; свой Timer (1/60s), шагает движок, рисует оверлей формул/параметров/позиции в углу.
 
-### Хост/оболочка
-- `.appex` с главным `ScreenSaverView`: владеет сценой, запускает симуляцию, останавливает при дезактивации.
-- Дебаг-приложение использует то же ядро с ручными параметрами.
+### 3. Демо (SPM-пакет `Demo/`, исполняемый `AttractorDemo`)
+- `main.swift` + `AppDelegate` + `CommandLineArguments`; рендер через `import AttractorRender`. CLI `--attractor`/`--param`/оверрайды; без аргументов — случайный выбор.
+
+### 4. Хост/оболочка (`Host/`, Xcode-проект через xcodegen)
+- **`AttractorSaver`** (`.saver`, `type: bundle`, `WRAPPER_EXTENSION=saver`) — классический бандл, который macOS загружает для локальных заставок: `CFBundlePackageType=BNDL`, `NSPrincipalClass=$(PRODUCT_MODULE_NAME).ScreensaverView`, статически линкует `AttractorCore`+`AttractorRender`. **Это рабочий способ установки.**
+- `AttractorScreensaver` (`.appex`, `NSExtension` → `NSExtensionPointIdentifier=com.apple.screensaver`, `NSExtensionPrincipalClass=...ScreensaverView`) — современный app-extension для App Store; System Settings вручную его игнорирует.
+- `AttractorHostApp` (`.app`) — приложение-контейнер с `Contents/PlugIns/AttractorScreensaver.appex` (тоже App Store-путь).
+- `Host/Sources/ScreensaverView.swift` — `final class ScreensaverView: ScreenSaver.ScreenSaverView`: на `startAnimation()` грузит каталог, строит выбор через `Randomizer`, `buildModel()`+`AttractorEngine`, создаёт/встраивает `SimulationScene`, `scene.start()`; на `stopAnimation()` — `scene.stop()`. Инициализаторы не переопределяются (наследуются от NSView).
+- Сборка: `cd Host && xcodegen generate && xcodebuild -project AttractorHost.xcodeproj -scheme AttractorSaver -configuration Debug build` (вне песочницы).
+- Установка: `cp -R .../AttractorSaver.saver ~/Library/Screen\ Savers/`, `killall WallpaperAgent`; проверка в System Settings → Wallpaper → Screen Saver. (Сделано, работает.)
 
 ## Точка входа и поток данных
-- **Скринсейвер:** система запускает `.appex` → `ScreenSaverView` → грузит конфиг → случайный выбор → строит сцену → анимирует до прерывания.
-- **Дебаг:** демо-приложение запускает то же ядро с явными параметрами.
-- Данные: `attractors.json` → Codable-дескрипторы → `AttractorModel` (FormulaParser + RK4/Euler в `AttractorEngine`) → поток точек → `TraceRenderer` → экран.
+- **Заставка:** `ScreensaverView` (startAnimation) → `AttractorCatalog.bundled()` → `Randomizer.select(from:)` → `buildModel()` → `AttractorEngine` → `SimulationScene` → рендер трейса/камеры/оверлей до `stopAnimation()`.
+- **Дебаг:** `Demo` с CLI-аргументами или случайный выбор.
+- Данные: `attractors.json` → дескрипторы → `AttractorModel` → поток точек → `TraceRenderer` → экран.
 
 ## Сборка / проект
-- Xcode-проект с двумя таргетами: `.appex` + дебаг-приложение, плюс общий SPM-модуль.
-- Юнит-тесты мат. ядра (парсер, точность интегрирования RK4/Euler, модель, движок) — Swift Testing.
+- `Core/` — SPM, `swift test` (Swift Testing, 49 тестов). `Render/`, `Demo/` — SPM, `swift build`.
+- `Host/` — Xcode-проект (xcodegen) с таргетами `.saver` (установочный), `.appex`/`.app` (App Store).

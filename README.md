@@ -78,8 +78,33 @@ z` = c + az - z^3/3 - (x^2 + y^2)(1 + ez) + fzx^3
 - **M1 — Модель данных и конфиг.** ✅ `AttractorDescriptor`, `Parameter`, `MinMax`, `SimulationHyperparameters` (Codable); `attractors.json` (Лоренц/Рёсслер/Томас) как ресурс таргета; `AttractorCatalog` (loader); тесты декодинга; `swift test` зелёный.
 - **M2 — Математическое ядро.** ✅ `State`/`Derivatives`, собственный парсер формул `FormulaParser`+`Expression` (рекурсивный спуск, поддержка `sin/cos/tan` — NSExpression их не умеет), `AttractorModel` (векторное поле `rate(of:)`), `ODESolver` (RK4 + Euler), `AttractorEngine` (поток точек + кольцевой буфер трассы); численные тесты.
 - **M3 — Выбор.** ✅ `SplitMix64` (детерминированный seedable ГПСЧ), `StateRange`/`initialState` (диапазон начального состояния), `SimulationSettings`, `AttractorSelection` (готовый результат выбора), `Randomizer` (случайный аттрактор/параметры/гиперпараметры/начальное состояние с инжектируемым RNG), `DebugConfig` (ручные параметры с дефолтами-серединами); тесты диапазонов и seed; `swift test` зелёный (48 тестов).
-- **M4 — Визуализация (демо-приложение).** ✅ SPM-пакет `Demo/` с исполняемым `AttractorDemo` (AppKit+SceneKit, собирается без Xcode): `TraceRenderer` (полилиния с цветовым градиентом), `CameraController` (орбита + автокадрирование по трейсу), `SimulationScene` (движок + таймер + оверлей формул/параметров); CLI-аргументы `--attractor`/`--param` — ручные параметры, без аргументов — случайный выбор; сбока `swift build` в `Demo/`, рендер проверяется вручную.
-- **M5 — Хост `.appex` (требует Xcode).** Таргет Screen Saver, `ScreenSaverView`, подключение ядра, формулы/параметры в углу; проверка в System Settings.
+- **M4 — Визуализация (демо-приложение).** ✅ SPM-пакет `Demo/` с исполняемым `AttractorDemo` (AppKit+SceneKit, собирается без Xcode): общий переиспользуемый рендер-модуль `AttractorRender` (`Render/`) — `TraceRenderer` (полилиния с градиентом), `CameraController` (орбита + автокадрирование), `SimulationScene` (движок + таймер + оверлей формул/параметров), общий для демо и хоста; CLI-аргументы `--attractor`/`--param`; `swift build` в `Demo/`, рендер проверяется вручную.
+- **M5 — Хост-заставка.** ✅ Таргеты в `Host/` (генерируются xcodegen из `project.yml`): `ScreensaverView` (`ScreenSaver.ScreenSaverView`), случайный выбор через `Randomizer`, переиспользуемый `AttractorRender`, формулы/параметры в углу. Собран и **установлен/проверен вручную как классический `.saver`** в `~/Library/Screen Savers/`; `.appex`-вариант оставлен как путь для App Store.
 - **M6 — Полировка и стабильность.** Производительность, крайние случаи, упаковка.
+
+## Хост-заставка (M5)
+
+Код хоста лежит в `Host/`, Xcode-проект генерируется **xcodegen** из `Host/project.yml` (локальные SPM-пакеты `Core`/`Render` линкуются статически — без дублирования кода).
+
+**Структура таргетов:**
+- `Host/Sources/ScreensaverView.swift` — `ScreensaverView: ScreenSaver.ScreenSaverView`: на `startAnimation()` грузит каталог, случайно выбирает аттрактор через `Randomizer`, строит движок и `SimulationScene`, останавливает на `stopAnimation()`.
+- **`AttractorSaver`** (`.saver`, `CFBundlePackageType=BNDL`, `NSPrincipalClass`) — классический бандл, который macOS реально загружает для локально установленных заставок.
+- `AttractorScreensaver` (`.appex`, `NSExtension` → `com.apple.screensaver`) — современный app-extension для App Store-дистрибуции; вручную System Settings его не показывает.
+- `AttractorHostApp` (`.app`) — приложение-контейнер для `.appex` (тоже App Store-путь).
+
+**Сборка и установка (проверено):**
+```bash
+cd Host
+xcodegen generate
+xcodebuild -project AttractorHost.xcodeproj -scheme AttractorSaver \
+  -configuration Debug -derivedDataPath /tmp/host-dd build
+
+mkdir -p ~/Library/Screen\ Savers
+cp -R /tmp/host-dd/Build/Products/Debug/AttractorSaver.saver ~/Library/Screen\ Savers/
+killall WallpaperAgent 2>/dev/null
+```
+Затем заставка «AttractorSaver» появляется в System Settings → **Wallpaper → Screen Saver**. Проверка: предпросмотр, старт/стоп, случайность запусков, формулы/параметры в углу.
+
+> Важный вывод: для ручной установки заставки нужен классический `.saver`-бандл (`~/Library/Screen Savers/`) — расширения `.appex` (`com.apple.screensaver`) подхватываются только из приложений App Store. Оба таргета используют один `ScreensaverView`.
 
 Принцип: маленькие итерации; перед каждым шагом — зелёный `swift test`. Статусы майлстоунов: ⏳ / в работе / ✅.
