@@ -68,5 +68,29 @@
       "trailColorSpeed": { "min": 0.05, "max": 0.3 },
       "trailLength": { "min": 8000, "max": 20000 }
     }
+  },
+  {
+    "id": "chen",
+    "name": "Chen",
+    "dx": "a * (y - x)",
+    "dy": "(c - a) * x - x * z + c * y",
+    "dz": "x * y - b * z",
+    "parameters": [
+      { "name": "a", "min": 34.0, "max": 36.0 },
+      { "name": "b", "min": 2.7, "max": 3.3 },
+      { "name": "c", "min": 26.0, "max": 30.0 }
+    ],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
   }
 ]

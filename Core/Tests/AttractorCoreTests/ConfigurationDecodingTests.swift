@@ -141,17 +141,19 @@ struct ConfigurationDecodingTests {
         #expect(descriptor.id == "lorenz")
     }
 
-    @Test("Bundled catalog contains the three reference attractors")
+    @Test("Bundled catalog contains the reference attractors")
     func bundledCatalog() throws {
         let catalog = try AttractorCatalog.bundled()
 
-        #expect(catalog.count == 3)
-        #expect(catalog.map(\.id) == ["lorenz", "rossler", "thomas"])
-        #expect(catalog.map(\.name) == ["Lorenz", "Rössler", "Thomas"])
+        #expect(catalog.count == 4)
+        #expect(catalog.map(\.id) == ["lorenz", "rossler", "thomas", "chen"])
+        #expect(catalog.map(\.name) == ["Lorenz", "Rössler", "Thomas", "Chen"])
 
         let lorenz = try #require(catalog.first { $0.id == "lorenz" })
         #expect(lorenz.parameters.map(\.name) == ["a", "b", "r"])
         let thomas = try #require(catalog.first { $0.id == "thomas" })
         #expect(thomas.parameters.map(\.name) == ["b"])
+        let chen = try #require(catalog.first { $0.id == "chen" })
+        #expect(chen.parameters.map(\.name) == ["a", "b", "c"])
     }
 }
