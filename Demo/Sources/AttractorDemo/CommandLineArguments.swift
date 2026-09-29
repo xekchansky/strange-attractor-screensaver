@@ -11,9 +11,10 @@ enum CommandLineArgumentsError: Error, Equatable {
 struct CommandLineArguments {
     /// Fixed attractor id, when `--attractor` was supplied.
     let attractorID: String?
-    /// Pinned parameter values keyed by name, from `--param` flags or bare
-    /// `name=value` tokens.
-    let parameters: [String: Double]
+    /// Raw `name=value` parameters. Values are kept as strings — numeric
+    /// conversion and name validation happen against the catalog in `main`,
+    /// which knows which parameters each attractor actually declares.
+    let parameters: [String: String]
     /// True when `--help` was requested.
     let showHelp: Bool
 
@@ -23,9 +24,9 @@ struct CommandLineArguments {
     Runs the attractor screensaver simulation in a SceneKit window.
 
     Options:
-      -a, --attractor <id>    fix a specific attractor (lorenz, rossler, thomas, ...)
-      -p, --param name=value  pin a simulation parameter value
-      -h, --help              show this help and exit
+      -a, --attractor <id>  fix a specific attractor (lorenz, rossler, thomas, ...)
+      -p, --param name=val  pin a simulation parameter value (repeatable)
+      -h, --help            show this help (including available attractors) and exit
 
     Bare `name=value` tokens are also treated as pinned parameters, e.g.
       AttractorDemo --attractor rossler a=0.2 b=0.2 c=5.7
@@ -36,10 +37,10 @@ struct CommandLineArguments {
     /// Parse command-line arguments (excluding the executable path).
     /// - Parameter arguments: `CommandLine.arguments` as passed to the app.
     /// - Throws: ``CommandLineArgumentsError`` on an unknown flag or a broken
-    ///   `name=value` parameter.
+    ///   `name=value` token.
     static func parse(_ arguments: [String]) throws -> CommandLineArguments {
         var attractorID: String?
-        var parameters: [String: Double] = [:]
+        var parameters: [String: String] = [:]
         var showHelp = false
         var index = 1 // skip the executable path
 
@@ -55,12 +56,7 @@ struct CommandLineArguments {
             guard let eq = raw.firstIndex(of: "="), eq != raw.startIndex else {
                 throw CommandLineArgumentsError.invalidParameter(raw)
             }
-            let name = String(raw[..<eq])
-            let valueString = String(raw[raw.index(after: eq)...])
-            guard let number = Double(valueString) else {
-                throw CommandLineArgumentsError.invalidParameter(raw)
-            }
-            parameters[name] = number
+            parameters[String(raw[..<eq])] = String(raw[raw.index(after: eq)...])
         }
 
         while index < arguments.count {
