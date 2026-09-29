@@ -37,6 +37,7 @@ final class SimulationScene: NSObject {
         scene.background.contents = NSColor.black
 
         let camera = SCNCamera()
+        camera.automaticallyAdjustsZRange = true
         let cameraNode = SCNNode()
         cameraNode.camera = camera
         scene.rootNode.addChildNode(cameraNode)
