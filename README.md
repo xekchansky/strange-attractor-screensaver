@@ -56,7 +56,7 @@ z` = sin(x) - bz
 
 Порядок шагов выстроен так, чтобы чистое ядро собиралось и тестировалось через SPM (`swift test`) ещё до работы с Xcode (в этой среде полного Xcode нет, `.appex` собирается на машине с Xcode).
 
-- **M0 — Фундамент.** SPM-пакет ядра; `swift test` зелёный. ⏳
+- **M0 — Фундамент.** ✅ SPM-пакет чистого ядра (`Core/`, SPM-модуль `AttractorCore`); каркас с тестом (Swift Testing); `swift test` зелёный.
 - **M1 — Модель данных и конфиг.** `AttractorDescriptor`, `Parameter`, `SimulationHyperparameters` (Codable); пример `attractors.json` (Лоренц/Рёсслер/Томас); тесты декодинга.
 - **M2 — Математическое ядро.** `AttractorModel` (NSExpression), `ODESolver` (RK4/Euler), `AttractorEngine`; численные тесты.
 - **M3 — Выбор.** `Randomizer` (случайный аттрактор/параметры/гиперпараметры), `DebugConfig` (ручные параметры); тесты диапазонов и seed.
