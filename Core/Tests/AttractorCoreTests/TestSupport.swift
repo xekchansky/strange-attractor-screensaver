@@ -16,7 +16,12 @@ enum TestSupport {
                 Parameter(name: "b", min: 2.5, max: 3),
                 Parameter(name: "r", min: 24, max: 30),
             ],
-            simulation: SimulationHyperparameters()
+            simulation: SimulationHyperparameters(),
+            initialState: StateRange(
+                x: MinMax(min: -1, max: 1),
+                y: MinMax(min: -1, max: 1),
+                z: MinMax(min: -1, max: 1)
+            )
         )
     }
 
@@ -31,7 +36,12 @@ enum TestSupport {
             parameters: [
                 Parameter(name: "b", min: 0.18, max: 0.24),
             ],
-            simulation: SimulationHyperparameters()
+            simulation: SimulationHyperparameters(),
+            initialState: StateRange(
+                x: MinMax(min: -1, max: 1),
+                y: MinMax(min: -1, max: 1),
+                z: MinMax(min: -1, max: 1)
+            )
         )
     }
 }

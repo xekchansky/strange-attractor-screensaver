@@ -64,7 +64,7 @@ SPM работает в этой среде — основная проверк�
 - **M0 — Фундамент.** ✅ SPM-пакет ядра; тесты поднимаются (`swift test` зелёный); git-практика.
 - **M1 — Модель данных и конфиг.** ✅ `AttractorDescriptor`, `Parameter`, `MinMax`, `SimulationHyperparameters` (Codable); `attractors.json` (Лоренц/Рёсслер/Томас) как ресурс; `AttractorCatalog` loader; тесты декодинга.
 - **M2 — Математическое ядро.** ✅ `State`/`Derivatives`, `FormulaParser`+`Expression` (свой парсер, тригонометрия), `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (поток точек + кольцевой буфер `trace`); численные тесты.
-- **M3 — Выбор.** `Randomizer` (случайный аттрактор/параметры/гиперпараметры), `DebugConfig` (ручные параметры); тесты диапазонов и seed.
+- **M3 — Выбор.** ✅ `SplitMix64` (seedable ГПСЧ), `SimulationSettings`, `AttractorSelection`, `Randomizer` (инжектируемый RNG), `DebugConfig` (фабрика с дефолтами-серединами); тесты диапазонов и seed; раздел выбор включает начальное состояние (`StateRange` + `initialState`); `swift test` зелёный (48 тестов, 9 сьюит).
 - **M4 — Визуализация в демо-приложении.** SCNView, `TraceRenderer`, `CameraController`, запуск/остановка, ручные параметры; визуальная проверка.
 - **M5 — Хост `.appex`.** Таргет Screen Saver, `ScreenSaverView`, подключение ядра, вывод формул/параметров в углу; проверка в System Settings.
 - **M6 — Полировка.** Производительность, крайние случаи (деление на ноль/нестабильные параметры), упаковка и документация.
