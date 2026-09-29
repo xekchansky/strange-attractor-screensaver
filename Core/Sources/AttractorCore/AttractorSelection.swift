@@ -15,15 +15,19 @@ public struct AttractorSelection: Equatable, Sendable {
     public let parameters: [String: Double]
     /// Concrete simulation/visualization hyperparameters.
     public let settings: SimulationSettings
+    /// The concrete initial state of the simulation.
+    public let initialState: State
 
     public init(
         descriptor: AttractorDescriptor,
         parameters: [String: Double],
-        settings: SimulationSettings
+        settings: SimulationSettings,
+        initialState: State
     ) {
         self.descriptor = descriptor
         self.parameters = parameters
         self.settings = settings
+        self.initialState = initialState
     }
 
     /// Turn the selection into an evaluable attractor model.

@@ -31,7 +31,8 @@ macOS-скринсейвер, который рендерит странные �
 3. **Выбор** (M3)
    - `SplitMix64` — seedable детерминированный ГПСЧ (алгоритм SplitMix64) для воспроизводимых прогонов.
    - `SimulationSettings` — «размороженные» конкретные значения гиперпараметров (Double/Int вместо MinMax); `init(midpointsOf:)` — середины диапазонов.
-   - `AttractorSelection` — готовый результат выбора: descriptor + параметры `[String: Double]` + `SimulationSettings`; метод `buildModel() throws -> AttractorModel`.
+   - `AttractorSelection` — готовый результат выбора: descriptor + параметры `[String: Double]` + `SimulationSettings` + начальное состояние `State`; метод `buildModel() throws -> AttractorModel`.
+   - `StateRange` — диапазон начального состояния (x/y/z как `MinMax<Double>`) в дескрипторе (`descriptor.initialState`); Randomizer сэмплирует из него конкретный `State`, DebugConfig берёт середины.
    - `Randomizer` — при старте случайный аттрактор + параметры из [min,max] + гиперпараметры из диапазонов; инжектируемый `inout some RandomNumberGenerator` (`select(from:using:)`) + convenience `select(from:)` на SystemRNG.
    - `DebugConfig` — фабрика `selection(for:in:parameters:settings:)`; пропущенные параметры/гиперпараметры — середины диапазонов; ошибка `unknownAttractor`.
 

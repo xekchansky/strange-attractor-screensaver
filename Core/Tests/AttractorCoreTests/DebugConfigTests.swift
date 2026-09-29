@@ -63,4 +63,13 @@ struct DebugConfigTests {
         let selection = try DebugConfig.selection(for: "lorenz", in: catalog, parameters: ["r": 28])
         _ = try selection.buildModel()
     }
+
+    @Test("Initial state defaults to range midpoints")
+    func initialStateDefaultToMidpoints() throws {
+        let selection = try DebugConfig.selection(for: "thomas", in: catalog)
+        let range = TestSupport.thomasDescriptor().initialState
+        #expect(selection.initialState.x == (range.x.min + range.x.max) / 2)
+        #expect(selection.initialState.y == (range.y.min + range.y.max) / 2)
+        #expect(selection.initialState.z == (range.z.min + range.z.max) / 2)
+    }
 }

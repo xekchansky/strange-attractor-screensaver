@@ -81,4 +81,19 @@ struct RandomizerTests {
         }
         #expect(chosen.count > 1)
     }
+
+    @Test("Initial state coordinates stay within their declared ranges")
+    func initialStateWithinRanges() {
+        var rng = SplitMix64(seed: 17)
+        for _ in 0..<25 {
+            let selection = Randomizer.select(from: catalog, using: &rng)
+            let range = selection.descriptor.initialState
+            #expect(selection.initialState.x >= range.x.min)
+            #expect(selection.initialState.x <= range.x.max)
+            #expect(selection.initialState.y >= range.y.min)
+            #expect(selection.initialState.y <= range.y.max)
+            #expect(selection.initialState.z >= range.z.min)
+            #expect(selection.initialState.z <= range.z.max)
+        }
+    }
 }
