@@ -1,0 +1,48 @@
+import Foundation
+
+/// Error thrown while building a debug configuration.
+public enum DebugConfigError: Error, Equatable {
+    /// No descriptor with the requested id exists in the catalog.
+    case unknownAttractor(String)
+}
+
+/// Builds a concrete ``AttractorSelection`` by hand for debugging.
+///
+/// Unlike ``Randomizer`` (which samples everything randomly), ``DebugConfig``
+/// lets the demo app pin specific parameter and hyperparameter values and fills
+/// any omitted value with the midpoint of its declared range.
+public enum DebugConfig {
+    /// Build a selection for the attractor with `id`.
+    ///
+    /// - Parameters:
+    ///   - id: The `id` of a descriptor in `catalog`.
+    ///   - catalog: The descriptors to look up.
+    ///   - parameters: Explicit parameter values keyed by name. Omitted
+    ///     parameters default to the midpoint of their declared range.
+    ///   - settings: Explicit hyperparameters. When `nil`, every field defaults
+    ///     to the midpoint of its range.
+    /// - Throws: ``DebugConfigError/unknownAttractor`` if no descriptor with
+    ///   `id` exists in `catalog`.
+    public static func selection(
+        for id: String,
+        in catalog: [AttractorDescriptor],
+        parameters: [String: Double] = [:],
+        settings: SimulationSettings? = nil
+    ) throws -> AttractorSelection {
+        guard let descriptor = catalog.first(where: { $0.id == id }) else {
+            throw DebugConfigError.unknownAttractor(id)
+        }
+
+        var concreteParameters = parameters
+        for parameter in descriptor.parameters where concreteParameters[parameter.name] == nil {
+            concreteParameters[parameter.name] = (parameter.min + parameter.max) / 2
+        }
+
+        let concreteSettings = settings ?? SimulationSettings(midpointsOf: descriptor.simulation)
+        return AttractorSelection(
+            descriptor: descriptor,
+            parameters: concreteParameters,
+            settings: concreteSettings
+        )
+    }
+}

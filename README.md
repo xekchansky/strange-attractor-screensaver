@@ -59,7 +59,7 @@ z` = sin(x) - bz
 - **M0 — Фундамент.** ✅ SPM-пакет чистого ядра (`Core/`, SPM-модуль `AttractorCore`); каркас с тестом (Swift Testing); `swift test` зелёный.
 - **M1 — Модель данных и конфиг.** ✅ `AttractorDescriptor`, `Parameter`, `MinMax`, `SimulationHyperparameters` (Codable); `attractors.json` (Лоренц/Рёсслер/Томас) как ресурс таргета; `AttractorCatalog` (loader); тесты декодинга; `swift test` зелёный.
 - **M2 — Математическое ядро.** ✅ `State`/`Derivatives`, собственный парсер формул `FormulaParser`+`Expression` (рекурсивный спуск, поддержка `sin/cos/tan` — NSExpression их не умеет), `AttractorModel` (векторное поле `rate(of:)`), `ODESolver` (RK4 + Euler), `AttractorEngine` (поток точек + кольцевой буфер трассы); численные тесты.
-- **M3 — Выбор.** `Randomizer` (случайный аттрактор/параметры/гиперпараметры), `DebugConfig` (ручные параметры); тесты диапазонов и seed.
+- **M3 — Выбор.** ✅ `SplitMix64` (детерминированный seedable ГПСЧ), `SimulationSettings` (конкретные гиперпараметры), `AttractorSelection` (готовый результат выбора), `Randomizer` (случайный аттрактор/параметры/гиперпараметры с инжектируемым RNG), `DebugConfig` (ручные параметры с дефолтами-серединами); тесты диапазонов и seed; `swift test` зелёный (46 тестов).
 - **M4 — Визуализация (демо-приложение).** SCNView, `TraceRenderer`, `CameraController`, ручные параметры; визуальная проверка.
 - **M5 — Хост `.appex` (требует Xcode).** Таргет Screen Saver, `ScreenSaverView`, подключение ядра, формулы/параметры в углу; проверка в System Settings.
 - **M6 — Полировка и стабильность.** Производительность, крайние случаи, упаковка.
