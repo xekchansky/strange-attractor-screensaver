@@ -8,11 +8,11 @@ import AttractorCore
 /// shows the current formulas, parameters and the live position in a corner
 /// overlay.
 @MainActor
-final class SimulationScene: NSObject {
+public final class SimulationScene: NSObject {
     /// The SceneKit view backing this simulation. Embed it in a window.
-    let view: SCNView
+    public let view: SCNView
     /// The attractor selection being visualized (used for the overlay text).
-    let selection: AttractorSelection
+    public let selection: AttractorSelection
 
     private var engine: AttractorEngine
     private let settings: SimulationSettings
@@ -28,7 +28,7 @@ final class SimulationScene: NSObject {
     private var lastOverlayUpdate: CFTimeInterval = 0
 
     /// Create the scene around a ready-to-run engine.
-    init(engine: AttractorEngine, selection: AttractorSelection) {
+    public init(engine: AttractorEngine, selection: AttractorSelection) {
         self.engine = engine
         self.selection = selection
         self.settings = selection.settings
@@ -84,7 +84,7 @@ final class SimulationScene: NSObject {
     }
 
     /// Begin the per-frame animation loop. Call from the main thread.
-    func start() {
+    public func start() {
         guard timer == nil else { return }
         lastTime = CACurrentMediaTime()
         let timer = Timer(
@@ -99,7 +99,7 @@ final class SimulationScene: NSObject {
     }
 
     /// Stop the animation loop.
-    func stop() {
+    public func stop() {
         timer?.invalidate()
         timer = nil
     }

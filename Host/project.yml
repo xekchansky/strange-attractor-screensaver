@@ -1,0 +1,142 @@
+# xcodegen spec for the .appex screensaver host (M5).
+# Regenerate the project with:  xcodegen generate   (from Host/)
+name: AttractorHost
+options:
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+packages:
+  AttractorCore:
+    path: ../Core
+  AttractorRender:
+    path: ../Render
+
+targets:
+  AttractorScreensaver:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Sources
+    dependencies:
+      - package: AttractorCore
+        product: AttractorCore
+      - package: AttractorRender
+        product: AttractorRender
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: AttractorScreensaver
+        CFBundlePackageType: XPC!
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSHighResolutionCapable: true
+        # Modern Screen Saver app-extension: the system loads the principal
+        # class derived from $(PRODUCT_MODULE_NAME) to display the saver.
+        # NOTE: lsregister shows the real extension point is "com.apple.screensaver"
+        # (not "com.apple.ScreenSaver.Saver") on this macOS — the wrong id made
+        # System Settings ignore the extension entirely.
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.screensaver
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorHost.AttractorScreensaver
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: "NO"
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: "YES"
+
+  # Minimal container app that embeds the screensaver extension in
+  # Contents/PlugIns. System Settings discovers installable screen savers
+  # from such apps, so this wrapper is how the .appex actually shows up in
+  # the screen saver list.
+  AttractorHostApp:
+    type: application
+    platform: macOS
+    sources:
+      - AppSources
+    dependencies:
+      - target: AttractorScreensaver
+        embed: true
+    info:
+      path: AppSources/Info.plist
+      properties:
+        CFBundleDisplayName: AttractorScreensaver
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSPrincipalClass: NSApplication
+        LSMinimumSystemVersion: "13.0"
+    settings:
+      base:
+        PRODUCT_NAME: AttractorHost
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorHost
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: "NO"
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+
+  # Classic legacy .saver bundle that macOS actually loads for manually
+  # installed screen savers (the system's own savers and any in
+  # ~/Library/Screen Savers/ are .saver bundles — the .appex path above is only
+  # for App Store distribution and is ignored by System Settings otherwise).
+  AttractorSaver:
+    type: bundle
+    platform: macOS
+    sources:
+      - Sources
+    excludeSources:
+      - Sources/Info.plist
+    dependencies:
+      - package: AttractorCore
+        product: AttractorCore
+      - package: AttractorRender
+        product: AttractorRender
+    info:
+      path: SaverSources/Info.plist
+      properties:
+        CFBundlePackageType: BNDL
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleName: AttractorSaver
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        NSPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorSaver
+        PRODUCT_NAME: AttractorSaver
+        WRAPPER_EXTENSION: saver
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGNING_ALLOWED: "NO"
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "6.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
+
+schemes:
+  AttractorHost:
+    build:
+      targets:
+        AttractorHostApp: all
+    run:
+      config: Debug
+
+  AttractorScreensaver:
+    build:
+      targets:
+        AttractorScreensaver: all
+    run:
+      config: Debug
+
+  AttractorSaver:
+    build:
+      targets:
+        AttractorSaver: all
+    run:
+      config: Debug

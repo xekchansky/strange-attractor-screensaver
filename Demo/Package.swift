@@ -14,13 +14,17 @@ let package = Package(
         // Shared pure core, consumed as a local path dependency. No changes
         // to the core package are required for the demo to build and run.
         // The package identity is the directory name, "Core".
-        .package(path: "../Core")
+        .package(path: "../Core"),
+        // Shared SceneKit render layer (SimulationScene, TraceRenderer,
+        // CameraController), also consumed by the .appex screensaver host.
+        .package(path: "../Render")
     ],
     targets: [
         .executableTarget(
             name: "AttractorDemo",
             dependencies: [
-                .product(name: "AttractorCore", package: "Core")
+                .product(name: "AttractorCore", package: "Core"),
+                .product(name: "AttractorRender", package: "Render")
             ]
         )
     ]
