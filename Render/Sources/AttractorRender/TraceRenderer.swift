@@ -4,28 +4,40 @@ import AttractorCore
 /// Converts the engine's trace into a SceneKit polyline with a color gradient
 /// that shows the direction of motion along the trail.
 ///
-/// This is a pure function of the trace (plus a time-varying hue offset), so it
-/// can be reused directly by the screensaver host (M5) without UI coupling.
-enum TraceRenderer {
+/// This is a stateful helper: it reuses the Swift buffers backing the geometry
+/// (positions/colors/indices) across frames, avoiding the tens of kilobytes of
+/// per-frame heap churn a stateless builder would allocate for long trails.
+/// The `SCNGeometry` is still recreated each frame, but its backing arrays are
+/// retained and refilled in place. Shared by the demo and the screensaver host
+/// (M5) without UI coupling.
+final class TraceRenderer {
+    /// Vertex budget for very long trails (matched by the `trailLength` ranges).
+    /// Trails at or below this are drawn untouched.
+    private let budget = 16_384
+
+    // Reusable backing arrays, grown as needed and retained across frames.
+    private var sampledIndices: [Int] = []
+    private var positions: [SCNVector3] = []
+    private var colors: [Float] = []
+    private var indices: [UInt32] = []
+
     /// Build a polyline geometry from `trace`.
     ///
     /// - Parameters:
     ///   - trace: The ordered trace points, oldest first.
     ///   - colorOffset: A value in `[0, 1)` shifting the hue ramp. Advance it by
     ///     the `trailColorSpeed` every frame to animate the gradient.
-    static func geometry(for trace: [State], colorOffset: Double) -> SCNGeometry {
+    func geometry(for trace: [State], colorOffset: Double) -> SCNGeometry {
         let n = trace.count
         guard n > 1 else { return SCNGeometry() }
 
-        // Uniformly subsample very long trails to keep the polyline within a
+        // Uniformly subsample very long trails to keep the polyline within the
         // vertex budget. The trail is a dense continuous curve, so a constant
         // stride preserves its shape; the color ramp is derived from the
-        // original index proportion, keeping the gradient unchanged. Trails at
-        // or below the budget are drawn untouched.
-        let budget = 16_384
+        // original index proportion, keeping the gradient unchanged.
         let stride: Int = n <= budget ? 1 : (n + budget - 1) / budget
-        var sampledIndices: [Int] = []
-        sampledIndices.reserveCapacity((n - 1) / stride + 2)
+
+        sampledIndices.removeAll(keepingCapacity: true)
         var index = 0
         while index < n {
             sampledIndices.append(index)
@@ -37,7 +49,7 @@ enum TraceRenderer {
         }
         let sampledCount = sampledIndices.count
 
-        var positions: [SCNVector3] = []
+        positions.removeAll(keepingCapacity: true)
         positions.reserveCapacity(sampledCount)
         for index in sampledIndices {
             let state = trace[index]
@@ -47,7 +59,7 @@ enum TraceRenderer {
         }
 
         let count = Double(n)
-        var colors: [Float] = []
+        colors.removeAll(keepingCapacity: true)
         colors.reserveCapacity(sampledCount * 3)
         for index in sampledIndices {
             let hue = (Double(index) / count + colorOffset).truncatingRemainder(dividingBy: 1.0)
@@ -62,7 +74,7 @@ enum TraceRenderer {
         // index buffer (bytesPerIndex: 0) is not reliably handled by the
         // Metal renderer and can crash in drawIndexedPrimitives.
         let segmentCount = sampledCount - 1
-        var indices: [UInt32] = []
+        indices.removeAll(keepingCapacity: true)
         indices.reserveCapacity(segmentCount * 2)
         for i in 0..<segmentCount {
             indices.append(UInt32(i))
