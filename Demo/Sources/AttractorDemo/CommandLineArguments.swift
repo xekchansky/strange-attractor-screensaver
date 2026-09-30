@@ -1,4 +1,5 @@
 import Foundation
+import AttractorCore
 
 /// Error thrown while parsing command-line arguments.
 enum CommandLineArgumentsError: Error, Equatable {
@@ -20,6 +21,8 @@ struct SimulationOverrides {
     var cameraRotationSpeed: Double?
     /// Override for the trail color gradient advance speed.
     var trailColorSpeed: Double?
+    /// Override for the trail color mode.
+    var colorMode: TraceColorMode?
 }
 
 /// Parsed command-line options for the demo app.
@@ -48,6 +51,7 @@ struct CommandLineArguments {
           --step <v>              override integration step size
           --cam-speed <v>         override camera orbit speed (rad/s)
           --trail-color-speed <v> override trail color gradient speed
+          --color-mode <mode>     override color mode: trail|age|depth|spatial
       -h, --help                  show this help (including available attractors) and exit
 
     Bare `name=value` tokens are also treated as pinned parameters, e.g.
@@ -111,6 +115,12 @@ struct CommandLineArguments {
                 overrides.cameraRotationSpeed = try double(after: argument)
             case "--trail-color-speed":
                 overrides.trailColorSpeed = try double(after: argument)
+            case "--color-mode":
+                let raw = try value(after: argument)
+                guard let mode = TraceColorMode(rawValue: raw) else {
+                    throw CommandLineArgumentsError.invalidParameter("\"\(argument) \(raw)\"")
+                }
+                overrides.colorMode = mode
             case "-h", "--help":
                 showHelp = true
             default:
