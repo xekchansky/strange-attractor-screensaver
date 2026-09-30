@@ -22,6 +22,17 @@ final class CameraController {
     private var distance: CGFloat = 8
     /// How quickly the camera eases toward the target framing each frame.
     private let smoothing: CGFloat = 0.06
+    /// Recompute the full framing target (bounds scan + radius) only every
+    /// `framingStride` frames. The easing already converges toward the target,
+    /// so a ~10 Hz refresh is visually indistinguishable from per-frame while
+    /// skipping most of the O(n) bounds scan at large trail sizes (up to
+    /// 20k points).
+    private static let framingStride = 6
+    /// Frame counter used to pace the framing refresh.
+    private var frame = 0
+    /// Cached framing target, recomputed at `framingStride` cadence.
+    private var targetCenter = SCNVector3Zero
+    private var targetDistance: CGFloat = 8
 
     /// Advance the orbit and reposition `cameraNode` to frame `trace`.
     ///
@@ -36,9 +47,12 @@ final class CameraController {
         around trace: [State],
         cameraNode: SCNNode
     ) {
+        frame += 1
         azimuth += rotationSpeed * dt
 
-        let (targetCenter, targetDistance) = Self.framing(for: trace)
+        if frame % Self.framingStride == 1 {
+            (targetCenter, targetDistance) = Self.framing(for: trace)
+        }
         center = Self.lerp(center, targetCenter, smoothing)
         distance += (targetDistance - distance) * smoothing
 
