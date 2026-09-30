@@ -21,6 +21,16 @@ final class TraceRenderer {
     private var colors: [Float] = []
     private var indices: [UInt32] = []
 
+    // One material, created once and reused by every geometry. Vertex colors
+    // feed the diffuse channel; lighting is disabled so the gradient is shown
+    // as-is on the unlit polyline. Creating a fresh SCNMaterial per frame added
+    // another per-frame allocation churn on an already churn-heavy path.
+    private let material: SCNMaterial = {
+        let material = SCNMaterial()
+        material.lightingModel = .constant
+        return material
+    }()
+
     /// Build a polyline geometry from `trace`, colored by `mode`.
     ///
     /// - Parameters:
@@ -155,10 +165,6 @@ final class TraceRenderer {
             bytesPerIndex: MemoryLayout<UInt32>.size
         )
         let geometry = SCNGeometry(sources: [positionSource, colorSource], elements: [element])
-        // Vertex colors feed the diffuse channel; disable lighting so the
-        // gradient is shown as-is on the unlit polyline.
-        let material = SCNMaterial()
-        material.lightingModel = .constant
         geometry.firstMaterial = material
         return geometry
     }
