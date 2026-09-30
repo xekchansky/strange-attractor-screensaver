@@ -27,6 +27,11 @@ public final class SimulationScene: NSObject {
     private var accumulatedSimTime: Double = 0
     private var colorOffset: Double = 0
     private var lastOverlayUpdate: CFTimeInterval = 0
+    /// Frame counter used to pace polyline rebuilds (every 2nd tick). Rebuilding
+    /// the SCNGeometry on every tick made the saver preview redraw in ragged
+    /// pieces at 60 fps; halving the rebuild rate is visually indistinguishable
+    /// on a dense trail while removing most of that redraw pressure.
+    private var renderFrame = 0
 
     /// Create the scene around a ready-to-run engine.
     public init(engine: AttractorEngine, selection: AttractorSelection) {
@@ -142,18 +147,21 @@ public final class SimulationScene: NSObject {
                 cameraNode: cameraNode
             )
 
-            // Rebuild and repaint the polyline every frame for smooth motion.
-            // Earlier we throttled this by trail growth to cut per-frame
-            // allocations, but at common step rates that made the trail head
-            // jump in discrete steps (visible stutter). The allocation churn
-            // is already bounded by the persistent SCNMaterial and the
-            // per-frame autoreleasepool above.
-            traceNode.geometry = traceRenderer.geometry(
-                for: engine.trace,
-                colorOffset: colorOffset,
-                mode: settings.colorMode,
-                cameraPosition: cameraNode.position
-            )
+            // Rebuild the polyline every other tick (plus the first tick so the
+            // scene appears immediately). Rendering every tick produced ragged
+            // chunks in the saver preview at 60 fps; a ~30 Hz rebuild of a dense
+            // trail is visually smooth and roughly halves both the SCNGeometry
+            // redraw pressure and the per-frame allocation behind it. Camera
+            // orbit stays per-tick.
+            renderFrame += 1
+            if renderFrame <= 2 || renderFrame % 2 == 0 {
+                traceNode.geometry = traceRenderer.geometry(
+                    for: engine.trace,
+                    colorOffset: colorOffset,
+                    mode: settings.colorMode,
+                    cameraPosition: cameraNode.position
+                )
+            }
 
             if now - lastOverlayUpdate > 0.5 {
                 overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
