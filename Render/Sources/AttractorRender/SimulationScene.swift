@@ -114,17 +114,14 @@ public final class SimulationScene: NSObject {
 
     /// Advance one rendered frame. Invoked by the timer on the main run loop.
     @objc private func tick(_ timer: Timer) {
-        // Only run while the view is still attached to a window. Once the
-        // screensaver host detaches the view (after dismissing) we stop
-        // stepping and rebuilding geometry in the background. We deliberately
-        // check `view.window != nil` and NOT `window.isVisible`: the
-        // screensaver's cover window can report itself as not visible even
-        // while actively covering the desktop, and gating on `isVisible`
-        // suppressed rendering to a black screen.
-        guard view.window != nil else {
-            lastTime = 0
-            return
-        }
+        // We always render while the timer runs. We deliberately do NOT gate on
+        // the window's visibility or even on `view.window != nil`: the
+        // screensaver's cover window can report itself as not visible (or
+        // detached) even while actively covering the desktop, and gating on
+        // those produced a black, flickering screensaver. When dismissed, the
+        // host drives `stopAnimation()` → `scene.stop()`, which invalidates
+        // this timer; relying on the stop callback (rather than guessy window
+        // state) is the reliable shutdown path.
         autoreleasepool {
             let now = CACurrentMediaTime()
             let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
