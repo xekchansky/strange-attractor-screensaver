@@ -109,14 +109,15 @@ final class TraceRenderer {
                 let hue = (t + colorOffset).truncatingRemainder(dividingBy: 1.0)
                 (r, g, b) = Self.hsbToRgb(hue: hue, saturation: 0.9, brightness: 1.0)
             case .spatial:
+                // Static per-axis coordinate color (x→R, y→G, z→B), normalized
+                // per trail. Deliberately no colorOffset: cycling all three
+                // channels through the moda offset made each point strobe as
+                // its channels wrapped 1→0 at different times, which read as
+                // harsh flashing. A coordinate map is meant to be stable.
                 let red = Self.normalized(position.x, min: minX, max: maxX)
                 let green = Self.normalized(position.y, min: minY, max: maxY)
                 let blue = Self.normalized(position.z, min: minZ, max: maxZ)
-                (r, g, b) = (
-                    (red + colorOffset).truncatingRemainder(dividingBy: 1.0),
-                    (green + colorOffset).truncatingRemainder(dividingBy: 1.0),
-                    (blue + colorOffset).truncatingRemainder(dividingBy: 1.0)
-                )
+                (r, g, b) = (red, green, blue)
             }
             colors.append(Float(r))
             colors.append(Float(g))
