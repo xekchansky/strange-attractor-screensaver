@@ -96,4 +96,13 @@ struct RandomizerTests {
             #expect(selection.initialState.z <= range.z.max)
         }
     }
+
+    @Test("Color mode is one of the declared modes")
+    func colorModeIsValid() {
+        var rng = SplitMix64(seed: 13)
+        for _ in 0..<40 {
+            let selection = Randomizer.select(from: catalog, using: &rng)
+            #expect(TraceColorMode.allCases.contains(selection.settings.colorMode))
+        }
+    }
 }

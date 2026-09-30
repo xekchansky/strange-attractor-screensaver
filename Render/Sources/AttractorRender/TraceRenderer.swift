@@ -21,13 +21,20 @@ final class TraceRenderer {
     private var colors: [Float] = []
     private var indices: [UInt32] = []
 
-    /// Build a polyline geometry from `trace`.
+    /// Build a polyline geometry from `trace`, colored by `mode`.
     ///
     /// - Parameters:
     ///   - trace: The ordered trace points, oldest first.
-    ///   - colorOffset: A value in `[0, 1)` shifting the hue ramp. Advance it by
-    ///     the `trailColorSpeed` every frame to animate the gradient.
-    func geometry(for trace: [State], colorOffset: Double) -> SCNGeometry {
+    ///   - colorOffset: A value in `[0, 1)` shifting the color ramp. Advance it
+    ///     by the `trailColorSpeed` every frame to animate the gradient.
+    ///   - mode: How to color the trail.
+    ///   - cameraPosition: The current camera position, used by ``TraceColorMode/depth``.
+    func geometry(
+        for trace: [State],
+        colorOffset: Double,
+        mode: TraceColorMode,
+        cameraPosition: SCNVector3
+    ) -> SCNGeometry {
         let n = trace.count
         guard n > 1 else { return SCNGeometry() }
 
@@ -49,21 +56,68 @@ final class TraceRenderer {
         }
         let sampledCount = sampledIndices.count
 
+        // Build positions and, in the same pass, gather the per-mode statistics
+        // needed to normalize the ramp (depth distances or per-axis bounds).
+        var minX = CGFloat.greatestFiniteMagnitude
+        var maxX = -CGFloat.greatestFiniteMagnitude
+        var minY = CGFloat.greatestFiniteMagnitude
+        var maxY = -CGFloat.greatestFiniteMagnitude
+        var minZ = CGFloat.greatestFiniteMagnitude
+        var maxZ = -CGFloat.greatestFiniteMagnitude
+        var minDistance: CGFloat = .greatestFiniteMagnitude
+        var maxDistance: CGFloat = 0
+
         positions.removeAll(keepingCapacity: true)
         positions.reserveCapacity(sampledCount)
         for index in sampledIndices {
             let state = trace[index]
-            positions.append(
-                SCNVector3(CGFloat(state.x), CGFloat(state.y), CGFloat(state.z))
-            )
+            let position = SCNVector3(CGFloat(state.x), CGFloat(state.y), CGFloat(state.z))
+            positions.append(position)
+            switch mode {
+            case .trail, .age:
+                break
+            case .depth:
+                let distance = Self.distance(position, cameraPosition)
+                minDistance = Swift.min(minDistance, distance)
+                maxDistance = Swift.max(maxDistance, distance)
+            case .spatial:
+                minX = Swift.min(minX, position.x); maxX = Swift.max(maxX, position.x)
+                minY = Swift.min(minY, position.y); maxY = Swift.max(maxY, position.y)
+                minZ = Swift.min(minZ, position.z); maxZ = Swift.max(maxZ, position.z)
+            }
         }
 
         let count = Double(n)
         colors.removeAll(keepingCapacity: true)
         colors.reserveCapacity(sampledCount * 3)
-        for index in sampledIndices {
-            let hue = (Double(index) / count + colorOffset).truncatingRemainder(dividingBy: 1.0)
-            let (r, g, b) = Self.hsbToRgb(hue: hue, saturation: 0.9, brightness: 1.0)
+        for (offset, index) in sampledIndices.enumerated() {
+            let position = positions[offset]
+            let (r, g, b): (Double, Double, Double)
+            switch mode {
+            case .trail:
+                let hue = (Double(index) / count + colorOffset).truncatingRemainder(dividingBy: 1.0)
+                (r, g, b) = Self.hsbToRgb(hue: hue, saturation: 0.9, brightness: 1.0)
+            case .age:
+                // Grayscale fade: older points (small index) are darker, newer
+                // ones brighter; the offset advances a brightness wave.
+                let ramp = ((Double(index) / count) + colorOffset).truncatingRemainder(dividingBy: 1.0)
+                let value = 0.15 + 0.85 * ramp
+                (r, g, b) = (value, value, value)
+            case .depth:
+                let distance = Self.distance(position, cameraPosition)
+                let t = Self.normalized(distance, min: minDistance, max: maxDistance)
+                let hue = (t + colorOffset).truncatingRemainder(dividingBy: 1.0)
+                (r, g, b) = Self.hsbToRgb(hue: hue, saturation: 0.9, brightness: 1.0)
+            case .spatial:
+                let red = Self.normalized(position.x, min: minX, max: maxX)
+                let green = Self.normalized(position.y, min: minY, max: maxY)
+                let blue = Self.normalized(position.z, min: minZ, max: maxZ)
+                (r, g, b) = (
+                    (red + colorOffset).truncatingRemainder(dividingBy: 1.0),
+                    (green + colorOffset).truncatingRemainder(dividingBy: 1.0),
+                    (blue + colorOffset).truncatingRemainder(dividingBy: 1.0)
+                )
+            }
             colors.append(Float(r))
             colors.append(Float(g))
             colors.append(Float(b))
@@ -106,6 +160,20 @@ final class TraceRenderer {
         material.lightingModel = .constant
         geometry.firstMaterial = material
         return geometry
+    }
+
+    /// Euclidean distance between two positions.
+    private static func distance(_ a: SCNVector3, _ b: SCNVector3) -> CGFloat {
+        let dx = a.x - b.x, dy = a.y - b.y, dz = a.z - b.z
+        return (dx * dx + dy * dy + dz * dz).squareRoot()
+    }
+
+    /// Normalize `value` in `[min, max]` to `[0, 1]`, guarding against a zero
+    /// extent (all points at the same position) edge case.
+    private static func normalized(_ value: CGFloat, min: CGFloat, max: CGFloat) -> Double {
+        let extent = max - min
+        guard extent > 0 else { return 0 }
+        return Double((value - min) / extent)
     }
 
     /// Convert an HSB color component (hue in `[0, 1)`) to linear RGB in `[0, 1]`.
