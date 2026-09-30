@@ -52,7 +52,8 @@ struct DebugConfigTests {
             simulationSpeed: 2,
             cameraRotationSpeed: 0.3,
             trailColorSpeed: 0.1,
-            trailLength: 1234
+            trailLength: 1234,
+            colorMode: .trail
         )
         let selection = try DebugConfig.selection(for: "lorenz", in: catalog, settings: settings)
         #expect(selection.settings == settings)

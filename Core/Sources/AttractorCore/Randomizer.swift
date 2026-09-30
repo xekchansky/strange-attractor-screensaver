@@ -37,7 +37,8 @@ public enum Randomizer {
             simulationSpeed: Double.random(in: descriptor.simulation.simulationSpeed.closedRange, using: &rng),
             cameraRotationSpeed: Double.random(in: descriptor.simulation.cameraRotationSpeed.closedRange, using: &rng),
             trailColorSpeed: Double.random(in: descriptor.simulation.trailColorSpeed.closedRange, using: &rng),
-            trailLength: Int.random(in: descriptor.simulation.trailLength.closedRange, using: &rng)
+            trailLength: Int.random(in: descriptor.simulation.trailLength.closedRange, using: &rng),
+            colorMode: TraceColorMode.allCases.randomElement(using: &rng)!
         )
 
         let range = descriptor.initialState

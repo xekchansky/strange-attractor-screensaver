@@ -107,7 +107,8 @@ let effectiveSettings = SimulationSettings(
     simulationSpeed: overrides.simulationSpeed ?? baseSettings.simulationSpeed,
     cameraRotationSpeed: overrides.cameraRotationSpeed ?? baseSettings.cameraRotationSpeed,
     trailColorSpeed: overrides.trailColorSpeed ?? baseSettings.trailColorSpeed,
-    trailLength: overrides.trailLength ?? baseSettings.trailLength
+    trailLength: overrides.trailLength ?? baseSettings.trailLength,
+    colorMode: overrides.colorMode ?? baseSettings.colorMode
 )
 let effectiveSelection = AttractorSelection(
     descriptor: selection.descriptor,
