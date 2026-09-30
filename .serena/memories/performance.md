@@ -24,7 +24,8 @@
 
 Митигация (без Metal, выбрано пользователем; Metal-вариант — «Отложенное»):
 - `TraceRenderer`: один persistent `SCNMaterial` (`.constant`) вместо создания per-frame.
-- `SimulationScene.tick`: (а) тело обёрнуто в `autoreleasepool`; (б) rebuild полилинии троттлится по реальному приросту трейла (`geometryRenderStride = 32` новых точек, либо первый кадр) — камера остаётся покадровой. Частота сборки геометрии падает с 60 до ~8–15 раз/сек; (в) **никакого guard на окно нет** — в `.saver` и `isVisible`, и `view.window != nil` ненадёжны (окно-заставка может быть «невидимым»/отвязанным при активном показе → чёрный/мигающий экран). Остановка рендера — только через `stopAnimation()` → `scene.stop()`.
+- `SimulationScene.tick`: (а) тело обёрнуто в `autoreleasepool`; (б) полилиния пересобирается каждый кадр (троттлинг по приросту трейла с `geometryRenderStride` убран — давал дёрганье кончика); (в) **никакого guard на окно нет** — в `.saver` и `isVisible`, и `view.window != nil` ненадёжны (окно-заставка может быть «невидимым»/отвязанным при активном показе → чёрный/мигающий экран). Остановка рендера — только через `stopAnimation()` → `scene.stop()`.
+- **Код-подпись `.saver`:** unsigned-бандл (был `CODE_SIGNING_ALLOWED: NO`, linker-signed) **крашит превью** настроек обоев: `WallpaperLegacyExtension` падает `SIGKILL (Code Signature Invalid)`/`Invalid Page` на `dlopen_preflight`. В `Host/project.yml` для `AttractorSaver` включено `CODE_SIGN_IDENTITY: "-"` (ad-hoc), чтобы сборка давала валидную подпись. Ручной фикс: `codesign --force --sign - <saver>`.
 - Вывод/цвета не изменены. Ветка `feature/m6-perf-mitigate` — проверить в Activity Monitor за `legacyScreenSaver` (память растёт заметно медленнее; CPU в фоне ниже; заставка НЕ должна быть чёрной).
 
 ## Отложенное (нужна проверка на машине с Xcode, здесь нет)
