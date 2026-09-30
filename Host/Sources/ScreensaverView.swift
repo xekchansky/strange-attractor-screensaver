@@ -22,7 +22,15 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
 
     override func startAnimation() {
         super.startAnimation()
-        guard scene == nil else { return }
+        // Reuse a still-running scene (re-entrant start). Otherwise tear down
+        // and rebuild — including after the scene self-stopped because its
+        // window went away (see `SimulationScene.tick`), which the preview host
+        // may leave orphaned by never calling `stopAnimation()`.
+        if let running = scene, running.isRunning {
+            return
+        }
+        scene?.stop()
+        scene = nil
         do {
             let catalog = try AttractorCatalog.bundled()
             // Random attractor + parameters + hyperparameters + initial state.

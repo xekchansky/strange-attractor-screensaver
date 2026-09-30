@@ -32,6 +32,18 @@ public final class SimulationScene: NSObject {
     /// pieces at 60 fps; halving the rebuild rate is visually indistinguishable
     /// on a dense trail while removing most of that redraw pressure.
     private var renderFrame = 0
+    /// Whether the animation loop is running. Used by the host to know whether
+    /// `startAnimation` should reuse the scene or spin up a fresh one (after the
+    /// scene self-stopped because its window went away).
+    public private(set) var isRunning = false
+    /// Consecutive ticks with no window, used to self-stop when the screensaver
+    /// preview host fails to call `stopAnimation()` on dismissal: an idle timer
+    /// keeps holding the scene (and its large SceneKit view) alive, which showed
+    /// up as lingering CPU and memory that grew per preview launch.
+    private var ticksWithoutWindow = 0
+    /// ~1.5 s at 60 Hz — long enough to survive a brief window-less transition
+    /// without stopping a genuinely active preview.
+    private let maxTicksWithoutWindow = 90
 
     /// Create the scene around a ready-to-run engine.
     public init(engine: AttractorEngine, selection: AttractorSelection) {
@@ -102,24 +114,38 @@ public final class SimulationScene: NSObject {
         )
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        isRunning = true
     }
 
     /// Stop the animation loop.
     public func stop() {
         timer?.invalidate()
         timer = nil
+        isRunning = false
     }
 
     /// Advance one rendered frame. Invoked by the timer on the main run loop.
     @objc private func tick(_ timer: Timer) {
-        // We always render while the timer runs. We deliberately do NOT gate on
-        // the window's visibility or even on `view.window != nil`: the
-        // screensaver's cover window can report itself as not visible (or
-        // detached) even while actively covering the desktop, and gating on
-        // those produced a black, flickering screensaver. When dismissed, the
-        // host drives `stopAnimation()` → `scene.stop()`, which invalidates
-        // this timer; relying on the stop callback (rather than guessy window
-        // state) is the reliable shutdown path.
+        // We deliberately do NOT stop rendering on mere loss of window
+        // visibility: the screensaver's cover/preview window can report itself
+        // as not visible or even nil while actively on screen, and gating on
+        // those produced a black, flickering screensaver.
+        //
+        // But if the window goes away for a sustained stretch, the preview host
+        // has dismissed us without calling `stopAnimation()`. Left alone, this
+        // timer would keep the whole scene (and its large SceneKit view) alive
+        // forever — lingering CPU plus memory that grew with every preview
+        // launch. So after `maxTicksWithoutWindow` window-less ticks we tear the
+        // loop down ourselves; `startAnimation` recreates the scene when needed.
+        guard view.window != nil else {
+            ticksWithoutWindow += 1
+            if ticksWithoutWindow >= maxTicksWithoutWindow {
+                stop()
+            }
+            return
+        }
+        ticksWithoutWindow = 0
+
         autoreleasepool {
             let now = CACurrentMediaTime()
             let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
