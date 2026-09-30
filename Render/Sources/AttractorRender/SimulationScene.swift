@@ -27,13 +27,6 @@ public final class SimulationScene: NSObject {
     private var accumulatedSimTime: Double = 0
     private var colorOffset: Double = 0
     private var lastOverlayUpdate: CFTimeInterval = 0
-    /// New trail points accumulated since the last polyline rebuild. Rebuilding
-    /// once this reaches `geometryRenderStride` cuts most per-frame geometry
-    /// allocations (see ``tick(_:)``).
-    private var pointsRenderedAccumulator: Int = 0
-    private var renderedFirstFrame = true
-    /// Minimum number of new trail points between polyline rebuilds.
-    private let geometryRenderStride = 32
 
     /// Create the scene around a ready-to-run engine.
     public init(engine: AttractorEngine, selection: AttractorSelection) {
@@ -137,7 +130,6 @@ public final class SimulationScene: NSObject {
                     // pathological case rather than stopping the demo.
                     _ = try? engine.advance()
                 }
-                pointsRenderedAccumulator += steps
             }
 
             colorOffset = (colorOffset + settings.trailColorSpeed * dt)
@@ -150,21 +142,18 @@ public final class SimulationScene: NSObject {
                 cameraNode: cameraNode
             )
 
-            // Rebuild the polyline only once enough new points have accumulated
-            // (or on the first shown frame) instead of every frame. The camera
-            // still orbits per-frame; skipping intermediate polyline rebuilds
-            // removes most of the per-frame SCNGeometry allocation churn while
-            // the trail head advances by only a few points between rebuilds.
-            if renderedFirstFrame || pointsRenderedAccumulator >= geometryRenderStride {
-                traceNode.geometry = traceRenderer.geometry(
-                    for: engine.trace,
-                    colorOffset: colorOffset,
-                    mode: settings.colorMode,
-                    cameraPosition: cameraNode.position
-                )
-                pointsRenderedAccumulator = 0
-                renderedFirstFrame = false
-            }
+            // Rebuild and repaint the polyline every frame for smooth motion.
+            // Earlier we throttled this by trail growth to cut per-frame
+            // allocations, but at common step rates that made the trail head
+            // jump in discrete steps (visible stutter). The allocation churn
+            // is already bounded by the persistent SCNMaterial and the
+            // per-frame autoreleasepool above.
+            traceNode.geometry = traceRenderer.geometry(
+                for: engine.trace,
+                colorOffset: colorOffset,
+                mode: settings.colorMode,
+                cameraPosition: cameraNode.position
+            )
 
             if now - lastOverlayUpdate > 0.5 {
                 overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
