@@ -19,6 +19,7 @@ public final class SimulationScene: NSObject {
     private let cameraNode: SCNNode
     private let traceNode: SCNNode
     private let cameraController = CameraController()
+    private let traceRenderer = TraceRenderer()
     private let overlay = NSTextField(labelWithString: "")
 
     private var timer: Timer?
@@ -124,7 +125,7 @@ public final class SimulationScene: NSObject {
 
         colorOffset = (colorOffset + settings.trailColorSpeed * dt)
             .truncatingRemainder(dividingBy: 1.0)
-        traceNode.geometry = TraceRenderer.geometry(
+        traceNode.geometry = traceRenderer.geometry(
             for: engine.trace,
             colorOffset: colorOffset
         )
