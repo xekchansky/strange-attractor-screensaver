@@ -126,18 +126,21 @@ public final class SimulationScene: NSObject {
 
     /// Advance one rendered frame. Invoked by the timer on the main run loop.
     @objc private func tick(_ timer: Timer) {
-        // We deliberately do NOT stop rendering on mere loss of window
-        // visibility: the screensaver's cover/preview window can report itself
-        // as not visible or even nil while actively on screen, and gating on
-        // those produced a black, flickering screensaver.
+        // We deliberately do NOT gate on raw window visibility (`isVisible`,
+        // or even `window == nil`): the screensaver's cover/preview window can
+        // report itself as not visible, or keep a live hidden window, while not
+        // actually covering the desktop — gating on those gave a black,
+        // flickering screensaver or, worse, failed to release anything.
         //
-        // But if the window goes away for a sustained stretch, the preview host
-        // has dismissed us without calling `stopAnimation()`. Left alone, this
-        // timer would keep the whole scene (and its large SceneKit view) alive
-        // forever — lingering CPU plus memory that grew with every preview
-        // launch. So after `maxTicksWithoutWindow` window-less ticks we tear the
-        // loop down ourselves; `startAnimation` recreates the scene when needed.
-        guard view.window != nil else {
+        // Instead gate on the window's occlusion state: a genuinely on-screen
+        // full-screen saver or open preview reports `.visible`. Once the host
+        // dismisses us (full-screen clears, preview window closes/occludes) the
+        // occlusion state stops being visible, and after `maxTicksWithoutWindow`
+        // such ticks we tear the loop down ourselves. Left alone, the timer
+        // would keep the whole scene (and its large SceneKit view) alive
+        // forever — lingering CPU plus memory that grew with every launch.
+        let onScreen = view.window?.occlusionState.contains(.visible) ?? false
+        guard onScreen else {
             ticksWithoutWindow += 1
             if ticksWithoutWindow >= maxTicksWithoutWindow {
                 stop()
