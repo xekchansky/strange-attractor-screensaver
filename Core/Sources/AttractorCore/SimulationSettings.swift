@@ -16,19 +16,23 @@ public struct SimulationSettings: Equatable, Sendable {
     public var trailColorSpeed: Double
     /// Number of points kept in the rendered trail buffer.
     public var trailLength: Int
+    /// How the trail is colored (rainbow, age fade, depth, spatial).
+    public var colorMode: TraceColorMode
 
     public init(
         stepSize: Double,
         simulationSpeed: Double,
         cameraRotationSpeed: Double,
         trailColorSpeed: Double,
-        trailLength: Int
+        trailLength: Int,
+        colorMode: TraceColorMode
     ) {
         self.stepSize = stepSize
         self.simulationSpeed = simulationSpeed
         self.cameraRotationSpeed = cameraRotationSpeed
         self.trailColorSpeed = trailColorSpeed
         self.trailLength = trailLength
+        self.colorMode = colorMode
     }
 
     /// Sample the midpoint of every range in `hyperparameters`.
@@ -41,7 +45,8 @@ public struct SimulationSettings: Equatable, Sendable {
             simulationSpeed: Self.midpoint(of: hyperparameters.simulationSpeed),
             cameraRotationSpeed: Self.midpoint(of: hyperparameters.cameraRotationSpeed),
             trailColorSpeed: Self.midpoint(of: hyperparameters.trailColorSpeed),
-            trailLength: Self.midpoint(of: hyperparameters.trailLength)
+            trailLength: Self.midpoint(of: hyperparameters.trailLength),
+            colorMode: .trail
         )
     }
 

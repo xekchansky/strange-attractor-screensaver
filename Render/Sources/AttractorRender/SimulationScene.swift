@@ -125,16 +125,21 @@ public final class SimulationScene: NSObject {
 
         colorOffset = (colorOffset + settings.trailColorSpeed * dt)
             .truncatingRemainder(dividingBy: 1.0)
-        traceNode.geometry = traceRenderer.geometry(
-            for: engine.trace,
-            colorOffset: colorOffset
-        )
 
         cameraController.update(
             dt: dt,
             rotationSpeed: settings.cameraRotationSpeed,
             around: engine.trace,
             cameraNode: cameraNode
+        )
+
+        // Update the camera before building the trace geometry so the depth
+        // color mode (and camera look-at) use the current frame's position.
+        traceNode.geometry = traceRenderer.geometry(
+            for: engine.trace,
+            colorOffset: colorOffset,
+            mode: settings.colorMode,
+            cameraPosition: cameraNode.position
         )
 
         if now - lastOverlayUpdate > 0.5 {
