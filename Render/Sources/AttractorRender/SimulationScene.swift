@@ -114,11 +114,14 @@ public final class SimulationScene: NSObject {
 
     /// Advance one rendered frame. Invoked by the timer on the main run loop.
     @objc private func tick(_ timer: Timer) {
-        // When the window isn't visible (the screensaver host can leave the last
-        // scene alive after dismissing), stop stepping/rendering entirely until
-        // it's shown again — otherwise a hidden scene keeps burning CPU and
-        // rebuilding geometry in the background.
-        guard let window = view.window, window.isVisible, !window.isMiniaturized else {
+        // Only run while the view is still attached to a window. Once the
+        // screensaver host detaches the view (after dismissing) we stop
+        // stepping and rebuilding geometry in the background. We deliberately
+        // check `view.window != nil` and NOT `window.isVisible`: the
+        // screensaver's cover window can report itself as not visible even
+        // while actively covering the desktop, and gating on `isVisible`
+        // suppressed rendering to a black screen.
+        guard view.window != nil else {
             lastTime = 0
             return
         }
