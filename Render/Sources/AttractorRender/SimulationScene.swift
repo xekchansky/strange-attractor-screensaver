@@ -27,6 +27,13 @@ public final class SimulationScene: NSObject {
     private var accumulatedSimTime: Double = 0
     private var colorOffset: Double = 0
     private var lastOverlayUpdate: CFTimeInterval = 0
+    /// New trail points accumulated since the last polyline rebuild. Rebuilding
+    /// once this reaches `geometryRenderStride` cuts most per-frame geometry
+    /// allocations (see ``tick(_:)``).
+    private var pointsRenderedAccumulator: Int = 0
+    private var renderedFirstFrame = true
+    /// Minimum number of new trail points between polyline rebuilds.
+    private let geometryRenderStride = 32
 
     /// Create the scene around a ready-to-run engine.
     public init(engine: AttractorEngine, selection: AttractorSelection) {
@@ -107,44 +114,62 @@ public final class SimulationScene: NSObject {
 
     /// Advance one rendered frame. Invoked by the timer on the main run loop.
     @objc private func tick(_ timer: Timer) {
-        let now = CACurrentMediaTime()
-        let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
-        lastTime = now
-
-        // Integrate the system by a whole number of fixed-size steps.
-        accumulatedSimTime += settings.simulationSpeed * dt
-        let steps = Int(accumulatedSimTime / settings.stepSize)
-        if steps > 0 {
-            accumulatedSimTime -= Double(steps) * settings.stepSize
-            for _ in 0..<steps {
-                // A valid model never throws at evaluation; ignore the
-                // pathological case rather than stopping the demo.
-                _ = try? engine.advance()
-            }
+        // When the window isn't visible (the screensaver host can leave the last
+        // scene alive after dismissing), stop stepping/rendering entirely until
+        // it's shown again — otherwise a hidden scene keeps burning CPU and
+        // rebuilding geometry in the background.
+        guard let window = view.window, window.isVisible, !window.isMiniaturized else {
+            lastTime = 0
+            return
         }
+        autoreleasepool {
+            let now = CACurrentMediaTime()
+            let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
+            lastTime = now
 
-        colorOffset = (colorOffset + settings.trailColorSpeed * dt)
-            .truncatingRemainder(dividingBy: 1.0)
+            // Integrate the system by a whole number of fixed-size steps.
+            accumulatedSimTime += settings.simulationSpeed * dt
+            let steps = Int(accumulatedSimTime / settings.stepSize)
+            if steps > 0 {
+                accumulatedSimTime -= Double(steps) * settings.stepSize
+                for _ in 0..<steps {
+                    // A valid model never throws at evaluation; ignore the
+                    // pathological case rather than stopping the demo.
+                    _ = try? engine.advance()
+                }
+                pointsRenderedAccumulator += steps
+            }
 
-        cameraController.update(
-            dt: dt,
-            rotationSpeed: settings.cameraRotationSpeed,
-            around: engine.trace,
-            cameraNode: cameraNode
-        )
+            colorOffset = (colorOffset + settings.trailColorSpeed * dt)
+                .truncatingRemainder(dividingBy: 1.0)
 
-        // Update the camera before building the trace geometry so the depth
-        // color mode (and camera look-at) use the current frame's position.
-        traceNode.geometry = traceRenderer.geometry(
-            for: engine.trace,
-            colorOffset: colorOffset,
-            mode: settings.colorMode,
-            cameraPosition: cameraNode.position
-        )
+            cameraController.update(
+                dt: dt,
+                rotationSpeed: settings.cameraRotationSpeed,
+                around: engine.trace,
+                cameraNode: cameraNode
+            )
 
-        if now - lastOverlayUpdate > 0.5 {
-            overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
-            lastOverlayUpdate = now
+            // Rebuild the polyline only once enough new points have accumulated
+            // (or on the first shown frame) instead of every frame. The camera
+            // still orbits per-frame; skipping intermediate polyline rebuilds
+            // removes most of the per-frame SCNGeometry allocation churn while
+            // the trail head advances by only a few points between rebuilds.
+            if renderedFirstFrame || pointsRenderedAccumulator >= geometryRenderStride {
+                traceNode.geometry = traceRenderer.geometry(
+                    for: engine.trace,
+                    colorOffset: colorOffset,
+                    mode: settings.colorMode,
+                    cameraPosition: cameraNode.position
+                )
+                pointsRenderedAccumulator = 0
+                renderedFirstFrame = false
+            }
+
+            if now - lastOverlayUpdate > 0.5 {
+                overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
+                lastOverlayUpdate = now
+            }
         }
     }
 

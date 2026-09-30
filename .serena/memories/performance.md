@@ -19,6 +19,14 @@
 ## Изменение (итерация 3): переиспользование буферов в TraceRenderer
 `TraceRenderer` стал состоятельным `final class` (вместо статического `enum`): переиспользует предвыделенные `positions`/`colors`/`indices`/`sampledIndices` между кадрами (`removeAll(keepingCapacity:)`), убирая аллокацию сотен КБ/кадр для длинных трейлов. Вывод геометрии и децимация — без изменений. Call-site: `SimulationScene` держит `private let traceRenderer = TraceRenderer()`. Проверено: `swift build` в `Demo/` зелёный; визуально подтверждено пользователем 2026-09-30 (идентично). Ветка `feature/m6-perf-buffers`.
 
+## Изменение (итерация 4): митигация утечки памяти / фонового CPU рендера
+Симптом пользователя: процесс-хост `.saver` `legacyScreenSaver.appex` растёт по памяти при каждом срабатывании заставки (до ~2.6 ГБ) и ест CPU, когда заставка «выключена». Причина: `SimulationScene.tick` пересоздавал `SCNGeometry` + новый `SCNMaterial` + Data-копии **каждый кадр** (60 fps); хост не освобождает часто заменяемую геометрию → накопление. Движок корректен (кольцевой буфер `AttractorEngine.trace`).
+
+Митигация (без Metal, выбрано пользователем; Metal-вариант — «Отложенное»):
+- `TraceRenderer`: один persistent `SCNMaterial` (`.constant`) вместо создания per-frame.
+- `SimulationScene.tick`: (а) `guard view.window?.isVisible == true && !isMiniaturized` — при скрытом окне вообще не шагаем/не рендерим (фоновый CPU → ~0); (б) тело обёрнуто в `autoreleasepool`; (в) rebuild полилинии троттлится по реальному приросту трейла (`geometryRenderStride = 32` новых точек, либо первый кадр) — камера остаётся покадровой. Частота сборки геометрии падает с 60 до ~8–15 раз/сек.
+- Вывод/цвета не изменены. Ветка `feature/m6-color-modes` (коммит митигации) — проверить в Activity Monitor за `legacyScreenSaver`.
+
 ## Отложенное (нужна проверка на машине с Xcode, здесь нет)
 - **Постоянная GPU-геометрия трейла** (SCNProgram/SCNBufferBinding + `.metal`), чтобы вообще не пересоздавать `SCNGeometry` каждый кадр. В этой песочнице `.metal`/SCNProgram не собрать и не увидеть — только на машине с Xcode.
 
