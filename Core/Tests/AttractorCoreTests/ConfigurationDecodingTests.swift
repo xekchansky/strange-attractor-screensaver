@@ -145,9 +145,21 @@ struct ConfigurationDecodingTests {
     func bundledCatalog() throws {
         let catalog = try AttractorCatalog.bundled()
 
-        #expect(catalog.count == 5)
-        #expect(catalog.map(\.id) == ["lorenz", "rossler", "thomas", "chen", "aizawa"])
-        #expect(catalog.map(\.name) == ["Lorenz", "Rössler", "Thomas", "Chen", "Aizawa"])
+        #expect(catalog.count == 20)
+        #expect(catalog.map(\.id) == [
+            "lorenz", "rossler", "thomas", "chen", "aizawa",
+            "lu", "chua",
+            "sprott_a", "sprott_b", "sprott_c", "sprott_d", "sprott_e",
+            "sprott_f", "sprott_g", "sprott_h", "sprott_i", "sprott_j",
+            "halvorsen", "rabinovich_fabrikant", "moore_spiegel",
+        ])
+        #expect(catalog.map(\.name) == [
+            "Lorenz", "Rössler", "Thomas", "Chen", "Aizawa",
+            "Lü", "Chua",
+            "Sprott A", "Sprott B", "Sprott C", "Sprott D", "Sprott E",
+            "Sprott F", "Sprott G", "Sprott H", "Sprott I", "Sprott J",
+            "Halvorsen", "Rabinovich–Fabrikant", "Moore–Spiegel",
+        ])
 
         let lorenz = try #require(catalog.first { $0.id == "lorenz" })
         #expect(lorenz.parameters.map(\.name) == ["a", "b", "r"])
@@ -157,5 +169,15 @@ struct ConfigurationDecodingTests {
         #expect(chen.parameters.map(\.name) == ["a", "b", "c"])
         let aizawa = try #require(catalog.first { $0.id == "aizawa" })
         #expect(aizawa.parameters.map(\.name) == ["a", "b", "c", "d", "e", "f"])
+        let chua = try #require(catalog.first { $0.id == "chua" })
+        #expect(chua.parameters.map(\.name) == ["alpha", "beta", "m0", "m1"])
+        let sprottA = try #require(catalog.first { $0.id == "sprott_a" })
+        #expect(sprottA.parameters.isEmpty)
+        let halvorsen = try #require(catalog.first { $0.id == "halvorsen" })
+        #expect(halvorsen.parameters.map(\.name) == ["a"])
+        let rF = try #require(catalog.first { $0.id == "rabinovich_fabrikant" })
+        #expect(rF.parameters.map(\.name) == ["a", "g"])
+        let mooreSpiegel = try #require(catalog.first { $0.id == "moore_spiegel" })
+        #expect(mooreSpiegel.parameters.map(\.name) == ["R", "T"])
     }
 }
