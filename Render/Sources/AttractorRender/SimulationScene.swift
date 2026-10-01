@@ -1,7 +1,12 @@
 import AppKit
 import SceneKit
 import QuartzCore
+import os
 import AttractorCore
+
+/// Lifecycle logger (temporary diagnostic, remove later): correlates scene
+/// creation/start with deallocation while chasing the host memory growth.
+private let simulationLog = Logger(subsystem: "com.example.AttractorSaver", category: "lifecycle")
 
 /// Owns the SceneKit view and the running simulation: it steps the engine each
 /// frame, repaints the trace as a gradient polyline, orbits the camera, and
@@ -23,6 +28,15 @@ public final class SimulationScene: NSObject {
     private let overlay = NSTextField(labelWithString: "")
 
     private var timer: Timer?
+    /// Monotonic scene id for correlating launches with deallocation in Console
+    /// while chasing the host memory growth (temporary diagnostic, remove later).
+    private static var nextSceneID = 0
+    private let sceneID: Int
+    /// Live scenes across the whole process (temporary diagnostic). The host
+    /// keeps referencing old screensaver views, and scenes never deallocating
+    /// is exactly the memory growth being chased. `nonisolated(unsafe)` so the
+    /// counter is reachable from `deinit`; everything runs on the main thread.
+    nonisolated(unsafe) private static var liveCount = 0
     private var lastTime: CFTimeInterval = 0
     private var accumulatedSimTime: Double = 0
     private var colorOffset: Double = 0
@@ -42,6 +56,9 @@ public final class SimulationScene: NSObject {
         self.engine = engine
         self.selection = selection
         self.settings = selection.settings
+        self.sceneID = Self.nextSceneID
+        Self.nextSceneID += 1
+        Self.liveCount += 1
 
         let scene = SCNScene()
         scene.background.contents = NSColor.black
@@ -66,6 +83,7 @@ public final class SimulationScene: NSObject {
 
         super.init()
 
+        simulationLog.info("SimulationScene #\(self.sceneID) created (live=\(Self.liveCount))")
         setupOverlay()
     }
 
@@ -105,6 +123,7 @@ public final class SimulationScene: NSObject {
     /// the scene deallocates and `deinit` invalidates the timer.
     public func start() {
         guard timer == nil else { return }
+        simulationLog.info("SimulationScene #\(self.sceneID) start")
         lastTime = CACurrentMediaTime()
         let timer = Timer(
             timeInterval: 1.0 / 60.0,
@@ -131,6 +150,8 @@ public final class SimulationScene: NSObject {
     /// call `stop()`. The scene lives on the main thread, so the isolation is
     /// safe to assume.
     deinit {
+        Self.liveCount -= 1
+        simulationLog.info("SimulationScene #\(self.sceneID) dealloc (live=\(Self.liveCount))")
         MainActor.assumeIsolated {
             self.timer?.invalidate()
             self.view.scene = nil
