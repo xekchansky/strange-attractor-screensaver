@@ -99,9 +99,7 @@ override func viewDidMoveToSuperview() {
 ```
 `tearDownScene()` = `scene?.stop()` + `scene?.view.removeFromSuperview()` + `scene = nil` → `SimulationScene` деаллоцируется (`deinit` = invalidate таймера + `view.scene = nil`). Удерживаемый хостом `ScreensaverView` остаётся лёгким (без сцены); следующий `startAnimation` строит свежую сцену.
 
-Сопутствующее (в текущей ветке, не вычищено):
-- диагностические лог-точки через `os.Logger` (subsystem `com.example.AttractorSaver`, category `lifecycle`) + временный live-счётчик сцен (`live=N` в `SimulationScene`); RSS-логгер в демо (`Demo/AppDelegate`, `[rss] t=Ns MB`).
-- НЕ вычищено до подтверждения стабильности. Назначение: удалить перед мержем в `main`.
+Сопутствующее — временная диагностика **вычищена 2026-10-01** (ос.Logger-точки, `sceneID`/`live`-счётчик в `SimulationScene`, RSS-логгер в демо). Методика замера сохранена в этой памяти. В коде остался только сам фикс (`viewDidMoveToSuperview` → `tearDownScene`).
 
 ### Открытые вопросы к фиксу (проверка реальной заставкой)
 1. ✅ **Р ЕАЛЬНЫЙ показ проверен (2026-10-01, вечер):** запуск по таймауту, переключение приложений/пространств, ввод пароля — анимация продолжается, сцена не сбрасывается, память не растёт. Grace-период НЕ понадобился: при активном показе view из иерархии не детачится (`superview == nil` приходит только при завершении показа).
