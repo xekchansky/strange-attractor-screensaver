@@ -24,9 +24,39 @@
 
 Митигация (без Metal, выбрано пользователем; Metal-вариант — «Отложенное»):
 - `TraceRenderer`: один persistent `SCNMaterial` (`.constant`) вместо создания per-frame.
-- `SimulationScene.tick`: (а) per-frame `autoreleasepool`; (б) полилиния пересобирается **каждые 2 такта** (`renderFrame % 2 == 0`, ~30 Гц) — пофреймовая пересборка `SCNGeometry` давала рваную отрисовку превью, троттлинг по числу точек — дёрганье кончика; (в) **самоостановка по отсутствию окна**: если `view.window == nil` ~1.5 c (`maxTicksWithoutWindow = 90`), `SimulationScene` сам зовёт `stop()` (обнуляет `isRunning`). Причина: превью-хост (`WallpaperLegacyExtension`) НЕ зовёт `stopAnimation()` при закрытии окна, и иначе таймер вечно держит сцену/SCNView → фоновый CPU + рост памяти с каждым запуском превью. Активное превью/показ имеют window → не останавливаются. `ScreensaverView.startAnimation` пересоздаёт сцену, если `isRunning == false`. (Мгновенный guard на `isVisible`/`window==nil` давал чёрный/мигающий экран → задержка 1.5 c снимает риск.)
+- `SimulationScene`: (а) per-frame `autoreleasepool` в рендер-шаге; (б) полилиния пересобирается **каждые 2 кадра** (`renderFrame % 2 == 0`, ~30 Гц) — пофреймовая пересборка `SCNGeometry` давала рваную отрисовку превью, троттлинг по числу точек — дёрганье кончика; (в) **ручной run-loop `Timer` удалён полностью** — он был первопричиной роста памяти (см. итерация 5).
 - **Код-подпись `.saver`:** unsigned-бандл (был `CODE_SIGNING_ALLOWED: NO`, linker-signed) **крашит превью** настроек обоев: `WallpaperLegacyExtension` падает `SIGKILL (Code Signature Invalid)`/`Invalid Page` на `dlopen_preflight`. В `Host/project.yml` для `AttractorSaver` включено `CODE_SIGN_IDENTITY: "-"` (ad-hoc), чтобы сборка давала валидную подпись. Ручной фикс: `codesign --force --sign - <saver>`.
 - Вывод/цвета не изменены. Ветка `feature/m6-perf-mitigate` — проверить в Activity Monitor за `legacyScreenSaver` (память растёт заметно медленнее; CPU в фоне ниже; заставка НЕ должна быть чёрной).
+
+## Изменение (итерация 5): слабый run-loop таймер вместо сильного target
+**Первопричина** роста памяти нашлась в `Timer`/`NSObject`: классический `Timer(timeInterval:target:self, selector:...)` даёт retain-цикл `RunLoop.main → Timer → сцена` (target сильный) → сцена с большим `SCNView` не деаллоцируется даже когда превью-хост отпускает `ScreensaverView` (а он НЕ зовёт `stopAnimation()`). Каждый запуск превью добавлял ещё одну вечно живую сцену → `legacyScreenSaver` рос 229→500+ МБ за цикл, до 2.6 ГБ.
+
+Сначала пробовали убрать таймер в пользу встроенного display link `SCNView` (`SCNSceneRendererDelegate`+`isPlaying`, conformance `@preconcurrency`) — **получился чёрный экран**: в хост-заставке (`WallpaperLegacyExtension`) display link view не стартует, делегат не вызывается, геометрия не строится. (Бонус: `scnView.delegate = self` нельзя до `super.init()`; ObjC-протокол не main-actor → `@preconcurrency` обязателен иначе `conformance-isolation` — ошибка сборки; из `deinit` нельзя трогать main-actor свойства — только через `MainActor.assumeIsolated`.) Этот вариант откачен.
+
+Решение (в `SimulationScene` сейчас): **run-loop `Timer` с `[weak self]`-блоком**:
+- `Timer(timeInterval: 1/60, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.tick() } }` + `RunLoop.main.add(... forMode: .common)`. Блок держит weak self → сцена освобождается; `tick()` строит геометрию, а SceneKit перерисовывает кадр при замене `traceNode.geometry` (рабочий механизм в хосте).
+- `stop()`/`deinit` (через `MainActor.assumeIsolated`) — `timer?.invalidate()`; `deinit` ещё `view.scene = nil`.
+- Guard-ы видимости окна НЕ используем (`isVisible`/`window == nil`/`occlusionState` на macOS 26 ненадёжны и давали чёрный экран).
+- Пересборка полилинии каждые 2 кадра ~30 Гц, per-frame `autoreleasepool`, persistent `SCNMaterial` — остались.
+- Визуально: заставка/превью двигаются.
+
+## Статус 2026-10-01: рост памяти при перезапусках НЕ решён (отложено)
+Пользователь: «Проблема осталась, после перезапусков память растет, запомни промежуточные результаты, вернёмся позже». Т.е. слабый таймер восстановил показ, но **память `legacyScreenSaver` продолжает расти с каждым запуском превью** → сильный `target:` retain-цикл был НЕ единственной (или не главной) причиной удержания старых сцен.
+
+### Измерения пользователя (2026-09-30)
+- `legacyScreenSaver`: ~229 МБ → 513 МБ после одного открытия/закрытия превью; до ~2.6 ГБ при долгой эксплуатации.
+- Процесс превью (`WallpaperLegacyExtension`/обои): 710 → 806 → 900 → 989 МБ при последовательных запусках.
+
+### Что отмечено и исключено
+- Исключено: сильный `target:self` таймера (слабел, роста нет), guard-ы видимости окна (`isVisible`/`window == nil`/`occlusion`) — ненадёжны на macOS 26, давали чёрный экран; display link `SCNView` не стартует в хосте (чёрный экран).
+- Движок корректен: `AttractorEngine.trace` — кольцевой буфер фиксированной ёмкости, вне буфера не растёт.
+- Действующие меры (оставить): persistent `SCNMaterial`, per-frame `autoreleasepool`, пересборка полилинии каждые 2 кадра ~30 Гц, weak-таймер + `deinit` invalidate.
+
+### Гипотезы для следующего подхода
+1. Сцены/`ScreensaverView` удерживает сам хост `WallpaperLegacyExtension` (а не наш таймер) → ограничить footprint одной сцены или переиспользовать сцену между запусками.
+2. Рост может идти ВНУТРИ одного длинного показа (не только между перезапусками) — проверить тренд во время непрерывного показа отдельно.
+3. SceneKit удерживает старые `SCNGeometry`/GPU-ресурсы дольше смены `node.geometry` → постоянная GPU-геометрия (SCNProgram+MTLBuffer) остаётся главным кандидатом.
+4. Debug через Instruments/Allocations — только на машине с Xcode (здесь SPM-сборка без UI).
 
 ## Отложенное (нужна проверка на машине с Xcode, здесь нет)
 - **Постоянная GPU-геометрия трейла** (SCNProgram/SCNBufferBinding + `.metal`), чтобы вообще не пересоздавать `SCNGeometry` каждый кадр. В этой песочнице `.metal`/SCNProgram не собрать и не увидеть — только на машине с Xcode.

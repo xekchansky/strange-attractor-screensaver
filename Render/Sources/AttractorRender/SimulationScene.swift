@@ -34,16 +34,8 @@ public final class SimulationScene: NSObject {
     private var renderFrame = 0
     /// Whether the animation loop is running. Used by the host to know whether
     /// `startAnimation` should reuse the scene or spin up a fresh one (after the
-    /// scene self-stopped because its window went away).
+    /// scene was stopped because its window went away).
     public private(set) var isRunning = false
-    /// Consecutive ticks with no window, used to self-stop when the screensaver
-    /// preview host fails to call `stopAnimation()` on dismissal: an idle timer
-    /// keeps holding the scene (and its large SceneKit view) alive, which showed
-    /// up as lingering CPU and memory that grew per preview launch.
-    private var ticksWithoutWindow = 0
-    /// ~1.5 s at 60 Hz — long enough to survive a brief window-less transition
-    /// without stopping a genuinely active preview.
-    private let maxTicksWithoutWindow = 90
 
     /// Create the scene around a ready-to-run engine.
     public init(engine: AttractorEngine, selection: AttractorSelection) {
@@ -101,17 +93,27 @@ public final class SimulationScene: NSObject {
         overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
     }
 
-    /// Begin the per-frame animation loop. Call from the main thread.
+    /// Begin the per-frame animation loop. A run-loop `Timer` drives the tick
+    /// — the SceneKit view redraws whenever the node geometry is replaced, so
+    /// no `isPlaying`/display-link is required (in the screensaver host the
+    /// view's display link never starts, which produced a black screen).
+    ///
+    /// The timer uses a `[weak self]` block, never a strong `target:`: a
+    /// strong target would hold the scene via `RunLoop → Timer → scene`, which
+    /// is exactly what kept old scenes (and their large views) resident in the
+    /// host process across preview launches. When the host releases the view,
+    /// the scene deallocates and `deinit` invalidates the timer.
     public func start() {
         guard timer == nil else { return }
         lastTime = CACurrentMediaTime()
         let timer = Timer(
             timeInterval: 1.0 / 60.0,
-            target: self,
-            selector: #selector(tick(_:)),
-            userInfo: nil,
             repeats: true
-        )
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.tick()
+            }
+        }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
         isRunning = true
@@ -124,31 +126,20 @@ public final class SimulationScene: NSObject {
         isRunning = false
     }
 
-    /// Advance one rendered frame. Invoked by the timer on the main run loop.
-    @objc private func tick(_ timer: Timer) {
-        // We deliberately do NOT gate on raw window visibility (`isVisible`,
-        // or even `window == nil`): the screensaver's cover/preview window can
-        // report itself as not visible, or keep a live hidden window, while not
-        // actually covering the desktop — gating on those gave a black,
-        // flickering screensaver or, worse, failed to release anything.
-        //
-        // Instead gate on the window's occlusion state: a genuinely on-screen
-        // full-screen saver or open preview reports `.visible`. Once the host
-        // dismisses us (full-screen clears, preview window closes/occludes) the
-        // occlusion state stops being visible, and after `maxTicksWithoutWindow`
-        // such ticks we tear the loop down ourselves. Left alone, the timer
-        // would keep the whole scene (and its large SceneKit view) alive
-        // forever — lingering CPU plus memory that grew with every launch.
-        let onScreen = view.window?.occlusionState.contains(.visible) ?? false
-        guard onScreen else {
-            ticksWithoutWindow += 1
-            if ticksWithoutWindow >= maxTicksWithoutWindow {
-                stop()
-            }
-            return
+    /// Called when the scene goes away for good: stop the loop and release the
+    /// view's scene so SceneKit frees the geometry even if the host forgets to
+    /// call `stop()`. The scene lives on the main thread, so the isolation is
+    /// safe to assume.
+    deinit {
+        MainActor.assumeIsolated {
+            self.timer?.invalidate()
+            self.view.scene = nil
         }
-        ticksWithoutWindow = 0
+    }
 
+    /// Advance one rendered frame. Deposed by the run-loop timer (`start()`);
+    /// the SceneKit view redraws once `traceNode.geometry` is replaced.
+    private func tick() {
         autoreleasepool {
             let now = CACurrentMediaTime()
             let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
