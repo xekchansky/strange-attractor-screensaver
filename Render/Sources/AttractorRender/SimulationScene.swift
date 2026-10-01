@@ -27,6 +27,15 @@ public final class SimulationScene: NSObject {
     private var accumulatedSimTime: Double = 0
     private var colorOffset: Double = 0
     private var lastOverlayUpdate: CFTimeInterval = 0
+    /// Frame counter used to pace polyline rebuilds (every 2nd tick). Rebuilding
+    /// the SCNGeometry on every tick made the saver preview redraw in ragged
+    /// pieces at 60 fps; halving the rebuild rate is visually indistinguishable
+    /// on a dense trail while removing most of that redraw pressure.
+    private var renderFrame = 0
+    /// Whether the animation loop is running. Used by the host to know whether
+    /// `startAnimation` should reuse the scene or spin up a fresh one (after the
+    /// scene was stopped because its window went away).
+    public private(set) var isRunning = false
 
     /// Create the scene around a ready-to-run engine.
     public init(engine: AttractorEngine, selection: AttractorSelection) {
@@ -84,67 +93,100 @@ public final class SimulationScene: NSObject {
         overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
     }
 
-    /// Begin the per-frame animation loop. Call from the main thread.
+    /// Begin the per-frame animation loop. A run-loop `Timer` drives the tick
+    /// — the SceneKit view redraws whenever the node geometry is replaced, so
+    /// no `isPlaying`/display-link is required (in the screensaver host the
+    /// view's display link never starts, which produced a black screen).
+    ///
+    /// The timer uses a `[weak self]` block, never a strong `target:`: a
+    /// strong target would hold the scene via `RunLoop → Timer → scene`, which
+    /// is exactly what kept old scenes (and their large views) resident in the
+    /// host process across preview launches. When the host releases the view,
+    /// the scene deallocates and `deinit` invalidates the timer.
     public func start() {
         guard timer == nil else { return }
         lastTime = CACurrentMediaTime()
         let timer = Timer(
             timeInterval: 1.0 / 60.0,
-            target: self,
-            selector: #selector(tick(_:)),
-            userInfo: nil,
             repeats: true
-        )
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.tick()
+            }
+        }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+        isRunning = true
     }
 
     /// Stop the animation loop.
     public func stop() {
         timer?.invalidate()
         timer = nil
+        isRunning = false
     }
 
-    /// Advance one rendered frame. Invoked by the timer on the main run loop.
-    @objc private func tick(_ timer: Timer) {
-        let now = CACurrentMediaTime()
-        let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
-        lastTime = now
-
-        // Integrate the system by a whole number of fixed-size steps.
-        accumulatedSimTime += settings.simulationSpeed * dt
-        let steps = Int(accumulatedSimTime / settings.stepSize)
-        if steps > 0 {
-            accumulatedSimTime -= Double(steps) * settings.stepSize
-            for _ in 0..<steps {
-                // A valid model never throws at evaluation; ignore the
-                // pathological case rather than stopping the demo.
-                _ = try? engine.advance()
-            }
+    /// Called when the scene goes away for good: stop the loop and release the
+    /// view's scene so SceneKit frees the geometry even if the host forgets to
+    /// call `stop()`. The scene lives on the main thread, so the isolation is
+    /// safe to assume.
+    deinit {
+        MainActor.assumeIsolated {
+            self.timer?.invalidate()
+            self.view.scene = nil
         }
+    }
 
-        colorOffset = (colorOffset + settings.trailColorSpeed * dt)
-            .truncatingRemainder(dividingBy: 1.0)
+    /// Advance one rendered frame. Deposed by the run-loop timer (`start()`);
+    /// the SceneKit view redraws once `traceNode.geometry` is replaced.
+    private func tick() {
+        autoreleasepool {
+            let now = CACurrentMediaTime()
+            let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
+            lastTime = now
 
-        cameraController.update(
-            dt: dt,
-            rotationSpeed: settings.cameraRotationSpeed,
-            around: engine.trace,
-            cameraNode: cameraNode
-        )
+            // Integrate the system by a whole number of fixed-size steps.
+            accumulatedSimTime += settings.simulationSpeed * dt
+            let steps = Int(accumulatedSimTime / settings.stepSize)
+            if steps > 0 {
+                accumulatedSimTime -= Double(steps) * settings.stepSize
+                for _ in 0..<steps {
+                    // A valid model never throws at evaluation; ignore the
+                    // pathological case rather than stopping the demo.
+                    _ = try? engine.advance()
+                }
+            }
 
-        // Update the camera before building the trace geometry so the depth
-        // color mode (and camera look-at) use the current frame's position.
-        traceNode.geometry = traceRenderer.geometry(
-            for: engine.trace,
-            colorOffset: colorOffset,
-            mode: settings.colorMode,
-            cameraPosition: cameraNode.position
-        )
+            colorOffset = (colorOffset + settings.trailColorSpeed * dt)
+                .truncatingRemainder(dividingBy: 1.0)
 
-        if now - lastOverlayUpdate > 0.5 {
-            overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
-            lastOverlayUpdate = now
+            cameraController.update(
+                dt: dt,
+                rotationSpeed: settings.cameraRotationSpeed,
+                around: engine.trace,
+                cameraNode: cameraNode
+            )
+
+            // Rebuild the polyline every other tick (plus the first tick so the
+            // scene appears immediately). Rendering every tick produced ragged
+            // chunks in the saver preview at 60 fps; a ~30 Hz rebuild of a dense
+            // trail is visually smooth and roughly halves both the SCNGeometry
+            // redraw pressure and the per-frame allocation behind it. Camera
+            // orbit stays per-tick.
+            renderFrame += 1
+            if renderFrame <= 2 || renderFrame % 2 == 0 {
+                traceNode.geometry = traceRenderer.geometry(
+                    for: engine.trace,
+                    colorOffset: colorOffset,
+                    mode: settings.colorMode,
+                    cameraPosition: cameraNode.position
+                )
+            }
+
+            if now - lastOverlayUpdate > 0.5 {
+                overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
+                lastOverlayUpdate = now
+            }
         }
     }
 

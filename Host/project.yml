@@ -113,7 +113,8 @@ targets:
         PRODUCT_NAME: AttractorSaver
         WRAPPER_EXTENSION: saver
         CODE_SIGN_STYLE: Manual
-        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_ALLOWED: "YES"
+        CODE_SIGN_IDENTITY: "-"
         DEVELOPMENT_TEAM: ""
         SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"

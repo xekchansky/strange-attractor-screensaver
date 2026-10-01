@@ -22,7 +22,14 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
 
     override func startAnimation() {
         super.startAnimation()
-        guard scene == nil else { return }
+        // Reuse a still-running scene (re-entrant start). Otherwise tear down
+        // and rebuild — including after the scene self-stopped because its
+        // window went away, which the preview host may leave orphaned by never
+        // calling `stopAnimation()`.
+        if let running = scene, running.isRunning {
+            return
+        }
+        tearDownScene()
         do {
             let catalog = try AttractorCatalog.bundled()
             // Random attractor + parameters + hyperparameters + initial state.
@@ -49,9 +56,36 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
     }
 
     override func stopAnimation() {
-        scene?.stop()
-        scene = nil
+        tearDownScene()
         super.stopAnimation()
+    }
+
+    override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        // The preview host never calls `stopAnimation()` and keeps every
+        // `ScreensaverView` alive across preview launches, so scenes would pile
+        // up forever (≈ +1 live scene ≈ +130 MB per launch). The only signal we
+        // get that a preview ended is the view being detached (superview → nil):
+        // tear the scene down then, so the retained view stops holding its
+        // whole SceneKit scene. The next `startAnimation` builds a fresh one.
+        if self.superview == nil {
+            tearDownScene()
+        }
+    }
+
+    /// Stop the running scene and detach its SceneKit view from our hierarchy.
+    ///
+    /// The preview host keeps every `ScreensaverView` it creates and never
+    /// calls `stopAnimation()`, so a scene that is told to stop (or whose view
+    /// is detached) must actually leave the view tree: a retained `SCNView`
+    /// keeps its whole SceneKit scene alive forever, which is what made the
+    /// host process grow by roughly one scene per launch (memory: perf M6).
+    /// Dropping the reference lets the scene deallocate; `SimulationScene.deinit`
+    /// invalidates its timer and releases the view's scene.
+    private func tearDownScene() {
+        scene?.stop()
+        scene?.view.removeFromSuperview()
+        scene = nil
     }
 
     /// The per-frame loop is driven by `SimulationScene`'s own timer, so the
