@@ -151,10 +151,10 @@
     "dy": "x - y + z",
     "dz": "-beta * y",
     "parameters": [
-      { "name": "alpha", "min": 8.5, "max": 10.5 },
-      { "name": "beta", "min": 13.5, "max": 15.0 },
-      { "name": "m0", "min": -0.18, "max": -0.12 },
-      { "name": "m1", "min": 0.24, "max": 0.30 }
+      { "name": "alpha", "min": 9.5, "max": 10.5 },
+      { "name": "beta", "min": 14.0, "max": 15.0 },
+      { "name": "m0", "min": -0.55, "max": -0.45 },
+      { "name": "m1", "min": 0.20, "max": 0.30 }
     ],
     "initialState": {
       "x": { "min": -0.5, "max": 0.5 },
@@ -230,146 +230,6 @@
     }
   },
   {
-    "id": "sprott_d",
-    "name": "Sprott D",
-    "dx": "-y",
-    "dy": "x + z",
-    "dz": "x * z + 3 * (y ^ 2)",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "sprott_e",
-    "name": "Sprott E",
-    "dx": "y * z",
-    "dy": "(x ^ 2) - y",
-    "dz": "1 - 4 * x",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "sprott_f",
-    "name": "Sprott F",
-    "dx": "y + z",
-    "dy": "-x + 0.5 * y",
-    "dz": "(x ^ 2) - z",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "sprott_g",
-    "name": "Sprott G",
-    "dx": "0.4 * x + z",
-    "dy": "x * z - y",
-    "dz": "-x + y",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "sprott_h",
-    "name": "Sprott H",
-    "dx": "-y + (z ^ 2)",
-    "dy": "x + 0.5 * y",
-    "dz": "x - z",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "sprott_i",
-    "name": "Sprott I",
-    "dx": "-0.2 * y",
-    "dy": "x + z",
-    "dz": "x + (y ^ 2) - z",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "sprott_j",
-    "name": "Sprott J",
-    "dx": "z",
-    "dy": "-0.5 * y + x",
-    "dz": "(x ^ 2) - y",
-    "parameters": [],
-    "initialState": {
-      "x": { "min": -1.0, "max": 1.0 },
-      "y": { "min": -1.0, "max": 1.0 },
-      "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
     "id": "halvorsen",
     "name": "Halvorsen",
     "dx": "-a * x - 4 * y - 4 * z - (y ^ 2)",
@@ -382,29 +242,6 @@
       "x": { "min": -1.0, "max": 1.0 },
       "y": { "min": -1.0, "max": 1.0 },
       "z": { "min": -1.0, "max": 1.0 }
-    },
-    "simulation": {
-      "stepSize": { "min": 0.004, "max": 0.01 },
-      "simulationSpeed": { "min": 1.0, "max": 3.0 },
-      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
-      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
-      "trailLength": { "min": 2000, "max": 8000 }
-    }
-  },
-  {
-    "id": "rabinovich_fabrikant",
-    "name": "Rabinovich–Fabrikant",
-    "dx": "y * (z - 1 + (x ^ 2)) + g * x",
-    "dy": "x * (3 * z + 1 - (x ^ 2)) + g * y",
-    "dz": "-2 * z * (a + x * y)",
-    "parameters": [
-      { "name": "a", "min": 0.10, "max": 0.18 },
-      { "name": "g", "min": 0.07, "max": 0.13 }
-    ],
-    "initialState": {
-      "x": { "min": -0.5, "max": 0.5 },
-      "y": { "min": -0.5, "max": 0.5 },
-      "z": { "min": -0.5, "max": 0.5 }
     },
     "simulation": {
       "stepSize": { "min": 0.004, "max": 0.01 },
