@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import ScreenSaver
 import AttractorCore
 import AttractorRender
@@ -15,6 +16,11 @@ import AttractorRender
 final class ScreensaverView: ScreenSaver.ScreenSaverView {
     /// The running simulation scene, created in `startAnimation`.
     private var scene: SimulationScene?
+    /// Caps restart frequency when a run fails immediately. A denied restart is
+    /// retried after the limiter's window instead of spinning on every frame.
+    private var restartLimiter = RestartLimiter()
+    /// Scheduled retry while ``restartLimiter`` is blocking.
+    private var pendingRestartTimer: Timer?
 
     // `init(frame:)`/`init?(coder:)` are inherited from NSView (in this SDK
     // `initWithFrame:` imports as a convenience, `initWithCoder:` as required;
@@ -30,6 +36,7 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
             return
         }
         tearDownScene()
+        restartLimiter.reset()
         startSimulation()
     }
 
@@ -76,6 +83,9 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
             scene = newScene
         } catch {
             NSLog("AttractorScreensaver: failed to start simulation: \(error)")
+            // Validation should have caught this, but a failed build must not
+            // leave a black screen forever: retry through the same limiter.
+            restartSimulation()
         }
     }
 
@@ -84,6 +94,27 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
         // If the view was already detached, the preview is over: do not build
         // a new scene that nobody will ever see.
         guard superview != nil else { return }
+        pendingRestartTimer?.invalidate()
+        pendingRestartTimer = nil
+
+        let now = CACurrentMediaTime()
+        guard restartLimiter.allowRestart(at: now) else {
+            // The run keeps failing immediately. Wait out the limiter window
+            // instead of rebuilding a scene on every frame (flicker, CPU churn).
+            let retryAt = restartLimiter.nextRetryTime(after: now) ?? now + restartLimiter.window
+            let delay = max(retryAt - now, 0.1)
+            NSLog("AttractorScreensaver: too many restarts, retrying in \(delay) s")
+            let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.pendingRestartTimer = nil
+                    self?.restartSimulation()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            pendingRestartTimer = timer
+            return
+        }
+
         tearDownScene()
         startSimulation()
     }
@@ -116,6 +147,8 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
     /// Dropping the reference lets the scene deallocate; `SimulationScene.deinit`
     /// invalidates its timer and releases the view's scene.
     private func tearDownScene() {
+        pendingRestartTimer?.invalidate()
+        pendingRestartTimer = nil
         scene?.stop()
         scene?.view.removeFromSuperview()
         scene = nil
