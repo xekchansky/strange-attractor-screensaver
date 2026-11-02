@@ -120,6 +120,14 @@ let effectiveSettings = SimulationSettings(
     trailLength: overrides.trailLength ?? baseSettings.trailLength,
     colorMode: overrides.colorMode ?? baseSettings.colorMode
 )
+let settingsIssues = effectiveSettings.validationIssues
+if !settingsIssues.isEmpty {
+    for issue in settingsIssues {
+        FileHandle.standardError.write(Data("error: \(issue)\n".utf8))
+    }
+    exit(2)
+}
+
 let effectiveSelection = AttractorSelection(
     descriptor: selection.descriptor,
     parameters: selection.parameters,

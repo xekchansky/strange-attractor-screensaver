@@ -50,6 +50,35 @@ public struct SimulationSettings: Equatable, Sendable {
         )
     }
 
+    /// Problems that would make the renderer misbehave.
+    ///
+    /// Used by the demo to reject nonsensical command-line overrides before
+    /// they produce a frozen trace (non-positive step), an empty polyline
+    /// (trail shorter than two points) or non-finite camera/color motion.
+    /// A zero speed is allowed: it intentionally freezes one aspect for
+    /// debugging.
+    public var validationIssues: [String] {
+        var issues: [String] = []
+
+        if !stepSize.isFinite || stepSize <= 0 {
+            issues.append("stepSize must be positive and finite (got \(stepSize))")
+        }
+        if !simulationSpeed.isFinite || simulationSpeed < 0 {
+            issues.append("simulationSpeed must be non-negative and finite (got \(simulationSpeed))")
+        }
+        if !cameraRotationSpeed.isFinite || cameraRotationSpeed < 0 {
+            issues.append("cameraRotationSpeed must be non-negative and finite (got \(cameraRotationSpeed))")
+        }
+        if !trailColorSpeed.isFinite || trailColorSpeed < 0 {
+            issues.append("trailColorSpeed must be non-negative and finite (got \(trailColorSpeed))")
+        }
+        if trailLength < 2 {
+            issues.append("trailLength must keep at least 2 points (got \(trailLength))")
+        }
+
+        return issues
+    }
+
     private static func midpoint(of range: MinMax<Double>) -> Double {
         (range.min + range.max) / 2
     }
