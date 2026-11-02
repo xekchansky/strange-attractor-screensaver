@@ -24,7 +24,7 @@ macOS-скринсейвер, который рендерит странные �
 - **Config:** `attractors.json` (ресурс бандла) → `[AttractorDescriptor]` через `AttractorCatalog`.
 - **Мат. ядро:** `State`, `Derivatives`, `Expression`+`FormulaParser`, `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (шаг + кольцевой буфер `trace`).
 - **Выбор:** `SplitMix64`, `SimulationSettings`, `AttractorSelection` (`buildModel()`), `StateRange`/`initialState`, `Randomizer`, `DebugConfig`.
-- **Самолечение:** `SimulationHealthMonitor` (+ `SimulationHealthIssue`, `SimulationHealthThresholds`) — поток состояний → вердикт (`nonFinite`/`diverged`/`collapsed`/`periodic`), чистое ядро, детерминированное расписание (часто в начале, реже дальше).
+- **Самолечение:** `SimulationHealthMonitor` (+ `SimulationHealthIssue`, `SimulationHealthThresholds`) — поток состояний → вердикт (`nonFinite`/`diverged`/`collapsed`/`periodic`), чистое ядро, детерминированное расписание (часто в начале, реже дальше). `periodic` — статистический возврат по окну с обязательным подтверждением 4096 шагов (хаос может на время «тенить» неустойчивый цикл); дорогая проверка раз в 512 шагов.
 
 ### 2. Рендер (SPM-модуль `AttractorRender`, AppKit+SceneKit)
 - `TraceRenderer` — полилиния трейса с градиентом (`TraceRenderer.geometry(for:colorOffset:)`).

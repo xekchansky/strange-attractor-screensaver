@@ -26,6 +26,30 @@ struct SimulationHealthMonitorTests {
         }
     }
 
+    /// Aizawa has long laminar phases that shadow an unstable periodic orbit
+    /// for about two thousand steps before the trajectory wanders off. The
+    /// confirmation interval must reject them; treating one matching window
+    /// as proof would heal a healthy run.
+    @Test("Aizawa's laminar phases are not mistaken for a limit cycle")
+    func aizawaLaminarPhasesAreHealthy() throws {
+        let catalog = try AttractorCatalog.bundled()
+        let selection = try DebugConfig.selection(for: "aizawa", in: catalog)
+        var engine = AttractorEngine(
+            model: try selection.buildModel(),
+            initialState: selection.initialState,
+            stepSize: selection.settings.stepSize,
+            trailCapacity: 100
+        )
+        var monitor = SimulationHealthMonitor()
+
+        for _ in 0..<16_384 {
+            try engine.advance()
+            let issue = monitor.observe(engine.state)
+            #expect(issue == nil, "aizawa: \(String(describing: issue))")
+            if issue != nil { break }
+        }
+    }
+
     /// A resting point is the simplest degenerate launch.
     @Test("A fixed point is reported as collapsed")
     func fixedPointIsCollapsed() {
@@ -62,8 +86,7 @@ struct SimulationHealthMonitorTests {
     func largeLimitCycleIsPeriodic() {
         var monitor = SimulationHealthMonitor(thresholds: .init(
             warmupSteps: 100,
-            minimumPeriodSteps: 64,
-            segmentLength: 8
+            minimumPeriodSteps: 64
         ))
 
         var issue: SimulationHealthIssue?
@@ -76,6 +99,48 @@ struct SimulationHealthMonitorTests {
             ))
         }
         #expect(issue == .periodic)
+    }
+
+    /// A chaotic flow can look periodic for a while, and a single matching
+    /// window is not enough to declare a limit cycle. The verdict must survive
+    /// the whole confirmation interval; an interruption restarts the count.
+    @Test("A periodic verdict must persist before it is reported")
+    func periodicVerdictMustPersist() {
+        func verdict(breakingAt breakStart: Int?) -> SimulationHealthIssue? {
+            let thresholds = SimulationHealthThresholds(
+                warmupSteps: 100,
+                minimumPeriodSteps: 64,
+                periodicValidationWindow: 128,
+                periodicConfirmationSteps: 2_000,
+                periodicCheckInterval: 50,
+                hotCheckInterval: 1
+            )
+            var monitor = SimulationHealthMonitor(thresholds: thresholds)
+
+            for step in 0..<4_000 {
+                if let start = breakStart, step >= start, step < start + 500 {
+                    let wandering = State(
+                        x: 0.01 * Double(step),
+                        y: sin(0.3 * Double(step)),
+                        z: cos(0.17 * Double(step))
+                    )
+                    if let issue = monitor.observe(wandering) { return issue }
+                    continue
+                }
+                let angle = 2.0 * Double.pi * Double(step % 200) / 200.0
+                if let issue = monitor.observe(State(
+                    x: 5.0 * cos(angle),
+                    y: 5.0 * sin(angle),
+                    z: 0
+                )) {
+                    return issue
+                }
+            }
+            return nil
+        }
+
+        #expect(verdict(breakingAt: nil) == .periodic)
+        #expect(verdict(breakingAt: 2_000) == nil)
     }
 
     @Test("A non-finite state is reported immediately")
@@ -169,7 +234,9 @@ struct SimulationHealthMonitorTests {
     /// Calibration guard for the motivating case: Chua develops its double
     /// scroll spontaneously from a near-zero start, and that slow start must
     /// not be mistaken for the near-zero ring the monitor is meant to heal.
-    @Test("Chua's slow double-scroll start is not flagged")
+    /// The debug midpoint parameters settle into a large cycle much later,
+    /// which is a genuine failure; only the slow start is checked here.
+    @Test("Chua's slow start is not flagged")
     func chuaSlowStartIsHealthy() throws {
         let catalog = try AttractorCatalog.bundled()
         let selection = try DebugConfig.selection(for: "chua", in: catalog)
@@ -182,11 +249,58 @@ struct SimulationHealthMonitorTests {
         var monitor = SimulationHealthMonitor()
         #expect(monitor.observe(engine.state) == nil)
 
-        for _ in 0..<20_000 {
+        for _ in 0..<5_000 {
             try engine.advance()
             let issue = monitor.observe(engine.state)
             #expect(issue == nil, "chua: \(String(describing: issue))")
             if issue != nil { break }
         }
+    }
+
+    /// A real sampled limit cycle usually has a period that is not an integer
+    /// number of integration steps, so no pair of samples ever repeats
+    /// exactly. The monitor must still recognise the closed orbit.
+    @Test("A sampled limit cycle with a non-integer period is reported as periodic")
+    func nonIntegerPeriodLimitCycleIsPeriodic() {
+        var monitor = SimulationHealthMonitor(thresholds: .init(warmupSteps: 100))
+        let period = 200.5
+
+        var issue: SimulationHealthIssue?
+        for step in 0..<20_000 where issue == nil {
+            let angle = 2.0 * Double.pi * Double(step) / period
+            issue = monitor.observe(State(
+                x: 5.0 * cos(angle),
+                y: 5.0 * sin(angle),
+                z: 0.0
+            ))
+        }
+        #expect(issue == .periodic)
+    }
+
+    /// Regression for the reported Chua run: these parameters settle into a
+    /// large ring (a stable limit cycle, period ≈ 431.2 steps at dt=0.004)
+    /// that the exact-recurrence detector could never see.
+    @Test("The reported Chua limit cycle is reported as periodic")
+    func reportedChuaRingIsPeriodic() throws {
+        let catalog = try AttractorCatalog.bundled()
+        let descriptor = try #require(catalog.first { $0.id == "chua" })
+        let model = try AttractorModel(
+            descriptor: descriptor,
+            parameters: ["alpha": 10.164, "beta": 14.932, "m0": -0.499, "m1": 0.257]
+        )
+        var engine = AttractorEngine(
+            model: model,
+            initialState: State(x: -0.243, y: 0.468, z: 0.093),
+            stepSize: 0.004,
+            trailCapacity: 100
+        )
+        var monitor = SimulationHealthMonitor()
+
+        var issue: SimulationHealthIssue?
+        for _ in 0..<60_000 where issue == nil {
+            try engine.advance()
+            issue = monitor.observe(engine.state)
+        }
+        #expect(issue == .periodic)
     }
 }

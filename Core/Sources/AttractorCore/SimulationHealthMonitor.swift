@@ -22,7 +22,9 @@ public enum SimulationHealthIssue: Equatable, Sendable {
 /// Defaults are chosen for the bundled catalog: warm up for 1000 steps, then
 /// check often for the first 10k steps (where bad launches show up), less
 /// often up to 100k, and rarely afterwards. Cheap checks (non-finite and
-/// divergence) still run on every state.
+/// divergence) still run on every state. The more expensive periodic check
+/// runs every 512 states, and its verdict must persist for 4096 states before
+/// the run is reported: chaotic flows can shadow an unstable orbit for a while.
 public struct SimulationHealthThresholds: Equatable, Sendable {
     /// Number of observed states before structural checks (collapse/periodic)
     /// start. Prevents flagging a normal transient.
@@ -35,12 +37,26 @@ public struct SimulationHealthThresholds: Equatable, Sendable {
     public var divergenceLimit: Double
     /// Maximum number of states remembered for recurrence checks.
     public var historyCapacity: Int
-    /// Minimum distance (in steps) between two matching trajectory segments.
+    /// Minimum lag (in steps) between the current state and an earlier one
+    /// for that pair to count as a possible period.
     public var minimumPeriodSteps: Int
-    /// Number of consecutive states compared when looking for a repeat.
-    public var segmentLength: Int
-    /// Per-coordinate tolerance under which two states count as identical.
-    public var recurrenceTolerance: Double
+    /// Number of recent states over which a candidate period is validated.
+    public var periodicValidationWindow: Int
+    /// Number of steps a periodic verdict must persist before it is reported.
+    ///
+    /// A chaotic flow can shadow an unstable periodic orbit for thousands of
+    /// steps before wandering off. A genuine limit cycle keeps the verdict
+    /// indefinitely, so requiring persistence separates the two.
+    public var periodicConfirmationSteps: Int
+    /// How often the periodic check runs, in observed steps.
+    ///
+    /// The periodic check is much more expensive than the collapse check, so
+    /// it runs less often than the structural check schedule would imply.
+    public var periodicCheckInterval: Int
+    /// Maximum RMS distance for a validated period, as a fraction of the
+    /// recent trajectory's spatial span. Above this the motion is not a
+    /// repeatable closed orbit.
+    public var periodicMeanDistanceFraction: Double
     /// Length of the hot phase, counted in observed states.
     public var hotPhaseSteps: Int
     /// Length of the warm phase, counted in observed states.
@@ -59,8 +75,10 @@ public struct SimulationHealthThresholds: Equatable, Sendable {
         divergenceLimit: Double = 1e6,
         historyCapacity: Int = 4_096,
         minimumPeriodSteps: Int = 64,
-        segmentLength: Int = 8,
-        recurrenceTolerance: Double = 1e-6,
+        periodicValidationWindow: Int = 2_048,
+        periodicConfirmationSteps: Int = 4_096,
+        periodicCheckInterval: Int = 512,
+        periodicMeanDistanceFraction: Double = 0.1,
         hotPhaseSteps: Int = 10_000,
         warmPhaseSteps: Int = 100_000,
         hotCheckInterval: Int = 16,
@@ -73,8 +91,10 @@ public struct SimulationHealthThresholds: Equatable, Sendable {
         self.divergenceLimit = divergenceLimit
         self.historyCapacity = historyCapacity
         self.minimumPeriodSteps = minimumPeriodSteps
-        self.segmentLength = segmentLength
-        self.recurrenceTolerance = recurrenceTolerance
+        self.periodicValidationWindow = periodicValidationWindow
+        self.periodicConfirmationSteps = periodicConfirmationSteps
+        self.periodicCheckInterval = periodicCheckInterval
+        self.periodicMeanDistanceFraction = periodicMeanDistanceFraction
         self.hotPhaseSteps = hotPhaseSteps
         self.warmPhaseSteps = warmPhaseSteps
         self.hotCheckInterval = hotCheckInterval
@@ -104,11 +124,15 @@ public struct SimulationHealthMonitor: Sendable {
     private var writeIndex = 0
     private var saturated = false
     private var nextCheckStep: Int
+    /// When the current run of periodic verdicts started, if one is active.
+    private var pendingPeriodicSince: Int?
+    private var nextPeriodicCheckStep: Int
 
     public init(thresholds: SimulationHealthThresholds = SimulationHealthThresholds()) {
         self.thresholds = thresholds
         self.capacity = max(1, thresholds.historyCapacity)
         self.nextCheckStep = thresholds.warmupSteps
+        self.nextPeriodicCheckStep = thresholds.warmupSteps
         self.history.reserveCapacity(self.capacity)
     }
 
@@ -117,7 +141,9 @@ public struct SimulationHealthMonitor: Sendable {
     /// Non-finite and divergent states are reported immediately, on any step.
     /// Structural checks (collapse and periodicity) start after
     /// ``SimulationHealthThresholds/warmupSteps`` and are then performed on a
-    /// schedule that gets sparser as the simulation ages.
+    /// schedule that gets sparser as the simulation ages. Collapse is reported
+    /// from the first matching check; periodicity only after the verdict has
+    /// persisted for ``SimulationHealthThresholds/periodicConfirmationSteps``.
     public mutating func observe(_ state: State) -> SimulationHealthIssue? {
         guard state.isFinite else { return .nonFinite }
         guard !isDiverged(state) else { return .diverged }
@@ -134,7 +160,7 @@ public struct SimulationHealthMonitor: Sendable {
         nextCheckStep = stepsObserved + checkInterval(after: stepsObserved)
 
         if isCollapsed() { return .collapsed }
-        if isPeriodic() { return .periodic }
+        if updatePeriodicConfirmation() { return .periodic }
         return nil
     }
 
@@ -144,7 +170,109 @@ public struct SimulationHealthMonitor: Sendable {
     private func isCollapsed() -> Bool {
         let window = min(max(1, thresholds.collapseWindowSteps), history.count)
         guard window > 1 else { return false }
+        return recentSpan(window: window) < thresholds.collapseSpan
+    }
 
+    /// Track how long the trajectory has looked periodic and report it once
+    /// the verdict has persisted long enough.
+    ///
+    /// One check is not conclusive: a chaotic flow can shadow an unstable
+    /// periodic orbit for thousands of steps before wandering off. A genuine
+    /// limit cycle reproduces the verdict on every check, so the pending
+    /// timestamp survives until the run leaves the cycle.
+    private mutating func updatePeriodicConfirmation() -> Bool {
+        guard stepsObserved >= nextPeriodicCheckStep else { return false }
+        nextPeriodicCheckStep = stepsObserved + max(1, thresholds.periodicCheckInterval)
+
+        guard isPeriodic() else {
+            pendingPeriodicSince = nil
+            return false
+        }
+
+        let since = pendingPeriodicSince ?? stepsObserved
+        pendingPeriodicSince = since
+        return stepsObserved - since >= max(1, thresholds.periodicConfirmationSteps)
+    }
+
+    /// Whether the recent trajectory keeps retracing a closed orbit.
+    ///
+    /// A limit cycle rarely has a period that is an integer number of
+    /// integration steps, so no sampled state ever repeats exactly: the
+    /// closest return is off by up to half a step along the orbit. Instead of
+    /// demanding an exact match, find the lag at which the newest state
+    /// returns closest, then check that *every* state in a recent window has a
+    /// similarly close partner one lag earlier. A chaotic flow has close
+    /// encounters too, but they do not persist across a few hundred states.
+    private func isPeriodic() -> Bool {
+        let minimumPeriod = max(1, thresholds.minimumPeriodSteps)
+        let validationWindow = min(
+            max(16, thresholds.periodicValidationWindow),
+            max(1, history.count / 2)
+        )
+        let maxGap = history.count - validationWindow
+        guard maxGap >= minimumPeriod else { return false }
+
+        let scaleWindow = min(
+            max(thresholds.collapseWindowSteps, validationWindow),
+            history.count
+        )
+        let scale = recentSpan(window: scaleWindow)
+        guard scale > 0 else { return false }
+
+        // Keep the few lags whose newest state is closest to the current one.
+        let candidateLimit = 16
+        var candidates: [(gap: Int, distance: Double)] = []
+        candidates.reserveCapacity(candidateLimit)
+        let newest = recentState(offsetFromNewest: 0)
+
+        for gap in minimumPeriod...maxGap {
+            let distance = squaredDistance(newest, recentState(offsetFromNewest: gap))
+            if candidates.count < candidateLimit {
+                candidates.append((gap, distance))
+                candidates.sort { $0.distance < $1.distance }
+            } else if distance < candidates[candidateLimit - 1].distance {
+                candidates[candidateLimit - 1] = (gap, distance)
+                candidates.sort { $0.distance < $1.distance }
+            }
+        }
+
+        let threshold = thresholds.periodicMeanDistanceFraction * scale
+        let thresholdSquared = threshold * threshold
+        for candidate in candidates {
+            let meanSquared = meanSquaredDistance(atGap: candidate.gap, window: validationWindow)
+            guard meanSquared <= thresholdSquared else { continue }
+
+            // Ordinary smooth motion also keeps nearby states close for short
+            // lags, and its chord distance grows sub-linearly, which can look
+            // like a weak dip. A real period is a sharp dip: half a period
+            // away the trajectory is on the opposite side of the loop, an
+            // order of magnitude farther. For chaos no such lag exists.
+            let halfGap = max(1, candidate.gap / 2)
+            let halfMeanSquared = meanSquaredDistance(atGap: halfGap, window: validationWindow)
+            if meanSquared * 100 <= halfMeanSquared {
+                return true
+            }
+        }
+        return false
+    }
+
+    // MARK: - Helpers
+
+    /// Mean squared distance between states one `gap` apart, over the last
+    /// `window` states.
+    private func meanSquaredDistance(atGap gap: Int, window: Int) -> Double {
+        var sum = 0.0
+        for offset in 0..<window {
+            sum += squaredDistance(
+                recentState(offsetFromNewest: offset),
+                recentState(offsetFromNewest: offset + gap)
+            )
+        }
+        return sum / Double(window)
+    }
+
+    /// The largest axis-aligned extent of the last `window` states.
+    private func recentSpan(window: Int) -> Double {
         var minX = Double.infinity
         var maxX = -Double.infinity
         var minY = Double.infinity
@@ -162,49 +290,8 @@ public struct SimulationHealthMonitor: Sendable {
             maxZ = max(maxZ, state.z)
         }
 
-        let span = max(maxX - minX, max(maxY - minY, maxZ - minZ))
-        return span < thresholds.collapseSpan
+        return max(maxX - minX, max(maxY - minY, maxZ - minZ))
     }
-
-    /// Whether a recent segment of the trajectory repeats an earlier segment.
-    ///
-    /// A chaotic flow practically never revisits the same state to within
-    /// ``SimulationHealthThresholds/recurrenceTolerance``; a periodic orbit
-    /// repeats it every period (the integration is deterministic, so the
-    /// coordinates agree up to floating-point round-off).
-    private func isPeriodic() -> Bool {
-        let segmentLength = max(1, thresholds.segmentLength)
-        let minimumPeriod = max(1, thresholds.minimumPeriodSteps)
-        guard history.count >= segmentLength + minimumPeriod else { return false }
-
-        let toleranceSquared = thresholds.recurrenceTolerance * thresholds.recurrenceTolerance
-
-        var newestSegment: [State] = []
-        newestSegment.reserveCapacity(segmentLength)
-        for offset in stride(from: segmentLength - 1, through: 0, by: -1) {
-            newestSegment.append(recentState(offsetFromNewest: offset))
-        }
-
-        let firstCandidateEnd = minimumPeriod
-        let lastCandidateEnd = history.count - segmentLength
-        guard lastCandidateEnd >= firstCandidateEnd else { return false }
-
-        for candidateEnd in firstCandidateEnd...lastCandidateEnd {
-            var matches = true
-            for index in 0..<segmentLength {
-                let candidateOffset = candidateEnd + (segmentLength - 1 - index)
-                let candidate = recentState(offsetFromNewest: candidateOffset)
-                if squaredDistance(candidate, newestSegment[index]) > toleranceSquared {
-                    matches = false
-                    break
-                }
-            }
-            if matches { return true }
-        }
-        return false
-    }
-
-    // MARK: - Helpers
 
     private func checkInterval(after steps: Int) -> Int {
         if steps < thresholds.hotPhaseSteps {
