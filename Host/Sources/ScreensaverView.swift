@@ -37,9 +37,18 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
     /// start and when the health monitor asks for a restart.
     private func startSimulation() {
         do {
-            let catalog = try AttractorCatalog.bundled()
+            let validation = try AttractorCatalog.bundledValidation()
+            // A single broken entry must not blank the screen saver: report it
+            // and keep running with the descriptors that passed validation.
+            for issue in validation.issues {
+                NSLog("AttractorScreensaver: dropping attractor '\(issue.descriptorID)' (\(issue.field)): \(issue.message)")
+            }
+            guard !validation.valid.isEmpty else {
+                NSLog("AttractorScreensaver: no runnable attractors in the bundled catalog")
+                return
+            }
             // Random attractor + parameters + hyperparameters + initial state.
-            let selection = Randomizer.select(from: catalog)
+            let selection = Randomizer.select(from: validation.valid)
             let model = try selection.buildModel()
             // Reduced trail while filling in so the very first frames are not
             // almost empty; the renderer plots the full engine buffer anyway.

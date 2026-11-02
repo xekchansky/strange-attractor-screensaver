@@ -24,7 +24,9 @@ public final class SimulationScene: NSObject {
 
     private var timer: Timer?
     private var lastTime: CFTimeInterval = 0
-    private var accumulatedSimTime: Double = 0
+    /// Bounds integration work per frame so a sleep/wake stall cannot freeze
+    /// the scene, and a broken step size cannot trap on `Int(infinity)`.
+    private var stepScheduler: SimulationStepScheduler
     private var colorOffset: Double = 0
     private var lastOverlayUpdate: CFTimeInterval = 0
     /// Frame counter used to pace polyline rebuilds (every 2nd tick). Rebuilding
@@ -60,6 +62,10 @@ public final class SimulationScene: NSObject {
         self.selection = selection
         self.settings = selection.settings
         self.healthMonitor = healthMonitor
+        self.stepScheduler = SimulationStepScheduler(
+            stepSize: selection.settings.stepSize,
+            simulationSpeed: selection.settings.simulationSpeed
+        )
 
         let scene = SCNScene()
         scene.background.contents = NSColor.black
@@ -147,9 +153,18 @@ public final class SimulationScene: NSObject {
     /// React to a health-monitor verdict: stop this run and ask the host for a
     /// fresh selection. Signalled at most once per scene.
     private func handleHealthIssue(_ issue: SimulationHealthIssue) {
+        requestRestart(reason: "simulation health issue (\(issue))")
+    }
+
+    /// Stop this run and ask the host for a fresh selection, at most once.
+    ///
+    /// Used by the health monitor and by a formula that fails to evaluate: an
+    /// uncaught evaluation error used to be skipped silently, which left the
+    /// trace frozen on the last good point forever.
+    private func requestRestart(reason: String) {
         guard !hasSignaledRestart else { return }
         hasSignaledRestart = true
-        NSLog("AttractorRender: simulation health issue (%@), requesting restart", String(describing: issue))
+        NSLog("AttractorRender: \(reason), requesting restart")
         stop()
         onNeedsRestart?()
     }
@@ -170,18 +185,23 @@ public final class SimulationScene: NSObject {
     private func tick() {
         autoreleasepool {
             let now = CACurrentMediaTime()
-            let dt = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
+            let rawInterval = lastTime == 0 ? 1.0 / 60.0 : now - lastTime
             lastTime = now
+            // Clamp once so a post-sleep interval cannot also fling the camera
+            // and the color gradient; the scheduler applies the same bound.
+            let dt = min(rawInterval, stepScheduler.maximumFrameInterval)
 
             // Integrate the system by a whole number of fixed-size steps.
-            accumulatedSimTime += settings.simulationSpeed * dt
-            let steps = Int(accumulatedSimTime / settings.stepSize)
+            let steps = stepScheduler.steps(forFrameInterval: dt)
             if steps > 0 {
-                accumulatedSimTime -= Double(steps) * settings.stepSize
                 for _ in 0..<steps {
-                    // A valid model never throws at evaluation; ignore the
-                    // pathological case rather than stopping the demo.
-                    guard let advanced = try? engine.advance() else { continue }
+                    let advanced: State
+                    do {
+                        advanced = try engine.advance()
+                    } catch {
+                        requestRestart(reason: "simulation step failed (\(error))")
+                        return
+                    }
                     if let issue = healthMonitor?.observe(advanced) {
                         handleHealthIssue(issue)
                         return
