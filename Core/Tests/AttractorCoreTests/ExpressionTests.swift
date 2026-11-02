@@ -17,6 +17,12 @@ struct ExpressionTests {
         #expect(value == 10 * (2 - 1))
     }
 
+    @Test("Reports every referenced variable")
+    func referencedVariables() throws {
+        let expression = try FormulaParser.parse("a * x + sin(y) - b")
+        #expect(expression.referencedVariables == ["a", "x", "b", "y"])
+    }
+
     @Test("Respects operator precedence")
     func precedence() throws {
         let expression = try FormulaParser.parse("2 + 3 * 4")

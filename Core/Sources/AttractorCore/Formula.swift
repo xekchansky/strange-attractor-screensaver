@@ -41,6 +41,27 @@ extension Expression {
         "sin", "cos", "tan", "sqrt", "abs", "exp", "ln", "log",
     ]
 
+    /// Names of every variable referenced anywhere in the expression tree.
+    ///
+    /// Used by catalog validation to reject formulas that mention variables the
+    /// descriptor does not declare.
+    public var referencedVariables: Set<String> {
+        switch self {
+        case .constant:
+            return []
+        case .variable(let name):
+            return [name]
+        case .negate(let expression):
+            return expression.referencedVariables
+        case .add(let lhs, let rhs), .subtract(let lhs, let rhs),
+             .multiply(let lhs, let rhs), .divide(let lhs, let rhs),
+             .power(let lhs, let rhs):
+            return lhs.referencedVariables.union(rhs.referencedVariables)
+        case .function(_, let argument):
+            return argument.referencedVariables
+        }
+    }
+
     /// Evaluate the expression tree against a set of variable bindings.
     ///
     /// - Parameters:

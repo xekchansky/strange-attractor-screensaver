@@ -36,7 +36,12 @@ cd Host && xcodebuild -project AttractorHost.xcodeproj -scheme AttractorSaver \
 - Установка:
 ```bash
 mkdir -p ~/Library/Screen\ Savers
-cp -R /tmp/host-dd/Build/Products/Debug/AttractorSaver.saver ~/Library/Screen\ Savers/
+# Замена бандла, не копирование поверх: cp -R перезаписывает Mach-O в том же
+# inode, и если модуль уже был загружен legacyScreenSaver, ядро отвергает
+# новые страницы → Invalid Page при валидной подписи (см. mem:saver_install).
+rm -rf ~/Library/Screen\ Savers/AttractorSaver.saver
+ditto /tmp/host-dd/Build/Products/Debug/AttractorSaver.saver \
+      ~/Library/Screen\ Savers/AttractorSaver.saver
 killall WallpaperAgent 2>/dev/null
 ```
   Затем в System Settings → Wallpaper → Screen Saver появляется «AttractorSaver».

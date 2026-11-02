@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import AttractorCore
 import AttractorRender
 
@@ -14,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Only a fully random launch (no command-line arguments) enables this;
     /// an explicit setup must stay on screen for debugging.
     private let healsAutomatically: Bool
+    /// Caps restart frequency when a run fails immediately.
+    private var restartLimiter = RestartLimiter()
     private var scene: SimulationScene?
     private var window: NSWindow?
 
@@ -68,6 +71,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Replace a bad run with a completely new random selection.
     private func restartRandomSimulation() {
         guard healsAutomatically else { return }
+        guard restartLimiter.allowRestart(at: CACurrentMediaTime()) else {
+            NSLog("AttractorDemo: too many restarts, keeping the last frame")
+            return
+        }
         do {
             let selection = Randomizer.select(from: catalog)
             let engine = AttractorEngine(

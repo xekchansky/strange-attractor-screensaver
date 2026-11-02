@@ -23,7 +23,17 @@ private func printUsage(to stderr: Bool) {
 // ---- Load the catalog first so we can validate parameters and show hints ----
 let catalog: [AttractorDescriptor]
 do {
-    catalog = try AttractorCatalog.bundled()
+    let validation = try AttractorCatalog.bundledValidation()
+    for issue in validation.issues {
+        FileHandle.standardError.write(
+            Data("warning: dropping attractor '\(issue.descriptorID)' (\(issue.field)): \(issue.message)\n".utf8)
+        )
+    }
+    guard !validation.valid.isEmpty else {
+        FileHandle.standardError.write(Data("error: the attractor catalog has no runnable entries\n".utf8))
+        exit(1)
+    }
+    catalog = validation.valid
 } catch {
     FileHandle.standardError.write(Data("error: failed to load attractor catalog: \(error)\n".utf8))
     exit(1)
@@ -110,6 +120,14 @@ let effectiveSettings = SimulationSettings(
     trailLength: overrides.trailLength ?? baseSettings.trailLength,
     colorMode: overrides.colorMode ?? baseSettings.colorMode
 )
+let settingsIssues = effectiveSettings.validationIssues
+if !settingsIssues.isEmpty {
+    for issue in settingsIssues {
+        FileHandle.standardError.write(Data("error: \(issue)\n".utf8))
+    }
+    exit(2)
+}
+
 let effectiveSelection = AttractorSelection(
     descriptor: selection.descriptor,
     parameters: selection.parameters,
