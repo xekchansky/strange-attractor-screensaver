@@ -135,6 +135,14 @@ let engine = AttractorEngine(
 // ---- Launch the AppKit application ----
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
-let delegate = AppDelegate(selection: effectiveSelection, engine: engine)
+// Only a launch with no arguments is the pure random showcase; that is the
+// one that self-heals. Any explicit option pins a setup for debugging.
+let healsAutomatically = CommandLine.arguments.count == 1
+let delegate = AppDelegate(
+    selection: effectiveSelection,
+    engine: engine,
+    catalog: catalog,
+    healsAutomatically: healsAutomatically
+)
 app.delegate = delegate
 app.run()

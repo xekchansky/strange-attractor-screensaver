@@ -30,6 +30,12 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
             return
         }
         tearDownScene()
+        startSimulation()
+    }
+
+    /// Build a fresh random simulation and start it. Used both on animation
+    /// start and when the health monitor asks for a restart.
+    private func startSimulation() {
         do {
             let catalog = try AttractorCatalog.bundled()
             // Random attractor + parameters + hyperparameters + initial state.
@@ -44,7 +50,16 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
                 trailCapacity: selection.settings.trailLength
             )
 
-            let newScene = SimulationScene(engine: engine, selection: selection)
+            let newScene = SimulationScene(
+                engine: engine,
+                selection: selection,
+                healthMonitor: SimulationHealthMonitor()
+            )
+            // Weak self: the scene is owned by this view, so a strong capture
+            // here would recreate the retain cycle fixed in the M6 memory work.
+            newScene.onNeedsRestart = { [weak self] in
+                self?.restartSimulation()
+            }
             newScene.view.frame = bounds
             newScene.view.autoresizingMask = [.width, .height]
             addSubview(newScene.view)
@@ -53,6 +68,15 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
         } catch {
             NSLog("AttractorScreensaver: failed to start simulation: \(error)")
         }
+    }
+
+    /// Discard the current run and pick a completely new random one.
+    private func restartSimulation() {
+        // If the view was already detached, the preview is over: do not build
+        // a new scene that nobody will ever see.
+        guard superview != nil else { return }
+        tearDownScene()
+        startSimulation()
     }
 
     override func stopAnimation() {
