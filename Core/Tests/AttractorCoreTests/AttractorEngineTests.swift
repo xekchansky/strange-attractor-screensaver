@@ -72,21 +72,32 @@ struct AttractorEngineTests {
     @Test("Every bundled catalog attractor stays finite under its debug defaults")
     func allCatalogAttractorsFinite() throws {
         let catalog = try AttractorCatalog.bundled()
+        // Probe a deterministic spread of initial states: some otherwise lovely
+        // flows have small basins of attraction and diverge from a particular
+        // start, so a single debug-default start would hide that.
+        let probeStarts = [
+            State(x: 0.01, y: -0.01, z: 0.01), // DebugConfig-like off-center
+            State(x: 0.5, y: -0.3, z: 0.2),
+            State(x: 0.9, y: 0.9, z: 0.9),
+            State(x: -0.7, y: 0.4, z: -0.5),
+        ]
         for descriptor in catalog {
             let selection = try DebugConfig.selection(for: descriptor.id, in: catalog)
             let model = try selection.buildModel() // parses all formulas, incl. Aizawa's `^`
-            var engine = AttractorEngine(
-                model: model,
-                initialState: selection.initialState,
-                stepSize: selection.settings.stepSize,
-                trailCapacity: 2000
-            )
-            for _ in 0..<2000 {
-                try engine.advance()
+            for start in probeStarts {
+                var engine = AttractorEngine(
+                    model: model,
+                    initialState: start,
+                    stepSize: selection.settings.stepSize,
+                    trailCapacity: 2000
+                )
+                for _ in 0..<8000 {
+                    try engine.advance()
+                }
+                #expect(engine.state.x.isFinite)
+                #expect(engine.state.y.isFinite)
+                #expect(engine.state.z.isFinite)
             }
-            #expect(engine.state.x.isFinite)
-            #expect(engine.state.y.isFinite)
-            #expect(engine.state.z.isFinite)
         }
     }
 }

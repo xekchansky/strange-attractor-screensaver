@@ -119,5 +119,159 @@
       "trailColorSpeed": { "min": 0.05, "max": 0.3 },
       "trailLength": { "min": 8000, "max": 20000 }
     }
+  },
+  {
+    "id": "lu",
+    "name": "Lü",
+    "dx": "a * (y - x)",
+    "dy": "-x * z + c * y",
+    "dz": "x * y - b * z",
+    "parameters": [
+      { "name": "a", "min": 34.0, "max": 38.0 },
+      { "name": "b", "min": 2.8, "max": 3.2 },
+      { "name": "c", "min": 18.0, "max": 22.0 }
+    ],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
+  },
+  {
+    "id": "chua",
+    "name": "Chua",
+    "dx": "alpha * (y - x - (m1 * x + 0.5 * (m0 - m1) * (abs(x + 1) - abs(x - 1))))",
+    "dy": "x - y + z",
+    "dz": "-beta * y",
+    "parameters": [
+      { "name": "alpha", "min": 9.5, "max": 10.5 },
+      { "name": "beta", "min": 14.0, "max": 15.0 },
+      { "name": "m0", "min": -0.55, "max": -0.45 },
+      { "name": "m1", "min": 0.20, "max": 0.30 }
+    ],
+    "initialState": {
+      "x": { "min": -0.5, "max": 0.5 },
+      "y": { "min": -0.5, "max": 0.5 },
+      "z": { "min": -0.5, "max": 0.5 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
+  },
+  {
+    "id": "sprott_a",
+    "name": "Sprott A",
+    "dx": "y",
+    "dy": "-x + y * z",
+    "dz": "1 - (y ^ 2)",
+    "parameters": [],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
+  },
+  {
+    "id": "sprott_b",
+    "name": "Sprott B",
+    "dx": "y * z",
+    "dy": "x - y",
+    "dz": "1 - x * y",
+    "parameters": [],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
+  },
+  {
+    "id": "sprott_c",
+    "name": "Sprott C",
+    "dx": "y * z",
+    "dy": "x - y",
+    "dz": "1 - (x ^ 2)",
+    "parameters": [],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
+  },
+  {
+    "id": "halvorsen",
+    "name": "Halvorsen",
+    "dx": "-a * x - 4 * y - 4 * z - (y ^ 2)",
+    "dy": "-a * y - 4 * z - 4 * x - (z ^ 2)",
+    "dz": "-a * z - 4 * x - 4 * y - (x ^ 2)",
+    "parameters": [
+      { "name": "a", "min": 1.25, "max": 1.45 }
+    ],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
+  },
+  {
+    "id": "moore_spiegel",
+    "name": "Moore–Spiegel",
+    "dx": "y",
+    "dy": "z",
+    "dz": "-z - (T - R + R * (x ^ 2)) * y - T * x",
+    "parameters": [
+      { "name": "R", "min": 16.0, "max": 24.0 },
+      { "name": "T", "min": 8.0, "max": 16.0 }
+    ],
+    "initialState": {
+      "x": { "min": -1.0, "max": 1.0 },
+      "y": { "min": -1.0, "max": 1.0 },
+      "z": { "min": -1.0, "max": 1.0 }
+    },
+    "simulation": {
+      "stepSize": { "min": 0.004, "max": 0.01 },
+      "simulationSpeed": { "min": 1.0, "max": 3.0 },
+      "cameraRotationSpeed": { "min": 0.1, "max": 0.4 },
+      "trailColorSpeed": { "min": 0.05, "max": 0.3 },
+      "trailLength": { "min": 2000, "max": 8000 }
+    }
   }
 ]

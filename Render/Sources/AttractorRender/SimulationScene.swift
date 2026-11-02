@@ -37,11 +37,29 @@ public final class SimulationScene: NSObject {
     /// scene was stopped because its window went away).
     public private(set) var isRunning = false
 
+    /// Optional health monitor. When set, it is fed one state per integration
+    /// step; a detected failure stops this scene and calls ``onNeedsRestart``.
+    private var healthMonitor: SimulationHealthMonitor?
+    /// Called at most once when the health monitor reports a problem. The host
+    /// is expected to tear this scene down and start a fresh random selection.
+    public var onNeedsRestart: (() -> Void)?
+    /// Guards against signalling a restart more than once.
+    private var hasSignaledRestart = false
+
     /// Create the scene around a ready-to-run engine.
-    public init(engine: AttractorEngine, selection: AttractorSelection) {
+    ///
+    /// - Parameter healthMonitor: Optional watchdog fed with every integrated
+    ///   state. Pass `nil` (the default) to run without self-healing, e.g. for
+    ///   a demo started with explicit arguments.
+    public init(
+        engine: AttractorEngine,
+        selection: AttractorSelection,
+        healthMonitor: SimulationHealthMonitor? = nil
+    ) {
         self.engine = engine
         self.selection = selection
         self.settings = selection.settings
+        self.healthMonitor = healthMonitor
 
         let scene = SCNScene()
         scene.background.contents = NSColor.black
@@ -126,6 +144,16 @@ public final class SimulationScene: NSObject {
         isRunning = false
     }
 
+    /// React to a health-monitor verdict: stop this run and ask the host for a
+    /// fresh selection. Signalled at most once per scene.
+    private func handleHealthIssue(_ issue: SimulationHealthIssue) {
+        guard !hasSignaledRestart else { return }
+        hasSignaledRestart = true
+        NSLog("AttractorRender: simulation health issue (%@), requesting restart", String(describing: issue))
+        stop()
+        onNeedsRestart?()
+    }
+
     /// Called when the scene goes away for good: stop the loop and release the
     /// view's scene so SceneKit frees the geometry even if the host forgets to
     /// call `stop()`. The scene lives on the main thread, so the isolation is
@@ -153,7 +181,11 @@ public final class SimulationScene: NSObject {
                 for _ in 0..<steps {
                     // A valid model never throws at evaluation; ignore the
                     // pathological case rather than stopping the demo.
-                    _ = try? engine.advance()
+                    guard let advanced = try? engine.advance() else { continue }
+                    if let issue = healthMonitor?.observe(advanced) {
+                        handleHealthIssue(issue)
+                        return
+                    }
                 }
             }
 

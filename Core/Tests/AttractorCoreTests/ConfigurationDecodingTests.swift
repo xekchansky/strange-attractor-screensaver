@@ -145,9 +145,19 @@ struct ConfigurationDecodingTests {
     func bundledCatalog() throws {
         let catalog = try AttractorCatalog.bundled()
 
-        #expect(catalog.count == 5)
-        #expect(catalog.map(\.id) == ["lorenz", "rossler", "thomas", "chen", "aizawa"])
-        #expect(catalog.map(\.name) == ["Lorenz", "Rössler", "Thomas", "Chen", "Aizawa"])
+        #expect(catalog.count == 12)
+        #expect(catalog.map(\.id) == [
+            "lorenz", "rossler", "thomas", "chen", "aizawa",
+            "lu", "chua",
+            "sprott_a", "sprott_b", "sprott_c",
+            "halvorsen", "moore_spiegel",
+        ])
+        #expect(catalog.map(\.name) == [
+            "Lorenz", "Rössler", "Thomas", "Chen", "Aizawa",
+            "Lü", "Chua",
+            "Sprott A", "Sprott B", "Sprott C",
+            "Halvorsen", "Moore–Spiegel",
+        ])
 
         let lorenz = try #require(catalog.first { $0.id == "lorenz" })
         #expect(lorenz.parameters.map(\.name) == ["a", "b", "r"])
@@ -157,5 +167,13 @@ struct ConfigurationDecodingTests {
         #expect(chen.parameters.map(\.name) == ["a", "b", "c"])
         let aizawa = try #require(catalog.first { $0.id == "aizawa" })
         #expect(aizawa.parameters.map(\.name) == ["a", "b", "c", "d", "e", "f"])
+        let chua = try #require(catalog.first { $0.id == "chua" })
+        #expect(chua.parameters.map(\.name) == ["alpha", "beta", "m0", "m1"])
+        let sprottA = try #require(catalog.first { $0.id == "sprott_a" })
+        #expect(sprottA.parameters.isEmpty)
+        let halvorsen = try #require(catalog.first { $0.id == "halvorsen" })
+        #expect(halvorsen.parameters.map(\.name) == ["a"])
+        let mooreSpiegel = try #require(catalog.first { $0.id == "moore_spiegel" })
+        #expect(mooreSpiegel.parameters.map(\.name) == ["R", "T"])
     }
 }

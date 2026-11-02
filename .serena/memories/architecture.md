@@ -2,7 +2,7 @@
 
 macOS-скринсейвер, который рендерит странные аттракторы (детерминированные хаотические системы) в 3D. При запуске случайно выбирается аттрактор, его параметры и гиперпараметры симуляции; траектория визуализируется с вращающейся камерой.
 
-> Даты: анализ 2026-09-29, M2 завершён 2026-09-29, M3 завершён 2026-09-29, M4 завершён 2026-09-29, **M5 завершён 2026-09-30** (хост-заставка собрана и установлена/проверена вручную как `.saver`). Стек: современный `.appex`-путь остался для App Store, локальная установка идёт классическим `.saver`.
+> Даты: анализ 2026-09-29, M2 завершён 2026-09-29, M3 завершён 2026-09-29, M4 завершён 2026-09-29, **M5 завершён 2026-09-30** (хост-заставка собрана и установлена/проверена вручную как `.saver`). 2026-11-02 — самолечение неудачных запусков (`SimulationHealthMonitor`, полный случайный перевыбор при сбое). Стек: современный `.appex`-путь остался для App Store, локальная установка идёт классическим `.saver`.
 
 ## Принятые ключевые решения (утверждены)
 - **Формат скринсейвера:** заявлен современный `.appex`; на практике ручная установка на macOS идёт классическим **`.saver`**-бандлом в `~/Library/Screen Savers/` (расширения `.appex` → `com.apple.screensaver` подхватываются только из приложений App Store). Оба используют один `ScreensaverView`.
@@ -24,11 +24,12 @@ macOS-скринсейвер, который рендерит странные �
 - **Config:** `attractors.json` (ресурс бандла) → `[AttractorDescriptor]` через `AttractorCatalog`.
 - **Мат. ядро:** `State`, `Derivatives`, `Expression`+`FormulaParser`, `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (шаг + кольцевой буфер `trace`).
 - **Выбор:** `SplitMix64`, `SimulationSettings`, `AttractorSelection` (`buildModel()`), `StateRange`/`initialState`, `Randomizer`, `DebugConfig`.
+- **Самолечение:** `SimulationHealthMonitor` (+ `SimulationHealthIssue`, `SimulationHealthThresholds`) — поток состояний → вердикт (`nonFinite`/`diverged`/`collapsed`/`periodic`), чистое ядро, детерминированное расписание (часто в начале, реже дальше). `periodic` — статистический возврат по окну с обязательным подтверждением 4096 шагов (хаос может на время «тенить» неустойчивый цикл); дорогая проверка раз в 512 шагов.
 
 ### 2. Рендер (SPM-модуль `AttractorRender`, AppKit+SceneKit)
 - `TraceRenderer` — полилиния трейса с градиентом (`TraceRenderer.geometry(for:colorOffset:)`).
 - `CameraController` — орбита + автокадрирование (`update(dt:rotationSpeed:around:cameraNode:)`).
-- `SimulationScene` — @MainActor, `public init(engine:selection:)`, `start()`, `stop()`, `public let view: SCNView`, `public let selection`; свой Timer (1/60s), шагает движок, рисует оверлей формул/параметров/позиции в углу.
+- `SimulationScene` — @MainActor, `public init(engine:selection:healthMonitor:)` (монитор опционален), `start()`, `stop()`, `public let view: SCNView`, `public let selection`; свой Timer (1/60s), шагает движок, кормит монитор, при сбое один раз вызывает `onNeedsRestart` и останавливается; рисует оверлей формул/параметров/позиции в углу.
 
 ### 3. Демо (SPM-пакет `Demo/`, исполняемый `AttractorDemo`)
 - `main.swift` + `AppDelegate` + `CommandLineArguments`; рендер через `import AttractorRender`. CLI `--attractor`/`--param`/оверрайды; без аргументов — случайный выбор.
@@ -37,7 +38,7 @@ macOS-скринсейвер, который рендерит странные �
 - **`AttractorSaver`** (`.saver`, `type: bundle`, `WRAPPER_EXTENSION=saver`) — классический бандл, который macOS загружает для локальных заставок: `CFBundlePackageType=BNDL`, `NSPrincipalClass=$(PRODUCT_MODULE_NAME).ScreensaverView`, статически линкует `AttractorCore`+`AttractorRender`. **Это рабочий способ установки.**
 - `AttractorScreensaver` (`.appex`, `NSExtension` → `NSExtensionPointIdentifier=com.apple.screensaver`, `NSExtensionPrincipalClass=...ScreensaverView`) — современный app-extension для App Store; System Settings вручную его игнорирует.
 - `AttractorHostApp` (`.app`) — приложение-контейнер с `Contents/PlugIns/AttractorScreensaver.appex` (тоже App Store-путь).
-- `Host/Sources/ScreensaverView.swift` — `final class ScreensaverView: ScreenSaver.ScreenSaverView`: на `startAnimation()` грузит каталог, строит выбор через `Randomizer`, `buildModel()`+`AttractorEngine`, создаёт/встраивает `SimulationScene`, `scene.start()`; на `stopAnimation()` — `scene.stop()`. Инициализаторы не переопределяются (наследуются от NSView).
+- `Host/Sources/ScreensaverView.swift` — `final class ScreensaverView: ScreenSaver.ScreenSaverView`: на `startAnimation()` грузит каталог, строит выбор через `Randomizer`, `buildModel()`+`AttractorEngine`, создаёт/встраивает `SimulationScene` с `SimulationHealthMonitor`, `scene.start()`; на `stopAnimation()` — `scene.stop()`. При `onNeedsRestart` — `tearDownScene()` + полный новый случайный выбор (колбэк `[weak self]`, без retain-цикла). Демо лечится только без аргументов. Инициализаторы не переопределяются (наследуются от NSView).
 - Сборка: `cd Host && xcodegen generate && xcodebuild -project AttractorHost.xcodeproj -scheme AttractorSaver -configuration Debug build` (вне песочницы).
 - Установка: `cp -R .../AttractorSaver.saver ~/Library/Screen\ Savers/`, `killall WallpaperAgent`; проверка в System Settings → Wallpaper → Screen Saver. (Сделано, работает.)
 
@@ -47,5 +48,5 @@ macOS-скринсейвер, который рендерит странные �
 - Данные: `attractors.json` → дескрипторы → `AttractorModel` → поток точек → `TraceRenderer` → экран.
 
 ## Сборка / проект
-- `Core/` — SPM, `swift test` (Swift Testing, 49 тестов). `Render/`, `Demo/` — SPM, `swift build`.
+- `Core/` — SPM, `swift test` (Swift Testing, 63 теста). `Render/`, `Demo/` — SPM, `swift build`.
 - `Host/` — Xcode-проект (xcodegen) с таргетами `.saver` (установочный), `.appex`/`.app` (App Store).
