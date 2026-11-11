@@ -18,6 +18,7 @@ xcuserdata/
 *.xcscmblueprint
 
 # Release artifacts and diagnostics produced while capturing docs.
+dist/
 *.zip
 *.profraw
 default.profraw
