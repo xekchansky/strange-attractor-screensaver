@@ -1,4 +1,5 @@
 import AppKit
+import os
 import QuartzCore
 import ScreenSaver
 import AttractorCore
@@ -14,6 +15,12 @@ import AttractorRender
 /// trace, orbits the camera and overlays the formulas/parameters in a corner.
 @MainActor
 final class ScreensaverView: ScreenSaver.ScreenSaverView {
+    /// Structured log, visible with:
+    /// `log stream --level debug --predicate 'subsystem == "io.github.xekchansky.AttractorSaver"'`.
+    private let logger = Logger(
+        subsystem: "io.github.xekchansky.AttractorSaver",
+        category: "lifecycle"
+    )
     /// The running simulation scene, created in `startAnimation`.
     private var scene: SimulationScene?
     /// Caps restart frequency when a run fails immediately. A denied restart is
@@ -48,17 +55,18 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
             // A single broken entry must not blank the screen saver: report it
             // and keep running with the descriptors that passed validation.
             for issue in validation.issues {
-                NSLog("AttractorScreensaver: dropping attractor '\(issue.descriptorID)' (\(issue.field)): \(issue.message)")
+                logger.error("""
+                    Dropping attractor '\(issue.descriptorID, privacy: .public)' \
+                    (\(issue.field, privacy: .public)): \(issue.message, privacy: .public)
+                    """)
             }
             guard !validation.valid.isEmpty else {
-                NSLog("AttractorScreensaver: no runnable attractors in the bundled catalog")
+                logger.error("No runnable attractors in the bundled catalog")
                 return
             }
             // Random attractor + parameters + hyperparameters + initial state.
-            let selection = Randomizer.select(from: validation.valid)
+            let selection = try Randomizer.select(from: validation.valid)
             let model = try selection.buildModel()
-            // Reduced trail while filling in so the very first frames are not
-            // almost empty; the renderer plots the full engine buffer anyway.
             let engine = AttractorEngine(
                 model: model,
                 initialState: selection.initialState,
@@ -82,7 +90,7 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
             newScene.start()
             scene = newScene
         } catch {
-            NSLog("AttractorScreensaver: failed to start simulation: \(error)")
+            logger.error("Failed to start simulation: \(String(describing: error), privacy: .public)")
             // Validation should have caught this, but a failed build must not
             // leave a black screen forever: retry through the same limiter.
             restartSimulation()
@@ -103,7 +111,7 @@ final class ScreensaverView: ScreenSaver.ScreenSaverView {
             // instead of rebuilding a scene on every frame (flicker, CPU churn).
             let retryAt = restartLimiter.nextRetryTime(after: now) ?? now + restartLimiter.window
             let delay = max(retryAt - now, 0.1)
-            NSLog("AttractorScreensaver: too many restarts, retrying in \(delay) s")
+            logger.notice("Too many restarts, retrying in \(delay, format: .fixed(precision: 1)) s")
             let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.pendingRestartTimer = nil

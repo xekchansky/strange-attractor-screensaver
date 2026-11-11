@@ -12,10 +12,12 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>AttractorSaver</string>
+	<key>CFBundleDisplayName</key>
+	<string>AttractorSaver</string>
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSPrincipalClass</key>

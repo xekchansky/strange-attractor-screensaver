@@ -26,9 +26,9 @@ targets:
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleDisplayName: AttractorScreensaver
+        CFBundleDisplayName: AttractorSaver
         CFBundlePackageType: XPC!
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         NSHighResolutionCapable: true
         # Modern Screen Saver app-extension: the system loads the principal
@@ -41,7 +41,7 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorHost.AttractorScreensaver
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.xekchansky.AttractorHost.AttractorScreensaver
         CODE_SIGN_STYLE: Manual
         CODE_SIGNING_ALLOWED: "NO"
         DEVELOPMENT_TEAM: ""
@@ -65,16 +65,16 @@ targets:
     info:
       path: AppSources/Info.plist
       properties:
-        CFBundleDisplayName: AttractorScreensaver
+        CFBundleDisplayName: AttractorSaver
         CFBundlePackageType: APPL
-        CFBundleShortVersionString: "1.0"
+        CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         NSPrincipalClass: NSApplication
         LSMinimumSystemVersion: "13.0"
     settings:
       base:
         PRODUCT_NAME: AttractorHost
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorHost
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.xekchansky.AttractorHost
         CODE_SIGN_STYLE: Manual
         CODE_SIGNING_ALLOWED: "NO"
         DEVELOPMENT_TEAM: ""
@@ -90,9 +90,11 @@ targets:
     type: bundle
     platform: macOS
     sources:
-      - Sources
-    excludeSources:
-      - Sources/Info.plist
+      # The generated Info.plist backs the bundle metadata; it must not also
+      # be copied into Contents/Resources.
+      - path: Sources
+        excludes:
+          - Info.plist
     dependencies:
       - package: AttractorCore
         product: AttractorCore
@@ -104,12 +106,13 @@ targets:
         CFBundlePackageType: BNDL
         CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundleName: AttractorSaver
-        CFBundleShortVersionString: "1.0"
+        CFBundleDisplayName: AttractorSaver
+        CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         NSPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.AttractorSaver
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.xekchansky.AttractorSaver
         PRODUCT_NAME: AttractorSaver
         WRAPPER_EXTENSION: saver
         CODE_SIGN_STYLE: Manual
