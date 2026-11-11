@@ -104,17 +104,18 @@ echo "=== Aizawa frames for the hero GIF ==="
 # landing in near-periodic pockets that read as a closed ring, and the
 # DebugConfig midpoint step (0.007) itself settles into a loop here — 0.008
 # was verified healthy over 200k steps. --warmup-steps 0 shows the trail
-# growing from the start. Capture pins the frame interval to 1/60 s, so the
-# 1200 frames of a 40 s request are uniform and play back at 60 fps over 20 s.
-# 80 s of recording at 5.83 steps per frame fills the Aizawa trail (14000
-# points) exactly by the last frame, so the figure is fully traced when the
-# animation ends; the 2400 captured frames play back as 40 s at 60 fps.
+# growing from the start. Capture pins the frame interval to 1/60 s, and a
+# requested second is 60 rendered ticks, so every captured frame advances the
+# same amount of simulated time. 40 s of recording at 5.83 steps per frame
+# fills the Aizawa trail (14000 points) exactly by the last frame, so the
+# figure is fully traced when the animation ends; the 2400 captured frames
+# play back as 48 s at the GIF's 50 fps.
 for attempt in 1 2 3 4 5; do
   if "$BIN" --attractor aizawa \
       -p a=0.95 -p b=0.7 -p c=0.6 -p d=3.5 -p e=0.25 -p f=0.1 \
       --step 0.002 --speed 0.7 --warmup-steps 0 \
       --cam-speed 0.04 --trail-color-speed 0.05 --capture-scale 1 \
-      --record "$OUT/aizawa-frames" --record-seconds 80 --frame-stride 1; then
+      --record "$OUT/aizawa-frames" --record-seconds 40 --frame-stride 1; then
     break
   fi
   echo "    record attempt $attempt failed, retrying"
