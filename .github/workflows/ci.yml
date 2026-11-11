@@ -9,10 +9,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# The pinned swift-testing revision needs Swift tools 6.2, which the macOS 15
+# runner image does not have (it ships Swift 6.1).
 jobs:
   core:
     name: Core tests
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -29,7 +31,7 @@ jobs:
 
   packages:
     name: Render and Demo build
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +45,7 @@ jobs:
 
   catalog:
     name: Catalog validation
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
