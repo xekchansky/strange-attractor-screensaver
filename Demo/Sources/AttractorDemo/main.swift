@@ -85,7 +85,7 @@ if !arguments.parameters.isEmpty {
             printUsage(to: true)
             exit(2)
         }
-        guard let value = Double(raw) else {
+        guard let value = Double(raw), value.isFinite else {
             FileHandle.standardError.write(
                 Data("error: invalid value '\(raw)' for parameter '\(name)'. Available: \(available)\n\n".utf8)
             )
@@ -107,9 +107,9 @@ do {
         // Attractor fixed by id, parameters sampled from its declared ranges:
         // several catalog midpoints (Thomas, Chua, Moore–Spiegel) are exactly
         // fixed points or limit cycles, so a midpoint run would be degenerate.
-        selection = Randomizer.select(attractor: descriptor)
+        selection = try Randomizer.select(attractor: descriptor)
     } else {
-        selection = Randomizer.select(from: catalog)
+        selection = try Randomizer.select(from: catalog)
     }
 } catch {
     FileHandle.standardError.write(Data("error: failed to build simulation: \(error)\n".utf8))

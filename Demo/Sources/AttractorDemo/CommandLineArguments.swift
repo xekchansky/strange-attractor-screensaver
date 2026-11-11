@@ -6,6 +6,27 @@ enum CommandLineArgumentsError: Error, Equatable {
     case unknownArgument(String)
     case missingValue(for: String)
     case invalidParameter(String)
+    /// Two flags that cannot be combined were both supplied.
+    case conflictingOptions(String)
+    /// A modifier flag was supplied without the flag it modifies.
+    case optionRequiresRecord(String)
+}
+
+extension CommandLineArgumentsError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .unknownArgument(let value):
+            return "unknown argument: \(value)"
+        case .missingValue(let flag):
+            return "missing value for \(flag)"
+        case .invalidParameter(let value):
+            return "invalid value: \(value)"
+        case .conflictingOptions(let value):
+            return "conflicting options: \(value)"
+        case .optionRequiresRecord(let flag):
+            return "\(flag) requires --record"
+        }
+    }
 }
 
 /// Optional overrides for the simulation hyperparameters, applied on top of
@@ -115,7 +136,13 @@ struct CommandLineArguments {
         var attractorID: String?
         var parameters: [String: String] = [:]
         var overrides = SimulationOverrides()
-        var capture: CaptureRequest?
+        // Capture flags are collected independently and assembled after the
+        // loop, so `--record-seconds`/`--frame-stride` work in any order
+        // relative to `--record`.
+        var screenshotPath: String?
+        var recordDirectory: String?
+        var recordSeconds: Double?
+        var recordStride: Int?
         var warmup: Int?
         var captureScale: Int?
         var cameraAzimuth: Double?
@@ -134,7 +161,7 @@ struct CommandLineArguments {
 
         func double(after flag: String) throws -> Double {
             let raw = try value(after: flag)
-            guard let number = Double(raw) else {
+            guard let number = Double(raw), number.isFinite else {
                 throw CommandLineArgumentsError.invalidParameter("\(flag) \(raw)")
             }
             return number
@@ -189,41 +216,33 @@ struct CommandLineArguments {
                 }
                 overrides.colorMode = mode
             case "--screenshot":
-                guard capture == nil else {
-                    throw CommandLineArgumentsError.unknownArgument(
-                        "\(argument): --screenshot and --record are mutually exclusive"
+                guard screenshotPath == nil, recordDirectory == nil else {
+                    throw CommandLineArgumentsError.conflictingOptions(
+                        "--screenshot and --record are mutually exclusive"
                     )
                 }
-                capture = .screenshot(outputPath: try value(after: argument))
+                screenshotPath = try value(after: argument)
             case "--record":
-                guard capture == nil else {
-                    throw CommandLineArgumentsError.unknownArgument(
-                        "\(argument): --screenshot and --record are mutually exclusive"
+                guard screenshotPath == nil, recordDirectory == nil else {
+                    throw CommandLineArgumentsError.conflictingOptions(
+                        "--screenshot and --record are mutually exclusive"
                     )
                 }
-                capture = .record(outputDirectory: try value(after: argument), seconds: 4, frameStride: 2)
+                recordDirectory = try value(after: argument)
             case "--record-seconds":
                 let seconds = try double(after: argument)
-                guard seconds > 0 else {
+                // An unbounded duration would overflow `Int(ceil(...))` in the
+                // capture controller; an hour is far beyond any real recording.
+                guard seconds > 0, seconds <= 3600 else {
                     throw CommandLineArgumentsError.invalidParameter("\(argument) \(seconds)")
                 }
-                switch capture {
-                case .record(let directory, _, let stride):
-                    capture = .record(outputDirectory: directory, seconds: seconds, frameStride: stride)
-                case .screenshot, nil:
-                    throw CommandLineArgumentsError.unknownArgument("\(argument) requires --record")
-                }
+                recordSeconds = seconds
             case "--frame-stride":
                 let raw = try value(after: argument)
                 guard let stride = Int(raw), stride >= 1 else {
                     throw CommandLineArgumentsError.invalidParameter("\(argument) \(raw)")
                 }
-                switch capture {
-                case .record(let directory, let seconds, _):
-                    capture = .record(outputDirectory: directory, seconds: seconds, frameStride: stride)
-                case .screenshot, nil:
-                    throw CommandLineArgumentsError.unknownArgument("\(argument) requires --record")
-                }
+                recordStride = stride
             case "-h", "--help":
                 showHelp = true
             case "--warmup-steps":
@@ -262,6 +281,29 @@ struct CommandLineArguments {
                 }
             }
             index += 1
+        }
+
+        // Capture modifiers only make sense with a recording request, and the
+        // order of the flags on the command line must not matter.
+        if recordDirectory == nil {
+            if recordSeconds != nil {
+                throw CommandLineArgumentsError.optionRequiresRecord("--record-seconds")
+            }
+            if recordStride != nil {
+                throw CommandLineArgumentsError.optionRequiresRecord("--frame-stride")
+            }
+        }
+        let capture: CaptureRequest?
+        if let screenshotPath {
+            capture = .screenshot(outputPath: screenshotPath)
+        } else if let recordDirectory {
+            capture = .record(
+                outputDirectory: recordDirectory,
+                seconds: recordSeconds ?? 4,
+                frameStride: recordStride ?? 2
+            )
+        } else {
+            capture = nil
         }
 
         return CommandLineArguments(

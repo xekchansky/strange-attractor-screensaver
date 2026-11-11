@@ -65,6 +65,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// launch (via the delegate callback) and the capture launch (called
     /// from `main` before `app.run()`, see the note there).
     func buildCaptureWindowAndScene() {
+        // Capture runs call this before `app.run()`, and the delegate callback
+        // may fire as well; building twice would stack two windows and two
+        // simulation scenes.
+        guard window == nil else { return }
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 900),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -151,7 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         do {
-            let selection = Randomizer.select(from: catalog)
+            let selection = try Randomizer.select(from: catalog)
             let engine = AttractorEngine(
                 model: try selection.buildModel(),
                 initialState: selection.initialState,

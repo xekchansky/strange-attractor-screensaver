@@ -16,7 +16,8 @@ private enum Token: Equatable {
 /// Turns a formula string into an ``Expression`` tree using recursive descent.
 ///
 /// Supported grammar:
-/// - numbers and the variables `x`, `y`, `z` plus attractor parameter names;
+/// - numbers (including scientific notation such as `1e-3`) and the variables
+///   `x`, `y`, `z` plus attractor parameter names;
 /// - binary operators `+`, `-`, `*`, `/` and right-associative `^`;
 /// - unary `+`/`-`;
 /// - parentheses;
@@ -51,7 +52,8 @@ private func tokenize(_ source: String) throws -> [Token] {
             continue
         }
 
-        // Number literal (digits with an optional fractional part).
+        // Number literal (digits with an optional fractional part and an
+        // optional exponent).
         if isDigit(byte) || byte == 46 { // '.'
             var j = i
             var sawDigit = false
@@ -69,7 +71,24 @@ private func tokenize(_ source: String) throws -> [Token] {
             guard sawDigit else {
                 throw FormulaError.unexpectedToken(friendly(byte))
             }
-            let slice = String(bytes: bytes[i..<j], encoding: .utf8)!
+            // Exponent: consume `e`/`E` only when at least one digit follows an
+            // optional sign, so a bare identifier `e` (a parameter name) still
+            // tokenizes on its own.
+            if j < bytes.count && (bytes[j] == 101 || bytes[j] == 69) {
+                var k = j + 1
+                if k < bytes.count && (bytes[k] == 43 || bytes[k] == 45) {
+                    k += 1
+                }
+                var sawExponentDigit = false
+                while k < bytes.count && isDigit(bytes[k]) {
+                    sawExponentDigit = true
+                    k += 1
+                }
+                if sawExponentDigit {
+                    j = k
+                }
+            }
+            let slice = String(decoding: bytes[i..<j], as: UTF8.self)
             guard let value = Double(slice) else {
                 throw FormulaError.unexpectedToken(slice)
             }
@@ -84,7 +103,7 @@ private func tokenize(_ source: String) throws -> [Token] {
             while j < bytes.count && (isLetter(bytes[j]) || isDigit(bytes[j]) || bytes[j] == 95) {
                 j += 1
             }
-            let slice = String(bytes: bytes[i..<j], encoding: .utf8)!
+            let slice = String(decoding: bytes[i..<j], as: UTF8.self)
             tokens.append(.identifier(slice))
             i = j
             continue

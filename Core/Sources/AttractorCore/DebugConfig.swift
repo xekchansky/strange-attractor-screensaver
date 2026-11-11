@@ -45,10 +45,12 @@ public enum DebugConfig {
         }
 
         let concreteSettings = settings ?? SimulationSettings(midpointsOf: descriptor.simulation)
+        // The offset breaks the symmetry at the midpoint, but it must not push
+        // a start outside a narrow declared range: clamp it back into bounds.
         let initialState = State(
-            x: Self.midpoint(of: descriptor.initialState.x) + initialStateOffset.x,
-            y: Self.midpoint(of: descriptor.initialState.y) + initialStateOffset.y,
-            z: Self.midpoint(of: descriptor.initialState.z) + initialStateOffset.z
+            x: Self.offset(Self.midpoint(of: descriptor.initialState.x), by: initialStateOffset.x, in: descriptor.initialState.x),
+            y: Self.offset(Self.midpoint(of: descriptor.initialState.y), by: initialStateOffset.y, in: descriptor.initialState.y),
+            z: Self.offset(Self.midpoint(of: descriptor.initialState.z), by: initialStateOffset.z, in: descriptor.initialState.z)
         )
         return AttractorSelection(
             descriptor: descriptor,
@@ -60,5 +62,10 @@ public enum DebugConfig {
 
     private static func midpoint(of range: MinMax<Double>) -> Double {
         (range.min + range.max) / 2
+    }
+
+    /// Offset `value` by `delta` and clamp the result into `range`.
+    private static func offset(_ value: Double, by delta: Double, in range: MinMax<Double>) -> Double {
+        Swift.min(Swift.max(value + delta, range.min), range.max)
     }
 }

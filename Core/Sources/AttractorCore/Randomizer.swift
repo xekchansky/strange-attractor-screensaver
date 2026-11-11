@@ -1,5 +1,13 @@
 import Foundation
 
+/// Error thrown when a catalog or a descriptor cannot produce a run.
+public enum RandomizerError: Error, Equatable {
+    /// The catalog handed to the randomizer is empty.
+    case emptyCatalog
+    /// A sampling range is malformed: non-finite bounds or `min > max`.
+    case invalidRange(field: String, min: Double, max: Double)
+}
+
 /// Chooses a random attractor together with concrete parameter values and
 /// hyperparameters for a simulation run.
 ///
@@ -17,13 +25,15 @@ public enum Randomizer {
     /// - Parameter catalog: The descriptors to choose from. Must not be empty.
     /// - Parameter rng: The random source. Pass a seeded ``SplitMix64`` for a
     ///   reproducible result.
+    /// - Throws: ``RandomizerError/emptyCatalog`` or
+    ///   ``RandomizerError/invalidRange(field:min:max:)``.
     public static func select(
         from catalog: [AttractorDescriptor],
         using rng: inout some RandomNumberGenerator
-    ) -> AttractorSelection {
-        precondition(!catalog.isEmpty, "Randomizer requires a non-empty catalog")
+    ) throws -> AttractorSelection {
+        guard !catalog.isEmpty else { throw RandomizerError.emptyCatalog }
         let descriptor = catalog[Int.random(in: 0..<catalog.count, using: &rng)]
-        return select(attractor: descriptor, using: &rng)
+        return try select(attractor: descriptor, using: &rng)
     }
 
     /// Pick parameter values, hyperparameters, and an initial state for a
@@ -35,10 +45,24 @@ public enum Randomizer {
     /// ``DebugConfig`` are not — several catalog attractors (Thomas, Chua,
     /// Moore–Spiegel) settle into fixed points or limit cycles exactly at the
     /// midpoints.
+    /// - Throws: ``RandomizerError/invalidRange(field:min:max:)`` when a
+    ///   declared range is unusable.
     public static func select(
         attractor descriptor: AttractorDescriptor,
         using rng: inout some RandomNumberGenerator
-    ) -> AttractorSelection {
+    ) throws -> AttractorSelection {
+        for parameter in descriptor.parameters {
+            try validate(
+                min: parameter.min,
+                max: parameter.max,
+                field: "parameters.\(parameter.name)"
+            )
+        }
+        try validate(simulation: descriptor.simulation)
+        try validate(min: descriptor.initialState.x.min, max: descriptor.initialState.x.max, field: "initialState.x")
+        try validate(min: descriptor.initialState.y.min, max: descriptor.initialState.y.max, field: "initialState.y")
+        try validate(min: descriptor.initialState.z.min, max: descriptor.initialState.z.max, field: "initialState.z")
+
         var parameters: [String: Double] = [:]
         for parameter in descriptor.parameters {
             parameters[parameter.name] = Double.random(
@@ -53,7 +77,7 @@ public enum Randomizer {
             cameraRotationSpeed: Double.random(in: descriptor.simulation.cameraRotationSpeed.closedRange, using: &rng),
             trailColorSpeed: Double.random(in: descriptor.simulation.trailColorSpeed.closedRange, using: &rng),
             trailLength: Int.random(in: descriptor.simulation.trailLength.closedRange, using: &rng),
-            colorMode: TraceColorMode.allCases.randomElement(using: &rng)!
+            colorMode: TraceColorMode.allCases.randomElement(using: &rng) ?? .trail
         )
 
         let range = descriptor.initialState
@@ -73,15 +97,37 @@ public enum Randomizer {
 
     /// Pick a random attractor, parameter values, and hyperparameters using
     /// the system entropy source.
-    public static func select(from catalog: [AttractorDescriptor]) -> AttractorSelection {
+    public static func select(from catalog: [AttractorDescriptor]) throws -> AttractorSelection {
         var rng = SystemRandomNumberGenerator()
-        return select(from: catalog, using: &rng)
+        return try select(from: catalog, using: &rng)
     }
 
     /// Pick parameters and hyperparameters for a fixed attractor using the
     /// system entropy source.
-    public static func select(attractor descriptor: AttractorDescriptor) -> AttractorSelection {
+    public static func select(attractor descriptor: AttractorDescriptor) throws -> AttractorSelection {
         var rng = SystemRandomNumberGenerator()
-        return select(attractor: descriptor, using: &rng)
+        return try select(attractor: descriptor, using: &rng)
+    }
+
+    // MARK: - Range validation
+
+    private static func validate(min: Double, max: Double, field: String) throws {
+        guard min.isFinite, max.isFinite, min <= max else {
+            throw RandomizerError.invalidRange(field: field, min: min, max: max)
+        }
+    }
+
+    private static func validate(simulation: SimulationHyperparameters) throws {
+        try validate(min: simulation.stepSize.min, max: simulation.stepSize.max, field: "stepSize")
+        try validate(min: simulation.simulationSpeed.min, max: simulation.simulationSpeed.max, field: "simulationSpeed")
+        try validate(min: simulation.cameraRotationSpeed.min, max: simulation.cameraRotationSpeed.max, field: "cameraRotationSpeed")
+        try validate(min: simulation.trailColorSpeed.min, max: simulation.trailColorSpeed.max, field: "trailColorSpeed")
+        guard simulation.trailLength.min <= simulation.trailLength.max else {
+            throw RandomizerError.invalidRange(
+                field: "trailLength",
+                min: Double(simulation.trailLength.min),
+                max: Double(simulation.trailLength.max)
+            )
+        }
     }
 }

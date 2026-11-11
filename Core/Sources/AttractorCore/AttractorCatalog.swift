@@ -69,7 +69,8 @@ public enum AttractorCatalog {
     /// A single malformed entry must not blank the whole screen saver, so
     /// invalid descriptors are dropped and reported instead of aborting the
     /// catalog. Checks cover range sanity, duplicate ids/parameters, formula
-    /// syntax and formula variables that the descriptor does not declare.
+    /// syntax, functions the parser does not implement, and formula variables
+    /// that the descriptor does not declare.
     public static func validate(_ catalog: [AttractorDescriptor]) -> AttractorCatalogValidation {
         var valid: [AttractorDescriptor] = []
         var issues: [AttractorValidationIssue] = []
@@ -294,6 +295,13 @@ public enum AttractorCatalog {
         let unknown = expression.referencedVariables.subtracting(allowedVariables)
         if !unknown.isEmpty {
             add("unknown variable(s): \(unknown.sorted().joined(separator: ", "))")
+        }
+
+        let unknownFunctions = expression
+            .referencedFunctions
+            .subtracting(Expression.supportedFunctions)
+        if !unknownFunctions.isEmpty {
+            add("unknown function(s): \(unknownFunctions.sorted().joined(separator: ", "))")
         }
     }
 }

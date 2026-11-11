@@ -14,6 +14,10 @@ final class TraceRenderer {
     /// Vertex budget for very long trails (matched by the `trailLength` ranges).
     /// Trails at or below this are drawn untouched.
     private let budget = 16_384
+    /// Brightness range of the `age` mode: the oldest point is drawn at
+    /// `ageFloor`, the newest at 1.0.
+    private static let ageFloor = 0.15
+    private static let ageCeiling = 1.0
 
     // Reusable backing arrays, grown as needed and retained across frames.
     private var sampledIndices: [Int] = []
@@ -42,7 +46,7 @@ final class TraceRenderer {
     ///   - mode: How to color the trail.
     ///   - cameraPosition: The current camera position, used by ``TraceColorMode/depth``.
     func geometry(
-        for trace: [State],
+        for trace: TraceBuffer,
         colorOffset: Double,
         mode: TraceColorMode,
         cameraPosition: SCNVector3
@@ -113,7 +117,7 @@ final class TraceRenderer {
                 // Grayscale fade: older points (small index) are darker, newer
                 // ones brighter; the offset advances a brightness wave.
                 let ramp = ((Double(index) / count) + colorOffset).truncatingRemainder(dividingBy: 1.0)
-                let value = 0.15 + 0.85 * ramp
+                let value = Self.ageFloor + (Self.ageCeiling - Self.ageFloor) * ramp
                 (r, g, b) = (value, value, value)
             case .depth:
                 let distance = Self.distance(position, cameraPosition)

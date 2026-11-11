@@ -3,7 +3,7 @@ import Foundation
 /// Metadata and formula definitions for a single attractor, loaded from
 /// `attractors.json`.
 ///
-/// Formulas are plain strings parsed at runtime (via `NSExpression`); their
+/// Formulas are plain strings parsed at runtime by ``FormulaParser``; their
 /// variables are the state coordinates (`x`, `y`, `z`) and the declared
 /// ``Parameter`` names.
 public struct AttractorDescriptor: Codable, Equatable, Sendable {

@@ -158,4 +158,15 @@ struct AttractorCatalogValidationTests {
         #expect(validation.valid == [fine])
         #expect(hasIssue(validation, descriptorID: "broken", field: "dx"))
     }
+
+    @Test("Rejects formulas calling a function the parser does not support")
+    func rejectsUnknownFunction() {
+        // `sinh` parses as a function call but is not implemented, so without
+        // this check the entry would only fail at evaluation time — after the
+        // screensaver has already started.
+        let broken = descriptor(id: "broken", dx: "sinh(y)")
+        let validation = AttractorCatalog.validate([broken])
+        #expect(validation.valid.isEmpty)
+        #expect(hasIssue(validation, descriptorID: "broken", field: "dx"))
+    }
 }

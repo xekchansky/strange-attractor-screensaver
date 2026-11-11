@@ -75,4 +75,31 @@ struct ExpressionTests {
         #expect(throws: FormulaError.self) { try FormulaParser.parse("sin(x") }
         #expect(throws: FormulaError.self) { try FormulaParser.parse("1 2") }
     }
+
+    @Test("Parses scientific notation")
+    func scientificNotation() throws {
+        let expression = try FormulaParser.parse("1e-3 + 2.5E+2")
+        #expect(try expression.evaluate(variables: [:]) == 0.001 + 250)
+        let negative = try FormulaParser.parse("x * 1e-6")
+        #expect(try negative.evaluate(variables: ["x": 1_000_000]) == 1)
+    }
+
+    @Test("A logarithm of a non-positive number is an evaluation error")
+    func logarithmDomain() throws {
+        let expression = try FormulaParser.parse("ln(x)")
+        #expect(throws: FormulaError.self) { try expression.evaluate(variables: ["x": 0]) }
+        #expect(throws: FormulaError.self) { try expression.evaluate(variables: ["x": -2]) }
+    }
+
+    @Test("Division by zero is an evaluation error instead of infinity")
+    func divisionByZero() throws {
+        let expression = try FormulaParser.parse("1 / x")
+        #expect(throws: FormulaError.self) { try expression.evaluate(variables: ["x": 0]) }
+    }
+
+    @Test("Reports every called function")
+    func referencedFunctions() throws {
+        let expression = try FormulaParser.parse("sin(x) + cos(y) * sin(z)")
+        #expect(expression.referencedFunctions == ["sin", "cos"])
+    }
 }

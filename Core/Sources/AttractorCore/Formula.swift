@@ -62,6 +62,26 @@ extension Expression {
         }
     }
 
+    /// Names of every function called anywhere in the expression tree.
+    ///
+    /// Used by catalog validation to reject formulas that call a function the
+    /// parser does not implement; without this check such a formula only fails
+    /// at evaluation time, after the screensaver has already started.
+    public var referencedFunctions: Set<String> {
+        switch self {
+        case .constant, .variable:
+            return []
+        case .negate(let expression):
+            return expression.referencedFunctions
+        case .add(let lhs, let rhs), .subtract(let lhs, let rhs),
+             .multiply(let lhs, let rhs), .divide(let lhs, let rhs),
+             .power(let lhs, let rhs):
+            return lhs.referencedFunctions.union(rhs.referencedFunctions)
+        case .function(let name, let argument):
+            return Set([name]).union(argument.referencedFunctions)
+        }
+    }
+
     /// Evaluate the expression tree against a set of variable bindings.
     ///
     /// - Parameters:
@@ -88,7 +108,11 @@ extension Expression {
         case .multiply(let lhs, let rhs):
             return try lhs.evaluate(variables: variables) * rhs.evaluate(variables: variables)
         case .divide(let lhs, let rhs):
-            return try lhs.evaluate(variables: variables) / rhs.evaluate(variables: variables)
+            let divisor = try rhs.evaluate(variables: variables)
+            guard divisor != 0 else {
+                throw FormulaError.evaluationFailed("division by zero")
+            }
+            return try lhs.evaluate(variables: variables) / divisor
         case .power(let base, let exponent):
             let b = try base.evaluate(variables: variables)
             let e = try exponent.evaluate(variables: variables)
@@ -115,7 +139,13 @@ extension Expression {
             return sqrt(value)
         case "abs": return Swift.abs(value)
         case "exp": return exp(value)
-        case "ln", "log": return log(value)
+        case "ln", "log":
+            guard value > 0 else {
+                throw FormulaError.evaluationFailed(
+                    "logarithm of a non-positive number (got \(value))"
+                )
+            }
+            return log(value)
         default:
             throw FormulaError.unknownFunction(name)
         }
