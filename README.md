@@ -1,174 +1,132 @@
-# strange-attractor-screensaver
+# Strange Attractor Screensaver
 
-Это проект для создания кастомного скринсейвера для macos.
+A mesmerizing macOS screen saver that simulates and renders **strange attractors** — chaotic dynamical systems that trace infinitely intricate, never-repeating paths in 3D space.
 
-Идея следующая - в нашем мире существуют странные аттракторы. Это множества точек образующиеся в результате работы некой динамической системы.
+![Aizawa attractor animation](docs/images/strange-attractor-aizawa-screensaver-animation.gif)
 
-https://en.wikipedia.org/wiki/Attractor
+Every launch picks a **random attractor** from a catalog of 12 classic chaotic systems, randomizes its parameters and camera, and draws the trajectory as a glowing gradient trail. The live formulas and parameter values are displayed in the corner — a screen saver that is also a small piece of mathematical art.
 
-Известные Аттракторы:
+## Features
 
-1) Аттрактор Лоренца
-Описывается следующей системой дифференциальных уравнений
-```
-x` = a * (y - x)
-y` = x (r - z) - y
-z` = xy - bz
-```
-(Для классического аттрактора значение r = 28)
+- **12 strange attractors** — Lorenz, Aizawa, Rössler, Thomas, Chen, Lü, Chua, Halvorsen, Moore–Spiegel and the Sprott family (see [the catalog](#the-attractor-catalog)).
+- **Data-driven design** — attractors are described in a single JSON catalog (formulas, parameter ranges, initial states), not in code. Adding a new one requires no code changes.
+- **Runge–Kutta 4 integration** of the ODE system with adaptive per-frame stepping.
+- **Self-healing** — a watchdog detects degenerate runs (divergence, collapse, stable periodic orbits, non-finite states) and silently restarts with a fresh random selection.
+- **4 trail color modes** — rainbow along the trail, monochrome aging, depth from the camera, or spatial coloring.
+- **Formula parsing at runtime** — `dX/dY/dZ` equations are parsed from strings, so the catalog stays pure data.
+- **Zero third-party dependencies** — pure Swift, Foundation, SceneKit and AppKit.
+- **Demo app with CLI** — run any attractor with explicit parameters for exploration and debugging.
 
-2) Аттрактор Рёсслера
-Описывается следующей системой дифференциальных уравнений
-```
-x` = -y - z
-y` = x + ay
-z` = b + z(x - c)
-```
-a,b,c - положительные
+## The Attractor Catalog
 
-3) Аттрактор Томаса
-Описывается следующей системой дифференциальных уравнений
-```
-x` = sin(y) - bx
-y` = xin(z) - by
-z` = sin(x) - bz
-```
-Обычно b = 0.2081
+| Attractor | Equations | Parameters | Preview |
+|---|---|---|---|
+| **Lorenz** | `dx = a(y − x)`<br>`dy = x(r − z) − y`<br>`dz = xy − bz` | a, b, r | ![Lorenz](docs/images/attractor-lorenz-simulation.png) |
+| **Aizawa** | `dx = (z − b)x − dy`<br>`dy = dx + (z − b)y`<br>`dz = c + az − z³/3 − (x² + y²)(1 + ez) + fz x³` | a, b, c, d, e, f | ![Aizawa](docs/images/attractor-aizawa-simulation.png) |
+| **Rössler** | `dx = −y − z`<br>`dy = x + ay`<br>`dz = b + z(x − c)` | a, b, c | ![Rössler](docs/images/attractor-rossler-simulation.png) |
+| **Thomas** | `dx = sin(y) − bx`<br>`dy = sin(z) − by`<br>`dz = sin(x) − bz` | b | ![Thomas](docs/images/attractor-thomas-simulation.png) |
+| **Chen** | `dx = a(y − x)`<br>`dy = (c − a)x − xz + cy`<br>`dz = xy − bz` | a, b, c | ![Chen](docs/images/attractor-chen-simulation.png) |
+| **Lü** | `dx = a(y − x)`<br>`dy = −xz + cy`<br>`dz = xy − bz` | a, b, c | ![Lü](docs/images/attractor-lu-simulation.png) |
+| **Chua** (double scroll) | `dx = α(y − x − f(x))`<br>`dy = x − y + z`<br>`dz = −βy` with piecewise-linear `f(x)` | α, β, m₀, m₁ | ![Chua](docs/images/attractor-chua-simulation.png) |
+| **Halvorsen** (cyclically symmetric) | `dx = −ax − 4y − 4z − y²`<br>`dy = −ay − 4z − 4x − z²`<br>`dz = −az − 4x − 4y − x²` | a | ![Halvorsen](docs/images/attractor-halvorsen-simulation.png) |
+| **Moore–Spiegel** (2nd-order oscillator) | `dx = 10y`<br>`dy = 35z`<br>`dz = −z − (T − R + Rx²)y/35 − (T/350)x` | R, T | ![Moore–Spiegel](docs/images/attractor-moore_spiegel-simulation.png) |
+| **Sprott A** | `dx = y`<br>`dy = −x + yz`<br>`dz = 1 − y²` | fixed | ![Sprott A](docs/images/attractor-sprott_a-simulation.png) |
+| **Sprott B** | `dx = yz`<br>`dy = x − y`<br>`dz = 1 − xy` | fixed | ![Sprott B](docs/images/attractor-sprott_b-simulation.png) |
+| **Sprott C** | `dx = yz`<br>`dy = x − y`<br>`dz = 1 − x²` | fixed | ![Sprott C](docs/images/attractor-sprott_c-simulation.png) |
 
-4) Аттрактор Чена
-Описывается следующей системой дифференциальных уравнений
-```
-x` = a(y - x)
-y` = (c-a)x - xz + cy
-z` = xy - bz
-```
-(Для классического аттрактора значения a = 35, b = 3, c = 28)
+Each attractor's parameters and simulation hyperparameters (step size, trail length, camera speed, color cycle speed) are randomized within curated ranges in [`Core/Sources/AttractorCore/Resources/attractors.json`](Core/Sources/AttractorCore/Resources/attractors.json). The selection was validated numerically: every system is tested from multiple random initial states, and chaotic families with tiny basins of attraction (e.g. Sprott D–J, Rabinovich–Fabrikant) are excluded because they diverge from random starts.
 
-5) Аттрактор Айзавы
-Описывается следующей системой дифференциальных уравнений
-```
-x` = (z - b)x - dy
-y` = dx + (z - b)y
-z` = c + az - z^3/3 - (x^2 + y^2)(1 + ez) + fzx^3
-```
-(Для классического аттрактора значения a = 0.95, b = 0.7, c = 0.6, d = 3.5, e = 0.25, f = 0.1)
+## Installation
 
-6) Аттрактор Лу (Lü)
-```
-x` = a(y - x)
-y` = -xz + cy
-z` = xy - bz
-```
-(Классика: a = 36, b = 3, c = 20)
+### From a release (recommended)
 
-7) Аттрактор Чуа (Chua, классический кусочно-линейный «double scroll»)
-```
-x` = a(y - x - f(x)),  f(x) = m1·x + 0.5(m0 - m1)(|x+1| - |x-1|)
-y` = x - y + z
-z` = -b y
-```
-(Классика: a = 9, b = 14.286, m0 = -1/7, m1 = 2/7; нелинейность f(x) выражена через `abs`)
+1. Download `AttractorSaver.saver` from the latest [release](https://github.com/xekchansky/strange-attractor-screensaver/releases).
+2. Double-click the file — macOS opens it in **System Settings → Wallpaper → Screen Saver**. Alternatively, copy it to `~/Library/Screen Savers/`.
+3. Select **AttractorSaver** in the screen saver list.
 
-8) Аттракторы Спротта (Sprott A–C, простейшие хаотические потоки; параметры фиксированы)
-```
-A: x`=y,             y`=-x+yz,        z`=1-y²
-B: x`=yz,            y`=x-y,          z`=1-xy
-C: x`=yz,            y`=x-y,          z`=1-x²
-```
-Прочие из семейства Sprott A–S у нас не используются: бассейны притяжения большинства из них малы — при случайных стартах (Randomizer/DebugConfig) они расходились численно (проверено на 300 случайных стартах, 50k шагов). Исключены D, E, F, G, H, I, J; A/B/C стабильны от любых стартов.
+The bundle is ad-hoc code-signed; on first activation macOS may ask you to confirm.
 
-9) Аттрактор Халворсена (циклически-симметричный)
-```
-x` = -a·x - 4y - 4z - y²
-y` = -a·y - 4z - 4x - z²
-z` = -a·z - 4x - 4y - x²
-```
-(Классика: a = 1.4; рабочий диапазон 1.25–1.45)
+### Build from source
 
-10) Аттрактор Мура — Шпигеля (осциллятор 2-го порядка как 3D-система)
-```
-x` = y
-y` = z
-z` = -z - (T - R + R·x²)·y - T·x
-```
-(Рабочий хаотический диапазон: T ≈ 8–16, R ≈ 16–24)
+Requires macOS with Xcode (or Xcode Command Line Tools) and [xcodegen](https://github.com/yonaskolb/XcodeGen):
 
-# Должна быть возможность описывать аттракторы с помощью выражений в специальном файле
-- Описание дифференциальной формулы
-- Описание возможных диапазонов параметров
-- Описание возможных диапазонов параметров для симуляции (скорость симуляции, длина шага, скорость вращения камеры, скорость изменения цвета следа...)
-
-# Запуск
-При запуске скринсейвера выбирается случайно один из описанных аттракторов
-Для аттрактора выбираются случайным образом параметры и гиперпараметры симуляции из доступных диапазонов
-Скрипт выполняет симуляцию аттрактора на заданной скорости и продолжает до тех пор, пока скринсейвер не будет прерван
-В углу должны быть показаны формулы и параметры с которыми запущена симуляция
-
-Также для дебага должна быть возможность запустить симуляцию с выбранными вручную параметрами
-
----
-
-## Дорожная карта разработки
-
-Стек: современный формат скринсейвера `.appex`, рендер SceneKit, парсинг формул NSExpression, конфиг JSON+Codable, без внешних зависимостей. Подробные правила запуска/тестирования/код-стайла — в `.serena/memories/development_guide.md`.
-
-Порядок шагов выстроен так, чтобы чистое ядро собиралось и тестировалось через SPM (`swift test`) ещё до работы с Xcode (в этой среде полного Xcode нет, `.appex` собирается на машине с Xcode).
-
-- **M0 — Фундамент.** ✅ SPM-пакет чистого ядра (`Core/`, SPM-модуль `AttractorCore`); каркас с тестом (Swift Testing); `swift test` зелёный.
-- **M1 — Модель данных и конфиг.** ✅ `AttractorDescriptor`, `Parameter`, `MinMax`, `SimulationHyperparameters` (Codable); `attractors.json` (Лоренц/Рёсслер/Томас) как ресурс таргета; `AttractorCatalog` (loader); тесты декодинга; `swift test` зелёный.
-- **M2 — Математическое ядро.** ✅ `State`/`Derivatives`, собственный парсер формул `FormulaParser`+`Expression` (рекурсивный спуск, поддержка `sin/cos/tan` — NSExpression их не умеет), `AttractorModel` (векторное поле `rate(of:)`), `ODESolver` (RK4 + Euler), `AttractorEngine` (поток точек + кольцевой буфер трассы); численные тесты.
-- **M3 — Выбор.** ✅ `SplitMix64` (детерминированный seedable ГПСЧ), `StateRange`/`initialState` (диапазон начального состояния), `SimulationSettings`, `AttractorSelection` (готовый результат выбора), `Randomizer` (случайный аттрактор/параметры/гиперпараметры/начальное состояние с инжектируемым RNG), `DebugConfig` (ручные параметры с дефолтами-серединами); тесты диапазонов и seed; `swift test` зелёный (48 тестов).
-- **M4 — Визуализация (демо-приложение).** ✅ SPM-пакет `Demo/` с исполняемым `AttractorDemo` (AppKit+SceneKit, собирается без Xcode): общий переиспользуемый рендер-модуль `AttractorRender` (`Render/`) — `TraceRenderer` (полилиния с градиентом), `CameraController` (орбита + автокадрирование), `SimulationScene` (движок + таймер + оверлей формул/параметров), общий для демо и хоста; CLI-аргументы `--attractor`/`--param`; `swift build` в `Demo/`, рендер проверяется вручную.
-- **M5 — Хост-заставка.** ✅ Таргеты в `Host/` (генерируются xcodegen из `project.yml`): `ScreensaverView` (`ScreenSaver.ScreenSaverView`), случайный выбор через `Randomizer`, переиспользуемый `AttractorRender`, формулы/параметры в углу. Собран и **установлен/проверен вручную как классический `.saver`** в `~/Library/Screen Savers/`; `.appex`-вариант оставлен как путь для App Store.
-- **M6 — Полировка и стабильность.** ⏳ (в работе, 2026-09-30). Перф-итерация 1: троттлинг автокадрирования камеры (`CameraController.framingStride`, фрейминг ~10 Гц вместо покадрового, без изменения картинки). Перф-итерация 2: децимация очень длинного трейла в `TraceRenderer` (бюджет 16k вершин — для трейлов до 16k без изменений, на 20k — ~10k точек, ~2-кратный выигрыш CPU/GPU без заметных отличий). Перф-итерация 3: `TraceRenderer` — состоятельный класс, переиспользует буферы между кадрами (меньше аллокаций/кадр, вывод без изменений). Итерация 4: **цветовые режимы трейла** — `TraceColorMode` (```trail``` радужный/```age``` ч/б по устареванию/```depth``` по расстоянию до камеры/```spatial``` по координатам x/y/z), случайный выбор в `Randomizer`, CLI `--color-mode` в демо. Итерация 5: **митигация утечки памяти/фонового CPU рендера** (`legacyScreenSaver` рос до ~2.6 ГБ). Первопричина — retain-цикл ручного `Timer` (`RunLoop` → таймер → сцена, сильный `target: self`): превью-хост не зовёт `stopAnimation()`, старые сцены с большими SceneKit-вью не освобождались и копились с каждым запуском. Теперь таймер — **`[weak self]`-блок** (`MainActor.assumeIsolated { self?.tick() }`), сцена освобождается, `deinit` гасит таймер и чистит view. Display link `SCNView` не подошёл: в хост-заставке он не стартует → чёрный экран, поэтому работает ручной цикл (SceneKit перерисовывает при замене `node.geometry`). Плюс persistent `SCNMaterial`, per-frame `autoreleasepool`, пересборка полилинии каждые 2 кадра ~30 Гц. Плюс: `AttractorSaver` собирается с **ad-hoc код-подписью** (`CODE_SIGN_IDENTITY: "-"`) — unsigned-бандл валится в превью с `Code Signature Invalid`. Итерация 6 (2026-10-01): **✅ рост памяти при перезапусках превью устранён.** Демо-замер (RSS-логгер в `AttractorDemo`) показал, что сам рендер не течёт (стабильные ~170 МБ за 6 мин) — течёт хост: `legacyScreenSaver` создаёт новый `ScreensaverView` на каждый показ и навсегда удерживает предыдущие вместе с их сценами (+1 живая сцена ≈ +130 МБ/показ; подтверждено live-счётчиком `SimulationScene`). Фикс: `ScreensaverView.viewDidMoveToSuperview` при `superview == nil` → `tearDownScene()` (stop + `removeFromSuperview` + `scene = nil`) — хост сигналит об окончании показа детачем view; удерживаемый хостом view остаётся без сцены, сцена деаллоцируется. Память держится ~200 МБ при повторных предпросмотрах. Реальный показ по таймеру и переключения проверены (показ не сбрасывается); временная диагностика вычищена. Итерация 7 (2026-10-01): **расширение библиотеки аттракторов +7 (каталог 5 → 12)** — только данные в `attractors.json`, код ядра не менялся (парсер уже поддерживал `abs`/`^`): `lu`, `chua` (кусочно-линейный двойной скролл через `abs`), `halvorsen`, `moore_spiegel`, `sprott_a`/`sprott_b`/`sprott_c`. Состав отобран по численной устойчивости RK4 на пачке случайных стартов (не только на точке дефолта): Chua — двойной скролл спонтанно растёт из малого старта при α=9.5–10.5, β=14–15, m0=-0.55…-0.45, m1=0.2–0.3 (литературные m0≈-1/7/m1≈2/7 дают устойчивый центр и «залипание» у нуля); Moore–Spiegel — стабильна форма `ż=-z-(T-R+Rx²)y-Tx` (альтернативная вики-форма расходится). **Исключены из-за малых бассейнов притяжения** (расходятся от случайных/дебаг-стартов): Sprott D–J, Rabinovich–Fabrikant (R–F даёт ~50% разлёта даже при стартах ±0.1, хотя канон α=0.14/γ=0.1 сам по себе рабочий). Автотест «attractor stays finite» усилен: каждый из 12 дескрипторов гоняется из 4 детерминированных стартов по 8k шагов, что и выявило хрупкие системы. **Запланировано:** `dadras` и Sprott K–S (формулы не подтверждены — при ограниченном доступе к сети; внести после верификации по первоисточнику и проверки бассейнов). Итерация 8 (2026-11-02): **✅ самолечение неудачных запусков.** Предварительный отсев не делаем: хаотические системы иногда стартуют «криво» (Chua — маленькое кольцо у нуля, Thomas из окрестности нуля — точка равновесия), и это допустимо. Вместо этого сцена получила сторожевой механизм `SimulationHealthMonitor` (чистое ядро, без SceneKit): после прогрева в 1000 шагов он ловит четыре состояния — `nonFinite`, `diverged` (координата > 1e6), `collapsed` (размах траектории за окно < 0.01 — точка или крошечный цикл) и `periodic` (устойчивый цикл любого размера). Период предела обычно нецелый в шагах, поэтому вместо точного повтора ищется статистический возврат: 16 лагов с минимальным расстоянием новейшего состояния к прошлому, для каждого — RMS по окну до 2048 состояний; проход требует RMS < 10 % размаха и резкого (в 100 раз) провала относительно полулага. Чтобы не лечить хаос, который временно «тенит» неустойчивый цикл (Lorenz — до ~3k шагов, Aizawa — до ~2k), вердикт обязан непрерывно держаться 4096 шагов, а дорогая проверка запускается раз в 512 шагов. Дешёвые проверки идут на каждом шаге, структурные — по детерминированному расписанию: каждые 16 шагов первые 10k, каждые 128 до 100k, далее каждые 1024 (проверено тестом на число проверок). При сбое `SimulationScene` один раз сигналит хосту, заставка полностью гасит сцену и выбирает заново **весь** набор — аттрактор, параметры, старт и гиперпараметры; демо лечится только при запуске без аргументов, а с явными аргументами показывает выбранный режим как есть. Ограничения на число перезапусков нет: каждый — свежий случайный выбор, teardown уже безопасен по памяти. Калибровка детектора `periodic` проверена второй траекторией со сдвигом 1e-8: ложных срабатываний на хаосе нет, а сообщённое кольцо Chua (α=10.164, β=14.932, m0=-0.499, m1=0.257) ловится на ~6632-м шаге; устойчивые циклы Lorenz (r≈24.1), Chua, Moore–Spiegel подтверждены сходящимися близнецами. Тесты ядра: 67. Итерация 9 (2026-11-03): **крайние случаи** — `SimulationStepScheduler` (кламп `dt` и числа шагов после sleep/wake, защита от `Int(infinity)` при `stepSize = 0`), валидация каталога с отбрасыванием только битых дескрипторов (`AttractorCatalog.bundledValidation`), перезапуск при ошибке вычисления формулы, `RestartLimiter` (≤3 перезапуска за 10 с, затем отложенный повтор), валидация демо-CLI. Тесты ядра: 102. Мультимониторный smoke не выполнен — на машине один дисплей. Осталось: упаковка.
-
-## Хост-заставка (M5)
-
-Код хоста лежит в `Host/`, Xcode-проект генерируется **xcodegen** из `Host/project.yml` (локальные SPM-пакеты `Core`/`Render` линкуются статически — без дублирования кода).
-
-**Структура таргетов:**
-- `Host/Sources/ScreensaverView.swift` — `ScreensaverView: ScreenSaver.ScreenSaverView`: на `startAnimation()` грузит каталог, случайно выбирает аттрактор через `Randomizer`, строит движок и `SimulationScene`, останавливает на `stopAnimation()`.
-- **`AttractorSaver`** (`.saver`, `CFBundlePackageType=BNDL`, `NSPrincipalClass`) — классический бандл, который macOS реально загружает для локально установленных заставок.
-- `AttractorScreensaver` (`.appex`, `NSExtension` → `com.apple.screensaver`) — современный app-extension для App Store-дистрибуции; вручную System Settings его не показывает.
-- `AttractorHostApp` (`.app`) — приложение-контейнер для `.appex` (тоже App Store-путь).
-
-**Сборка и установка (проверено):**
 ```bash
+git clone https://github.com/xekchansky/strange-attractor-screensaver.git
+cd strange-attractor-screensaver
+
+# Run the core unit tests (no Xcode required)
+cd Core && swift test && cd ..
+
+# Build and install the .saver bundle
 cd Host
 xcodegen generate
 xcodebuild -project AttractorHost.xcodeproj -scheme AttractorSaver \
-  -configuration Debug -derivedDataPath /tmp/host-dd build
-
+  -configuration Release -derivedDataPath /tmp/host-dd build
 mkdir -p ~/Library/Screen\ Savers
-# Обновление — заменой бандла, а не копированием внутрь существующего:
-# `cp -R` перезаписывает Mach-O в том же inode, и если модуль уже был загружен
-# legacyScreenSaver, ядро отвергает новые страницы → `Invalid Page` даже при
-# валидной подписи. `rm -rf` + `ditto` даёт новый inode.
 rm -rf ~/Library/Screen\ Savers/AttractorSaver.saver
-ditto /tmp/host-dd/Build/Products/Debug/AttractorSaver.saver \
+ditto /tmp/host-dd/Build/Products/Release/AttractorSaver.saver \
       ~/Library/Screen\ Savers/AttractorSaver.saver
-killall WallpaperAgent 2>/dev/null
 ```
-Затем заставка «AttractorSaver» появляется в System Settings → **Wallpaper → Screen Saver**. Проверка: предпросмотр, старт/стоп, случайность запусков, формулы/параметры в углу.
 
-> Важный вывод: для ручной установки заставки нужен классический `.saver`-бандл (`~/Library/Screen Savers/`) — расширения `.appex` (`com.apple.screensaver`) подхватываются только из приложений App Store. Оба таргета используют один `ScreensaverView`.
+### Try it without installing: the demo app
 
-### ⚠️ Известная проблема macOS 26: зависание глобальных горячих клавиш
+A standalone demo app lets you run a specific attractor with explicit parameters — handy for exploring parameter space:
 
-После установки/предпросмотра `.saver`, особенно если Wallpaper/`legacyScreenSaver` успели уйти в краш-луп из-за неподписанного бандла, macOS 26 может «подвесить» слой глобальных шорткатов в текущей сессии. Симптомы:
+```bash
+cd Demo && swift run AttractorDemo --attractor aizawa
+```
 
-- не работает Cmd+Tab (переключение приложений);
-- не переключается раскладка по Ctrl+Space / Globe / Caps Lock;
-- при этом обычный ввод и модификаторы работают: локальный `NSEvent`-монитор видит `Ctrl+Space` (keyCode 49) и `Cmd+Tab` (keyCode 48) как обычные нажатия, дошедшие до активного приложения, — система их не перехватывает.
+CLI options:
 
-Перезапуск `TextInputSwitcher`, `TextInputMenuAgent`, `SystemUIServer`, `ControlCenter`, `Dock` и убийство зависших `legacyScreenSaver` **не помогают**. Лечится только **reboot/logout** (пересоздаются WindowServer и event-tap'ы сессии).
+```text
+-a, --attractor <id>       pick a specific attractor (see --help for the list)
+-p, --param <name>=<value> override a parameter (repeatable, requires --attractor)
+--step <v>                 integration step size
+--speed <v>                simulation speed multiplier
+--cam-speed <v>            camera rotation speed
+--trail-color-speed <v>    trail color cycle speed
+--trail-length <n>         trail length in points
+--color-mode <mode>        trail | age | depth | spatial
+--screenshot <path>        capture one PNG of a warmed-up scene, then exit
+--record <dir>             record PNG frames (for GIF assembly), then exit
+--record-seconds <v>       recording duration (default 4)
+--frame-stride <n>         capture every n-th frame (default 2)
+--capture-scale <n>        snapshot resolution multiplier (default 2)
+--warmup-steps <n>         integration steps before the capture (default 60000)
+--cam-azimuth <deg>        start the camera orbit at this azimuth (default: random)
+--cam-elevation <deg>      camera height above the horizontal plane (default: 36)
+--initial-state x,y,z      start the integration at this point
+```
 
-Профилактика:
-- ставить только подписанный ad-hoc `.saver`; неподписанные/битые `.saver` и `.app` убирать из `~/Library/Screen Savers` и `/Applications` (иначе в crash-логах — `SIGKILL (Code Signature Invalid)` в `SSPreflightModuleLoadForPath`);
-- не злоупотреблять `killall WallpaperAgent` при переустановке;
-- после предпросмотра заставки полностью закрывать System Settings и проверять отсутствие зависших `legacyScreenSaver`;
-- при появлении симптомов — сразу reboot, не тратя время на поштучные kill'ы.
+## How It Works
 
-Диагностика: `CGEventSource`-проверки требуют Input Monitoring (`CGPreflightListenEventAccess`), поэтому из терминала без прав они «слепые»; локальный `NSEvent.addLocalMonitorForEvents` в тестовом окне работает без спецправ и показывает, доходят ли шорткаты до приложения.
+```
+attractors.json ──▶ AttractorCatalog ──▶ Randomizer ──▶ AttractorSelection
+                                                              │
+                                                              ▼
+   SceneKit view ◀── TraceRenderer ◀── AttractorEngine ◀── AttractorModel
+   (camera, trail)                      ▲              (NSExpression-like
+                                        │                formula parser)
+                                  ODESolver (RK4)
+```
 
-Принцип: маленькие итерации; перед каждым шагом — зелёный `swift test`. Статусы майлстоунов: ⏳ / в работе / ✅.
+- **`Core/`** — `AttractorCore`: pure, UI-free SPM module. Data model, formula parser (recursive descent — `NSExpression` cannot do `sin`/`abs`), RK4 solver, engine with a ring-buffer trail, randomizer, and a health monitor that watches every integrated state.
+- **`Render/`** — `AttractorRender`: SceneKit rendering — gradient polyline trail, orbiting camera with auto-framing, formula overlay. Shared by the demo and the screen saver.
+- **`Demo/`** — `AttractorDemo`: a standalone AppKit app for interactive runs and headless frame capture (`--screenshot` / `--record`).
+- **`Host/`** — the screen saver targets (classic `.saver` and the App Store `.appex` variant), generated with xcodegen.
+
+The screen saver re-creates the whole scene when the watchdog detects a bad run (e.g. the trajectory collapses to a point or settles into a periodic loop), so it never sits frozen on a broken frame.
+
+## Notes & Known Issues
+
+- Built for Apple Silicon / Intel macOS 13+.
+- On macOS 26, a screen saver bundle **must be code-signed** (ad-hoc is enough), otherwise the preview host kills it with `Code Signature Invalid`. Installing unsigned `.saver` files can also wedge the session's global hotkeys (Cmd+Tab, input switching) until reboot — see [the detailed write-up](#) in the project history.
+
+## Documentation
+
+- [README in Russian](README.ru.md)
+- Capture script for documentation assets: [`docs/capture_all.sh`](docs/capture_all.sh)
+
+## License
+
+[MIT](LICENSE) © Khakayu Alexandr
