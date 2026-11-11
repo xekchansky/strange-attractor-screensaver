@@ -42,8 +42,8 @@
 
 ### Из релиза (рекомендуется)
 
-1. Скачайте `AttractorSaver.saver` из последнего [релиза](https://github.com/xekchansky/strange-attractor-screensaver/releases).
-2. Откройте файл двойным кликом — macOS предложит установить его в **Настройки системы → Обои → Заставка**. Либо скопируйте его в `~/Library/Screen Savers/`.
+1. Скачайте `AttractorSaver.saver.zip` из последнего [релиза](https://github.com/xekchansky/strange-attractor-screensaver/releases) и распакуйте (Safari делает это сам).
+2. Откройте `AttractorSaver.saver` двойным кликом — macOS предложит установить его в **Настройки системы → Обои → Заставка**. Либо скопируйте его в `~/Library/Screen Savers/`.
 3. Выберите **AttractorSaver** в списке заставок.
 
 Бандл подписан ad-hoc подписью; при первом запуске macOS может попросить подтверждение.
