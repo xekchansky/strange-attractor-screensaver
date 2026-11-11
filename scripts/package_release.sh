@@ -49,7 +49,9 @@ echo "==> Zipping"
 ditto -c -k --sequesterRsrc --keepParent \
   "$OUT/AttractorSaver.saver" "$OUT/AttractorSaver.saver.zip"
 
-shasum -a 256 "$OUT/AttractorSaver.saver.zip" \
+# The checksum file must carry the bare archive name: users download both
+# files into the same directory and run `shasum -c` there.
+( cd "$OUT" && shasum -a 256 "AttractorSaver.saver.zip" ) \
   | tee "$OUT/AttractorSaver.saver.zip.sha256"
 
 echo "==> Done"
