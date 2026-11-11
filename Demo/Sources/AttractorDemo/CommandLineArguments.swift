@@ -25,6 +25,14 @@ struct SimulationOverrides {
     var colorMode: TraceColorMode?
 }
 
+/// Capture request derived from the command line, if any.
+enum CaptureRequest {
+    /// Save one PNG after warm-up (fast-forwarded trail + settled camera).
+    case screenshot(outputPath: String)
+    /// Save a sequence of PNGs for GIF/APNG assembly.
+    case record(outputDirectory: String, seconds: Double, frameStride: Int)
+}
+
 /// Parsed command-line options for the demo app.
 struct CommandLineArguments {
     /// Fixed attractor id, when `--attractor` was supplied.
@@ -35,6 +43,27 @@ struct CommandLineArguments {
     let parameters: [String: String]
     /// Optional simulation hyperparameter overrides.
     let overrides: SimulationOverrides
+    /// Optional capture request (`--screenshot` / `--record`).
+    let capture: CaptureRequest?
+    /// Number of fast-forward integration steps before the scene starts
+    /// (capture runs only). `nil` keeps the built-in default.
+    let warmupSteps: Int?
+    /// Snapshot resolution multiplier for capture runs. `nil` keeps the
+    /// Retina-matching default of 2; recordings downscaled to a small
+    /// animation can use 1 so the frame loop keeps up with the 60 Hz timer.
+    let captureScale: Int?
+    /// Starting camera orbit azimuth in degrees. `nil` picks a random angle;
+    /// documentation captures pin it so a screenshot is reproducible.
+    let cameraAzimuthDegrees: Double?
+    /// Camera orbit elevation above the horizontal plane, in degrees. `nil`
+    /// keeps the default π/5.
+    let cameraElevationDegrees: Double?
+    /// Explicit starting state for the integration. `nil` uses the
+    /// selection's own start (a sampled or randomly offset point). Thomas is
+    /// the reason this exists: its catalog midpoint start sits in the basin of
+    /// a fixed point for most of the declared `b` range, so a pinned capture
+    /// has to start well away from the origin to trace the attractor.
+    let initialState: State?
     /// True when `--help` was requested.
     let showHelp: Bool
 
@@ -52,6 +81,24 @@ struct CommandLineArguments {
           --cam-speed <v>         override camera orbit speed (rad/s)
           --trail-color-speed <v> override trail color gradient speed
           --color-mode <mode>     override color mode: trail|age|depth|spatial
+          --screenshot <path>     save one PNG (after trail warm-up and camera
+                                  settle) and exit; implies a fixed setup
+          --record <dir>          save a sequence of PNG frames for GIF/APNG
+                                  assembly and exit; implies a fixed setup
+          --record-seconds <v>    duration of the capture in seconds (default 4)
+          --frame-stride <n>      capture every n-th rendered frame (default 2)
+          --warmup-steps <n>      integration steps fast-forwarded before the
+                                  capture starts (default 60000; 0 records the
+                                  trail growing from the random start)
+          --capture-scale <n>     snapshot resolution multiplier (default 2;
+                                  1 shrinks the pixel count 4x, which helps
+                                  the frame loop keep a steady 60 Hz)
+          --cam-azimuth <deg>     start the camera orbit at this azimuth
+                                  (default: random)
+          --cam-elevation <deg>   camera height above the horizontal plane
+                                  (default: 36 degrees)
+          --initial-state x,y,z   start the integration at this point instead
+                                  of the selection's sampled start
       -h, --help                  show this help (including available attractors) and exit
 
     Bare `name=value` tokens are also treated as pinned parameters, e.g.
@@ -68,6 +115,12 @@ struct CommandLineArguments {
         var attractorID: String?
         var parameters: [String: String] = [:]
         var overrides = SimulationOverrides()
+        var capture: CaptureRequest?
+        var warmup: Int?
+        var captureScale: Int?
+        var cameraAzimuth: Double?
+        var cameraElevation: Double?
+        var initialState: State?
         var showHelp = false
         var index = 1 // skip the executable path
 
@@ -85,6 +138,20 @@ struct CommandLineArguments {
                 throw CommandLineArgumentsError.invalidParameter("\(flag) \(raw)")
             }
             return number
+        }
+
+        /// Parse an `x,y,z` triple into a ``State``.
+        func state(after flag: String) throws -> State {
+            let raw = try value(after: flag)
+            let parts = raw.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard parts.count == 3 else {
+                throw CommandLineArgumentsError.invalidParameter("\(flag) \(raw)")
+            }
+            let numbers = parts.compactMap(Double.init)
+            guard numbers.count == 3, numbers.allSatisfy(\.isFinite) else {
+                throw CommandLineArgumentsError.invalidParameter("\(flag) \(raw)")
+            }
+            return State(x: numbers[0], y: numbers[1], z: numbers[2])
         }
 
         func addParameter(_ raw: String) throws {
@@ -121,8 +188,71 @@ struct CommandLineArguments {
                     throw CommandLineArgumentsError.invalidParameter("\"\(argument) \(raw)\"")
                 }
                 overrides.colorMode = mode
+            case "--screenshot":
+                guard capture == nil else {
+                    throw CommandLineArgumentsError.unknownArgument(
+                        "\(argument): --screenshot and --record are mutually exclusive"
+                    )
+                }
+                capture = .screenshot(outputPath: try value(after: argument))
+            case "--record":
+                guard capture == nil else {
+                    throw CommandLineArgumentsError.unknownArgument(
+                        "\(argument): --screenshot and --record are mutually exclusive"
+                    )
+                }
+                capture = .record(outputDirectory: try value(after: argument), seconds: 4, frameStride: 2)
+            case "--record-seconds":
+                let seconds = try double(after: argument)
+                guard seconds > 0 else {
+                    throw CommandLineArgumentsError.invalidParameter("\(argument) \(seconds)")
+                }
+                switch capture {
+                case .record(let directory, _, let stride):
+                    capture = .record(outputDirectory: directory, seconds: seconds, frameStride: stride)
+                case .screenshot, nil:
+                    throw CommandLineArgumentsError.unknownArgument("\(argument) requires --record")
+                }
+            case "--frame-stride":
+                let raw = try value(after: argument)
+                guard let stride = Int(raw), stride >= 1 else {
+                    throw CommandLineArgumentsError.invalidParameter("\(argument) \(raw)")
+                }
+                switch capture {
+                case .record(let directory, let seconds, _):
+                    capture = .record(outputDirectory: directory, seconds: seconds, frameStride: stride)
+                case .screenshot, nil:
+                    throw CommandLineArgumentsError.unknownArgument("\(argument) requires --record")
+                }
             case "-h", "--help":
                 showHelp = true
+            case "--warmup-steps":
+                let raw = try value(after: argument)
+                guard let steps = Int(raw), steps >= 0 else {
+                    throw CommandLineArgumentsError.invalidParameter("\(argument) \(raw)")
+                }
+                warmup = steps
+            case "--capture-scale":
+                let raw = try value(after: argument)
+                guard let scale = Int(raw), (1...4).contains(scale) else {
+                    throw CommandLineArgumentsError.invalidParameter("\(argument) \(raw)")
+                }
+                captureScale = scale
+            case "--cam-azimuth":
+                let raw = try value(after: argument)
+                guard let degrees = Double(raw), degrees.isFinite else {
+                    throw CommandLineArgumentsError.invalidParameter("\(argument) \(raw)")
+                }
+                cameraAzimuth = degrees
+            case "--cam-elevation":
+                let raw = try value(after: argument)
+                guard let degrees = Double(raw), degrees.isFinite,
+                      (-89...89).contains(degrees) else {
+                    throw CommandLineArgumentsError.invalidParameter("\(argument) \(raw)")
+                }
+                cameraElevation = degrees
+            case "--initial-state":
+                initialState = try state(after: argument)
             default:
                 // Any bare `name=value` token is treated as a parameter.
                 if argument.contains("=") {
@@ -138,6 +268,12 @@ struct CommandLineArguments {
             attractorID: attractorID,
             parameters: parameters,
             overrides: overrides,
+            capture: capture,
+            warmupSteps: warmup,
+            captureScale: captureScale,
+            cameraAzimuthDegrees: cameraAzimuth,
+            cameraElevationDegrees: cameraElevation,
+            initialState: initialState,
             showHelp: showHelp
         )
     }

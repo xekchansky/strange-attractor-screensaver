@@ -23,11 +23,13 @@ final class TraceRenderer {
 
     // One material, created once and reused by every geometry. Vertex colors
     // feed the diffuse channel; lighting is disabled so the gradient is shown
-    // as-is on the unlit polyline. Creating a fresh SCNMaterial per frame added
+    // as-is on the unlit ribbon. Creating a fresh SCNMaterial per frame added
     // another per-frame allocation churn on an already churn-heavy path.
+    // Double-sided because the ribbon faces the camera and can wind either way.
     private let material: SCNMaterial = {
         let material = SCNMaterial()
         material.lightingModel = .constant
+        material.isDoubleSided = true
         return material
     }()
 
@@ -134,24 +136,62 @@ final class TraceRenderer {
             colors.append(Float(b))
         }
 
-        // Explicit paired line indices: SceneKit draws one segment per pair
-        // (0,1), (1,2), ..., giving a single connected strip. An empty
-        // index buffer (bytesPerIndex: 0) is not reliably handled by the
-        // Metal renderer and can crash in drawIndexedPrimitives.
-        let segmentCount = sampledCount - 1
+        // Camera-facing ribbon instead of a `.line` polyline: Metal draws
+        // line primitives at a fixed 1 device pixel, which looked crisp on a
+        // 2x Retina display but turned into jagged staircases in captures and
+        // downscaled README images. Each sampled point becomes two vertices
+        // offset ±radius along a screen-facing perpendicular; the ribbon is
+        // one indexed triangle strip with twice the vertex and color count.
+        let radius = ribbonRadius(positions: positions)
+        var ribbonPositions: [SCNVector3] = []
+        var ribbonColors: [Float] = []
+        ribbonPositions.reserveCapacity(sampledCount * 2)
+        ribbonColors.reserveCapacity(sampledCount * 6)
+
+        for (offset, position) in positions.enumerated() {
+            // Tangent from the neighboring sampled point (clamped at the ends);
+            // the screen-facing perpendicular is tangent × toCamera.
+            let next = positions[min(offset + 1, sampledCount - 1)]
+            let previous = positions[max(offset - 1, 0)]
+            let tangent = Self.normalizedVector(
+                SCNVector3(next.x - previous.x, next.y - previous.y, next.z - previous.z)
+            )
+            let toCamera = Self.normalizedVector(
+                SCNVector3(
+                    cameraPosition.x - position.x,
+                    cameraPosition.y - position.y,
+                    cameraPosition.z - position.z
+                )
+            )
+            // side = tangent × toCamera lies in the plane facing the camera
+            // and is perpendicular to the trail direction.
+            let side = Self.normalizedVector(Self.cross(tangent, toCamera))
+            let half = radius
+            ribbonPositions.append(
+                SCNVector3(position.x + side.x * half, position.y + side.y * half, position.z + side.z * half)
+            )
+            ribbonPositions.append(
+                SCNVector3(position.x - side.x * half, position.y - side.y * half, position.z - side.z * half)
+            )
+            let (r, g, b) = (colors[offset * 3], colors[offset * 3 + 1], colors[offset * 3 + 2])
+            ribbonColors.append(contentsOf: [r, g, b, r, g, b])
+        }
+
+        // Triangle strip indices: two vertices per point, strip zigzags
+        // 0,1,2,3,... connecting point i's pair with point i+1's pair.
         indices.removeAll(keepingCapacity: true)
-        indices.reserveCapacity(segmentCount * 2)
-        for i in 0..<segmentCount {
-            indices.append(UInt32(i))
-            indices.append(UInt32(i + 1))
+        indices.reserveCapacity(sampledCount * 2)
+        for i in 0..<sampledCount {
+            indices.append(UInt32(i * 2))
+            indices.append(UInt32(i * 2 + 1))
         }
         let indexData = indices.withUnsafeBytes { Data($0) }
 
-        let positionSource = SCNGeometrySource(vertices: positions)
+        let positionSource = SCNGeometrySource(vertices: ribbonPositions)
         let colorSource = SCNGeometrySource(
-            data: Data(bytes: colors, count: colors.count * MemoryLayout<Float>.size),
+            data: Data(bytes: ribbonColors, count: ribbonColors.count * MemoryLayout<Float>.size),
             semantic: .color,
-            vectorCount: sampledCount,
+            vectorCount: sampledCount * 2,
             usesFloatComponents: true,
             componentsPerVector: 3,
             bytesPerComponent: MemoryLayout<Float>.size,
@@ -160,13 +200,41 @@ final class TraceRenderer {
         )
         let element = SCNGeometryElement(
             data: indexData,
-            primitiveType: .line,
-            primitiveCount: segmentCount,
+            primitiveType: .triangleStrip,
+            primitiveCount: sampledCount * 2 - 2,
             bytesPerIndex: MemoryLayout<UInt32>.size
         )
         let geometry = SCNGeometry(sources: [positionSource, colorSource], elements: [element])
         geometry.firstMaterial = material
         return geometry
+    }
+
+    /// Half thickness of the ribbon in world units, derived from the trail
+    /// bounding extent so the line reads equally well after auto-framing zooms.
+    private func ribbonRadius(positions: [SCNVector3]) -> CGFloat {
+        var maxExtent: CGFloat = 0
+        for p in positions {
+            maxExtent = Swift.max(maxExtent, abs(p.x), abs(p.y), abs(p.z))
+        }
+        return max(maxExtent * 0.004, 1e-6)
+    }
+
+    private static func length(_ v: SCNVector3) -> CGFloat {
+        (v.x * v.x + v.y * v.y + v.z * v.z).squareRoot()
+    }
+
+    private static func normalizedVector(_ v: SCNVector3) -> SCNVector3 {
+        let l = length(v)
+        guard l > 1e-9 else { return SCNVector3(0, 1, 0) }
+        return SCNVector3(v.x / l, v.y / l, v.z / l)
+    }
+
+    private static func cross(_ a: SCNVector3, _ b: SCNVector3) -> SCNVector3 {
+        SCNVector3(
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x
+        )
     }
 
     /// Euclidean distance between two positions.

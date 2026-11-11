@@ -10,12 +10,18 @@ final class CameraController {
     /// Minimum camera distance, so the view never zooms inside the attractor.
     private static let minimumDistance: CGFloat = 2
     /// Multiplier of the bounding radius used to compute the target distance.
-    private static let framingFactor: CGFloat = 3.4
+    /// Kept tight: a larger margin left the attractor small in the frame, which
+    /// read poorly both on screen and in small README preview thumbnails.
+    private static let framingFactor: CGFloat = 2.1
 
     /// Current orbit azimuth in radians. Kept unbounded; `cos`/`sin` are periodic.
-    private var azimuth: Double = 0
-    /// Fixed polar angle of the orbit above the horizontal plane.
-    private let elevation: Double = Double.pi / 5
+    /// Starts at a random angle: a fixed 0 start produced the same view angle
+    /// for every launch, and captures often landed on an unflattering side.
+    /// A documentation capture passes an explicit angle instead, which also
+    /// makes the resulting screenshot reproducible.
+    private var azimuth: Double
+    /// Polar angle of the orbit above the horizontal plane.
+    private let elevation: Double
     /// Current smoothed orbit center (the point the camera looks at).
     private var center = SCNVector3Zero
     /// Current smoothed distance from the center to the camera.
@@ -33,6 +39,18 @@ final class CameraController {
     /// Cached framing target, recomputed at `framingStride` cadence.
     private var targetCenter = SCNVector3Zero
     private var targetDistance: CGFloat = 8
+
+    /// Create a controller, optionally pinning the viewing angle.
+    ///
+    /// - Parameters:
+    ///   - azimuth: Orbit azimuth in radians. `nil` starts at a random angle,
+    ///     which is what the screensaver wants; a capture passes a fixed value.
+    ///   - elevation: Polar angle above the horizontal plane, in radians.
+    ///     `nil` keeps the default π/5.
+    init(azimuth: Double? = nil, elevation: Double? = nil) {
+        self.azimuth = azimuth ?? Double.random(in: 0..<(2 * .pi))
+        self.elevation = elevation ?? Double.pi / 5
+    }
 
     /// Advance the orbit and reposition `cameraNode` to frame `trace`.
     ///

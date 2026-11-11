@@ -99,8 +99,15 @@ if !arguments.parameters.isEmpty {
 // ---- Build the selection: manual by request, random otherwise ----
 let selection: AttractorSelection
 do {
-    if let descriptor {
+    if let descriptor, !parameters.isEmpty {
+        // Fully pinned run: parameters are explicit, everything else keeps the
+        // deterministic midpoint defaults for reproducible debugging.
         selection = try DebugConfig.selection(for: descriptor.id, in: catalog, parameters: parameters)
+    } else if let descriptor {
+        // Attractor fixed by id, parameters sampled from its declared ranges:
+        // several catalog midpoints (Thomas, Chua, Moore–Spiegel) are exactly
+        // fixed points or limit cycles, so a midpoint run would be degenerate.
+        selection = Randomizer.select(attractor: descriptor)
     } else {
         selection = Randomizer.select(from: catalog)
     }
@@ -132,7 +139,10 @@ let effectiveSelection = AttractorSelection(
     descriptor: selection.descriptor,
     parameters: selection.parameters,
     settings: effectiveSettings,
-    initialState: selection.initialState
+    // `--initial-state` overrides the sampled start: some catalog midpoints
+    // fall into a fixed point's basin (Thomas), so a pinned capture has to
+    // choose its own chaotic start.
+    initialState: arguments.initialState ?? selection.initialState
 )
 
 let model: AttractorModel
@@ -150,6 +160,20 @@ let engine = AttractorEngine(
     trailCapacity: effectiveSelection.settings.trailLength
 )
 
+// ---- Capture request (if any) ----
+let captureController = arguments.capture.map { request in
+    let scale = arguments.captureScale ?? 2
+    switch request {
+    case .screenshot(let outputPath):
+        return CaptureController(mode: .screenshot(outputPath: outputPath), captureScale: scale)
+    case .record(let directory, let seconds, let stride):
+        return CaptureController(
+            mode: .record(outputDirectory: directory, seconds: seconds, frameStride: stride),
+            captureScale: scale
+        )
+    }
+}
+
 // ---- Launch the AppKit application ----
 let app = NSApplication.shared
 app.setActivationPolicy(.regular)
@@ -160,7 +184,18 @@ let delegate = AppDelegate(
     selection: effectiveSelection,
     engine: engine,
     catalog: catalog,
-    healsAutomatically: healsAutomatically
+    healsAutomatically: healsAutomatically,
+    capture: captureController,
+    warmupSteps: arguments.warmupSteps,
+    cameraAzimuth: arguments.cameraAzimuthDegrees.map { $0 * .pi / 180 },
+    cameraElevation: arguments.cameraElevationDegrees.map { $0 * .pi / 180 }
 )
 app.delegate = delegate
+// In capture mode the delegate's `applicationDidFinishLaunching` is not
+// reliably dispatched in a background GUI session (XPC services are not
+// reachable), so the window and scene are built up front; the capture
+// controller then quits the process itself.
+if captureController != nil {
+    delegate.buildCaptureWindowAndScene()
+}
 app.run()

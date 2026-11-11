@@ -18,7 +18,7 @@ public final class SimulationScene: NSObject {
     private let settings: SimulationSettings
     private let cameraNode: SCNNode
     private let traceNode: SCNNode
-    private let cameraController = CameraController()
+    private let cameraController: CameraController
     private let traceRenderer = TraceRenderer()
     private let overlay = NSTextField(labelWithString: "")
 
@@ -45,23 +45,50 @@ public final class SimulationScene: NSObject {
     /// Called at most once when the health monitor reports a problem. The host
     /// is expected to tear this scene down and start a fresh random selection.
     public var onNeedsRestart: (() -> Void)?
+    /// Called after each rendered frame. Used by the demo's capture mode to
+    /// grab frames; the screensaver host leaves it nil.
+    public var onFrameRendered: (() -> Void)?
+    /// When set, every frame advances the simulation by exactly this many
+    /// seconds of simulated wall time instead of the measured interval.
+    ///
+    /// Recording uses this: a snapshot costs far more than one timer period,
+    /// so the real intervals vary frame to frame (and grow with the trail
+    /// length), which makes captured motion uneven. A fixed interval yields
+    /// perfectly uniform frames regardless of how slow the capture loop runs.
+    /// Leave `nil` for live playback, where the measured interval keeps the
+    /// animation tied to real time.
+    public var fixedFrameInterval: Double?
     /// Guards against signalling a restart more than once.
     private var hasSignaledRestart = false
 
     /// Create the scene around a ready-to-run engine.
     ///
-    /// - Parameter healthMonitor: Optional watchdog fed with every integrated
-    ///   state. Pass `nil` (the default) to run without self-healing, e.g. for
-    ///   a demo started with explicit arguments.
+    /// - Parameters:
+    ///   - engine: The engine providing states to draw.
+    ///   - selection: The attractor selection being visualized.
+    ///   - healthMonitor: Optional watchdog fed with every integrated state.
+    ///     Pass `nil` (the default) to run without self-healing, e.g. for a
+    ///     demo started with explicit arguments.
+    ///   - cameraAzimuth: Starting orbit azimuth in radians. `nil` picks a
+    ///     random angle, which is what the screensaver wants; documentation
+    ///     captures pin it so the resulting view is reproducible.
+    ///   - cameraElevation: Orbit angle above the horizontal plane in radians.
+    ///     `nil` keeps the default π/5.
     public init(
         engine: AttractorEngine,
         selection: AttractorSelection,
-        healthMonitor: SimulationHealthMonitor? = nil
+        healthMonitor: SimulationHealthMonitor? = nil,
+        cameraAzimuth: Double? = nil,
+        cameraElevation: Double? = nil
     ) {
         self.engine = engine
         self.selection = selection
         self.settings = selection.settings
         self.healthMonitor = healthMonitor
+        self.cameraController = CameraController(
+            azimuth: cameraAzimuth,
+            elevation: cameraElevation
+        )
         self.stepScheduler = SimulationStepScheduler(
             stepSize: selection.settings.stepSize,
             simulationSpeed: selection.settings.simulationSpeed
@@ -189,7 +216,10 @@ public final class SimulationScene: NSObject {
             lastTime = now
             // Clamp once so a post-sleep interval cannot also fling the camera
             // and the color gradient; the scheduler applies the same bound.
-            let dt = min(rawInterval, stepScheduler.maximumFrameInterval)
+            // Recording pins the interval so frames stay uniform even though a
+            // snapshot takes much longer than one timer period.
+            let dt = fixedFrameInterval
+                ?? min(rawInterval, stepScheduler.maximumFrameInterval)
 
             // Integrate the system by a whole number of fixed-size steps.
             let steps = stepScheduler.steps(forFrameInterval: dt)
@@ -239,6 +269,8 @@ public final class SimulationScene: NSObject {
                 overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
                 lastOverlayUpdate = now
             }
+
+            onFrameRendered?()
         }
     }
 
