@@ -40,8 +40,8 @@ Each attractor's parameters and simulation hyperparameters (step size, trail len
 
 ### From a release (recommended)
 
-1. Download `AttractorSaver.saver` from the latest [release](https://github.com/xekchansky/strange-attractor-screensaver/releases).
-2. Double-click the file — macOS opens it in **System Settings → Wallpaper → Screen Saver**. Alternatively, copy it to `~/Library/Screen Savers/`.
+1. Download `AttractorSaver.saver.zip` from the latest [release](https://github.com/xekchansky/strange-attractor-screensaver/releases) and unzip it (Safari does this on its own).
+2. Double-click `AttractorSaver.saver` — macOS opens it in **System Settings → Wallpaper → Screen Saver**. Alternatively, copy it to `~/Library/Screen Savers/`.
 3. Select **AttractorSaver** in the screen saver list.
 
 The bundle is ad-hoc code-signed; on first activation macOS may ask you to confirm.
