@@ -22,8 +22,8 @@ macOS-скринсейвер, который рендерит странные �
 
 ### 1. Общее ядро (SPM-модуль `AttractorCore`) — чистое, тестируемое
 - **Config:** `attractors.json` (ресурс бандла) → `[AttractorDescriptor]` через `AttractorCatalog`.
-- **Мат. ядро:** `State`, `Derivatives`, `Expression`+`FormulaParser`, `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (шаг + кольцевой буфер `trace`).
-- **Выбор:** `SplitMix64`, `SimulationSettings`, `AttractorSelection` (`buildModel()`), `StateRange`/`initialState`, `Randomizer`, `DebugConfig`.
+- **Мат. ядро:** `State`, `Derivatives`, `Expression`+`FormulaParser` (+ `referencedFunctions`, защита деления на ноль и `ln` неположительного), `AttractorModel` (`rate(of:)`), `ODESolver` (RK4+Euler), `AttractorEngine` (шаг + `TraceBuffer` — типизированный кольцевой буфер фиксированной ёмкости, `RandomAccessCollection`).
+- **Выбор:** `SplitMix64`, `SimulationSettings`, `AttractorSelection` (`buildModel()`), `StateRange`/`initialState`, `Randomizer` (бросает `RandomizerError.emptyCatalog`/`invalidRange` — несуществующие диапазоны больше не трапят), `DebugConfig` (стартовое состояние смещается от центра и зажимается в объявленный диапазон).
 - **Самолечение:** `SimulationHealthMonitor` (+ `SimulationHealthIssue`, `SimulationHealthThresholds`) — поток состояний → вердикт (`nonFinite`/`diverged`/`collapsed`/`periodic`), чистое ядро, детерминированное расписание (часто в начале, реже дальше). `periodic` — статистический возврат по окну с обязательным подтверждением 4096 шагов (хаос может на время «тенить» неустойчивый цикл); дорогая проверка раз в 512 шагов.
 
 ### 2. Рендер (SPM-модуль `AttractorRender`, AppKit+SceneKit)
@@ -48,5 +48,6 @@ macOS-скринсейвер, который рендерит странные �
 - Данные: `attractors.json` → дескрипторы → `AttractorModel` → поток точек → `TraceRenderer` → экран.
 
 ## Сборка / проект
-- `Core/` — SPM, `swift test` (Swift Testing, 63 теста). `Render/`, `Demo/` — SPM, `swift build`.
+- `Core/` — SPM, `swift test` (Swift Testing, 113 тестов). `Render/`, `Demo/` — SPM, `swift build`.
+- Bundle id: `io.github.xekchansky.AttractorSaver` (`.saver`), `io.github.xekchansky.AttractorHost` (`.app`-контейнер), `io.github.xekchansky.AttractorHost.AttractorScreensaver` (`.appex`); версия `1.0.0`. Публикация: `scripts/package_release.sh` → zip + `.sha256`.
 - `Host/` — Xcode-проект (xcodegen) с таргетами `.saver` (установочный), `.appex`/`.app` (App Store).

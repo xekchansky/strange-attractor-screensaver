@@ -67,7 +67,7 @@
 
 ### Сегодняшние правки (ветка feature/m6-perf-mitigate, не закоммиченные)
 - `Host/Sources/ScreensaverView.swift`: единый `tearDownScene()` = `stop()` + **`view.removeFromSuperview()`** + обнуление ссылки; вызывается из `stopAnimation()` и перед созданием новой сцены. Причина: превью-хост может переиспользовать один `ScreensaverView`, оставляя старые SCNView (всю сцену) в subviews — «+одна сцена за показ».
-- Логирование переведено на `os.Logger` (subsystem `com.example.AttractorSaver`, category `lifecycle`): лог-точки `ScreensaverView.startAnimation/stopAnimation/viewDidMoveToWindow/viewDidMoveToSuperview/dealloc`, `SimulationScene #<id> created/start/dealloc` (монотонный `sceneID`). Для диагностики в `log stream --level debug --predicate 'subsystem == "com.example.AttractorSaver"'`.
+- Логирование — `os.Logger`: subsystem `io.github.xekchansky.AttractorSaver` (category `lifecycle`) в `ScreensaverView` (проблемы каталога, сбой старта, отложенный перезапуск), subsystem `io.github.xekchansky.AttractorRender` (category `scene`) в `SimulationScene` (запрос перезапуска). Для диагностики: `log stream --level debug --predicate 'subsystem == "io.github.xekchansky.AttractorSaver"'`.
 
 ### Проблема: измерять хост пока не удаётся (системная нестабильность)
 - Предпросмотр в System Settings: **крах** — «Extension process `Обои` (WallpaperLegacyExtension) exited» (могло быть эпизодическим; на сборке 17:47 превью «бежал» ~10 с на той же установке).
@@ -106,7 +106,7 @@ override func viewDidMoveToSuperview() {
 2. Сценарии многомониторности (view на разных экранах) — не тестировались.
 
 ### Методика диагностики (пригодится впредь)
-- `log stream --level debug --predicate 'subsystem == "com.example.AttractorSaver"'`.
+- `log stream --level debug --predicate 'subsystem == "io.github.xekchansky.AttractorSaver"'`.
 - Live-счётчик сцен (created/dealloc) — прямо показывает накопление.
 - RSS-замер в демо отделил «наш рендер не течёт» (стабильные 164–180 МБ за 6 мин) от «течёт хост».
 
