@@ -15,7 +15,6 @@
 		2A1D51AB0E44EA9A044C42F8 /* ScreensaverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1B0DC2480083A6C34F7496 /* ScreensaverView.swift */; };
 		599D1A91004D656DCA445F72 /* AttractorRender in Frameworks */ = {isa = PBXBuildFile; productRef = 446157FF246E465CDB3FC7AC /* AttractorRender */; };
 		73FD41F36E074FECE80583DA /* ScreensaverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1B0DC2480083A6C34F7496 /* ScreensaverView.swift */; };
-		817796367C29776E88534033 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 45E153C8D16A78739056EB51 /* Info.plist */; };
 		FA8D333EF843A65BC2904532 /* AttractorCore in Frameworks */ = {isa = PBXBuildFile; productRef = 61C23A5F40D16C4ABE4555EF /* AttractorCore */; };
 /* End PBXBuildFile section */
 
@@ -153,7 +152,6 @@
 			buildConfigurationList = 47936E3DFE6AB70E823CD4CF /* Build configuration list for PBXNativeTarget "AttractorSaver" */;
 			buildPhases = (
 				EDA44493B033D9BC0A1C341C /* Sources */,
-				43D6E4A4205F495E423454C0 /* Resources */,
 				15204CCB93B1260C7BFC884D /* Frameworks */,
 			);
 			buildRules = (
@@ -237,17 +235,6 @@
 		};
 /* End PBXProject section */
 
-/* Begin PBXResourcesBuildPhase section */
-		43D6E4A4205F495E423454C0 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				817796367C29776E88534033 /* Info.plist in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		A4C03D312BA5C47D5DF741EC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -295,7 +282,7 @@
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AttractorHost.AttractorScreensaver;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost.AttractorScreensaver;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};
@@ -311,7 +298,7 @@
 				INFOPLIST_FILE = Sources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AttractorHost.AttractorScreensaver;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost.AttractorScreensaver;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
 			};
@@ -328,7 +315,7 @@
 				INFOPLIST_FILE = SaverSources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AttractorSaver;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorSaver;
 				PRODUCT_NAME = AttractorSaver;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
@@ -347,7 +334,7 @@
 				INFOPLIST_FILE = AppSources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AttractorHost;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost;
 				PRODUCT_NAME = AttractorHost;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
@@ -365,7 +352,7 @@
 				INFOPLIST_FILE = SaverSources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AttractorSaver;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorSaver;
 				PRODUCT_NAME = AttractorSaver;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
@@ -503,7 +490,7 @@
 				INFOPLIST_FILE = AppSources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.AttractorHost;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost;
 				PRODUCT_NAME = AttractorHost;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
