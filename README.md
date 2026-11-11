@@ -44,7 +44,13 @@ Each attractor's parameters and simulation hyperparameters (step size, trail len
 2. Double-click `AttractorSaver.saver` — macOS opens it in **System Settings → Wallpaper → Screen Saver**. Alternatively, copy it to `~/Library/Screen Savers/`.
 3. Select **AttractorSaver** in the screen saver list.
 
-The bundle is ad-hoc code-signed; on first activation macOS may ask you to confirm.
+The bundle is ad-hoc code-signed and not notarized, so Gatekeeper can refuse it with _"Apple could not verify…"_. Remove the quarantine flag before installing:
+
+```bash
+xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver
+```
+
+(If a Homebrew `xattr` shadows the system one and fails with `bad interpreter`, call `/usr/bin/xattr` explicitly.) You can also use **System Settings → Privacy & Security → Open Anyway** after the first blocked attempt. macOS 26 additionally requires the bundle to carry a signature (ad-hoc is enough) — an unsigned `.saver` is killed by the host with `Code Signature Invalid`.
 
 ### Build from source
 
@@ -120,7 +126,7 @@ The screen saver re-creates the whole scene when the watchdog detects a bad run 
 ## Notes & Known Issues
 
 - Built for Apple Silicon / Intel macOS 13+.
-- On macOS 26, a screen saver bundle **must be code-signed** (ad-hoc is enough), otherwise the preview host kills it with `Code Signature Invalid`. Installing unsigned `.saver` files can also wedge the session's global hotkeys (Cmd+Tab, input switching) until reboot — see [the detailed write-up](#) in the project history.
+- Installing an unsigned `.saver` on macOS 26 can wedge the session's global hotkeys (Cmd+Tab, input switching) until reboot — see [the detailed write-up](#) in the project history.
 
 ## Documentation
 
