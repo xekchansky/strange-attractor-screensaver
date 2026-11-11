@@ -16,7 +16,7 @@ jobs:
     name: Core tests
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Show toolchain
         run: swift --version
@@ -33,7 +33,7 @@ jobs:
     name: Render and Demo build
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build render layer
         working-directory: Render
@@ -47,7 +47,7 @@ jobs:
     name: Catalog validation
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Bundled-attractor tests share the Core suite, but calling this out keeps
       # a broken attractors.json visible as its own red check.
