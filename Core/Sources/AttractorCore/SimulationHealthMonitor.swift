@@ -85,21 +85,30 @@ public struct SimulationHealthThresholds: Equatable, Sendable {
         warmCheckInterval: Int = 128,
         coldCheckInterval: Int = 1_024
     ) {
-        self.warmupSteps = warmupSteps
-        self.collapseWindowSteps = collapseWindowSteps
-        self.collapseSpan = collapseSpan
-        self.divergenceLimit = divergenceLimit
+        // Sanitize: a negative or non-finite threshold would otherwise flip the
+        // meaning of every check (a negative divergence limit flags every
+        // state, a zero window makes the periodic test meaningless).
+        self.warmupSteps = max(0, warmupSteps)
+        self.collapseWindowSteps = max(1, collapseWindowSteps)
+        self.collapseSpan = collapseSpan.isFinite ? max(0, collapseSpan) : 0.01
+        self.divergenceLimit = divergenceLimit.isFinite && divergenceLimit > 0
+            ? divergenceLimit
+            : 1e6
+        let historyCapacity = max(2, historyCapacity)
         self.historyCapacity = historyCapacity
-        self.minimumPeriodSteps = minimumPeriodSteps
-        self.periodicValidationWindow = periodicValidationWindow
-        self.periodicConfirmationSteps = periodicConfirmationSteps
-        self.periodicCheckInterval = periodicCheckInterval
-        self.periodicMeanDistanceFraction = periodicMeanDistanceFraction
+        self.minimumPeriodSteps = max(1, minimumPeriodSteps)
+        self.periodicValidationWindow = max(1, min(periodicValidationWindow, historyCapacity - 1))
+        self.periodicConfirmationSteps = max(1, periodicConfirmationSteps)
+        self.periodicCheckInterval = max(1, periodicCheckInterval)
+        self.periodicMeanDistanceFraction = periodicMeanDistanceFraction.isFinite
+            ? min(max(periodicMeanDistanceFraction, 0), 1)
+            : 0.1
+        let hotPhaseSteps = max(0, hotPhaseSteps)
         self.hotPhaseSteps = hotPhaseSteps
-        self.warmPhaseSteps = warmPhaseSteps
-        self.hotCheckInterval = hotCheckInterval
-        self.warmCheckInterval = warmCheckInterval
-        self.coldCheckInterval = coldCheckInterval
+        self.warmPhaseSteps = max(hotPhaseSteps, warmPhaseSteps)
+        self.hotCheckInterval = max(1, hotCheckInterval)
+        self.warmCheckInterval = max(1, warmCheckInterval)
+        self.coldCheckInterval = max(1, coldCheckInterval)
     }
 }
 

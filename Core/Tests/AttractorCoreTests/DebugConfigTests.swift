@@ -75,4 +75,25 @@ struct DebugConfigTests {
         #expect(selection.initialState.x != midX)
         #expect(selection.initialState.x > range.x.min && selection.initialState.x < range.x.max)
     }
+
+    @Test("The offset never pushes a start outside a narrow declared range")
+    func offsetClampedToRange() throws {
+        let narrow = AttractorDescriptor(
+            id: "narrow",
+            name: "Narrow",
+            dx: "-x", dy: "-y", dz: "-z",
+            parameters: [],
+            simulation: SimulationHyperparameters(),
+            initialState: StateRange(
+                x: MinMax(min: 0, max: 0.001),
+                y: MinMax(min: 0, max: 0.001),
+                z: MinMax(min: 0, max: 0.001)
+            )
+        )
+        let selection = try DebugConfig.selection(for: "narrow", in: [narrow])
+        #expect(selection.initialState.x >= narrow.initialState.x.min)
+        #expect(selection.initialState.x <= narrow.initialState.x.max)
+        #expect(selection.initialState.y >= narrow.initialState.y.min)
+        #expect(selection.initialState.y <= narrow.initialState.y.max)
+    }
 }

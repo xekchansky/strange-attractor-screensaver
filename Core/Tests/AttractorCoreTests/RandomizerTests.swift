@@ -13,7 +13,7 @@ struct RandomizerTests {
     func buildsValidModel() throws {
         var rng = SplitMix64(seed: 1)
         for _ in 0..<25 {
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             _ = try selection.buildModel()
         }
     }
@@ -22,7 +22,7 @@ struct RandomizerTests {
     func coversAllDeclaredParameters() throws {
         var rng = SplitMix64(seed: 3)
         for _ in 0..<25 {
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             for parameter in selection.descriptor.parameters {
                 #expect(selection.parameters[parameter.name] != nil)
             }
@@ -33,7 +33,7 @@ struct RandomizerTests {
     func parameterValuesWithinRanges() throws {
         var rng = SplitMix64(seed: 7)
         for _ in 0..<25 {
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             for parameter in selection.descriptor.parameters {
                 let value = try #require(selection.parameters[parameter.name])
                 #expect(value >= parameter.min)
@@ -44,10 +44,10 @@ struct RandomizerTests {
     }
 
     @Test("Hyperparameter values stay within their declared ranges")
-    func hyperparametersWithinRanges() {
+    func hyperparametersWithinRanges() throws {
         var rng = SplitMix64(seed: 11)
         for _ in 0..<25 {
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             let sim = selection.descriptor.simulation
             #expect(selection.settings.stepSize >= sim.stepSize.min)
             #expect(selection.settings.stepSize <= sim.stepSize.max)
@@ -63,30 +63,30 @@ struct RandomizerTests {
     }
 
     @Test("Same seed reproduces the same selection")
-    func sameSeedReproducesSelection() {
+    func sameSeedReproducesSelection() throws {
         var a = SplitMix64(seed: 99)
-        let first = Randomizer.select(from: catalog, using: &a)
+        let first = try Randomizer.select(from: catalog, using: &a)
         var b = SplitMix64(seed: 99)
-        let second = Randomizer.select(from: catalog, using: &b)
+        let second = try Randomizer.select(from: catalog, using: &b)
         #expect(first == second)
     }
 
     @Test("Varied seeds pick more than one attractor")
-    func variedSeedsPickDifferentAttractors() {
+    func variedSeedsPickDifferentAttractors() throws {
         var chosen = Set<String>()
         for seed in UInt64(0)..<40 {
             var rng = SplitMix64(seed: seed)
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             chosen.insert(selection.descriptor.id)
         }
         #expect(chosen.count > 1)
     }
 
     @Test("Initial state coordinates stay within their declared ranges")
-    func initialStateWithinRanges() {
+    func initialStateWithinRanges() throws {
         var rng = SplitMix64(seed: 17)
         for _ in 0..<25 {
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             let range = selection.descriptor.initialState
             #expect(selection.initialState.x >= range.x.min)
             #expect(selection.initialState.x <= range.x.max)
@@ -98,11 +98,39 @@ struct RandomizerTests {
     }
 
     @Test("Color mode is one of the declared modes")
-    func colorModeIsValid() {
+    func colorModeIsValid() throws {
         var rng = SplitMix64(seed: 13)
         for _ in 0..<40 {
-            let selection = Randomizer.select(from: catalog, using: &rng)
+            let selection = try Randomizer.select(from: catalog, using: &rng)
             #expect(TraceColorMode.allCases.contains(selection.settings.colorMode))
+        }
+    }
+
+    @Test("An empty catalog is rejected instead of trapping")
+    func emptyCatalogThrows() {
+        var rng = SplitMix64(seed: 1)
+        #expect(throws: RandomizerError.emptyCatalog) {
+            try Randomizer.select(from: [], using: &rng)
+        }
+    }
+
+    @Test("A malformed parameter range is rejected")
+    func malformedRangeThrows() {
+        let descriptor = AttractorDescriptor(
+            id: "broken",
+            name: "Broken",
+            dx: "x", dy: "y", dz: "z",
+            parameters: [Parameter(name: "a", min: 1, max: 0)],
+            simulation: SimulationHyperparameters(),
+            initialState: StateRange(
+                x: MinMax(min: -1, max: 1),
+                y: MinMax(min: -1, max: 1),
+                z: MinMax(min: -1, max: 1)
+            )
+        )
+        var rng = SplitMix64(seed: 2)
+        #expect(throws: RandomizerError.invalidRange(field: "parameters.a", min: 1, max: 0)) {
+            try Randomizer.select(attractor: descriptor, using: &rng)
         }
     }
 }

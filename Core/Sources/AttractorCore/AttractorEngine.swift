@@ -15,8 +15,8 @@ public struct AttractorEngine: Sendable {
     /// Current simulation state.
     public private(set) var state: State
 
-    /// The bounded buffer of the most recent states, oldest first.
-    public private(set) var trace: [State]
+    /// The bounded ring buffer of the most recent states, oldest first.
+    public private(set) var trace: TraceBuffer
 
     /// Create an engine with an initial state and an empty trace containing
     /// just that initial state.
@@ -32,7 +32,7 @@ public struct AttractorEngine: Sendable {
         self.method = method
         self.stepSize = stepSize
         self.trailCapacity = max(1, trailCapacity)
-        self.trace = [initialState]
+        self.trace = TraceBuffer(capacity: max(1, trailCapacity), initial: initialState)
     }
 
     /// Advance the simulation by one integration step and record the new point.
@@ -47,9 +47,6 @@ public struct AttractorEngine: Sendable {
             method: method,
             rate: { try self.model.rate(of: $0) }
         )
-        if trace.count == trailCapacity {
-            trace.removeFirst()
-        }
         trace.append(state)
         return state
     }

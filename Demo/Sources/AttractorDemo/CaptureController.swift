@@ -4,7 +4,11 @@ import AttractorRender
 import Metal
 import SceneKit
 
-/// Headless capture of the running simulation for documentation assets.
+/// Offscreen capture of the running simulation for documentation assets.
+///
+/// The demo still creates a real window (SceneKit needs a laid-out render
+/// context), but every frame is rendered through an explicit `SCNRenderer`
+/// rather than read back from the screen.
 ///
 /// Two modes:
 /// - ``Mode/screenshot``: one PNG after the scene has warmed up (the trail is
@@ -42,6 +46,10 @@ final class CaptureController {
     private var framesToCapture = 0
     private var frameStride = 1
     private var outputDirectory = ""
+    /// Frames that could not be rendered or written. A capture that lost any
+    /// frame exits non-zero so a calling script notices instead of assembling
+    /// a recording with silent holes.
+    private var failures = 0
 
     init(mode: Mode, captureScale: Int = 2) {
         self.mode = mode
@@ -70,8 +78,10 @@ final class CaptureController {
             // exactly as for a screenshot: otherwise the hero GIF shows the
             // attractor zooming into place for the first seconds.
             settleRemaining = Self.settleTicks
-            // The scene ticks at 60 Hz; captured output plays back at 30 fps.
-            framesToCapture = max(1, Int(ceil(seconds * 30.0 / Double(frameStride))))
+            // The scene ticks at 60 Hz, so one second of animation is 60
+            // ticks. Capture every `frameStride`-th tick: the captured
+            // sequence then plays back at the intended duration.
+            framesToCapture = max(1, Int(ceil(seconds * 60.0 / Double(frameStride))))
         }
     }
 
@@ -99,6 +109,11 @@ final class CaptureController {
         }
     }
 
+    /// Record a failed frame so ``finish()`` can report it.
+    private func registerFailure() {
+        failures += 1
+    }
+
     private func screenshotPath() -> String {
         guard case .screenshot(let path) = mode else { return "" }
         return path
@@ -111,6 +126,7 @@ final class CaptureController {
         guard let scene = scene?.view.scene,
               let device = MTLCreateSystemDefaultDevice() else {
             NSLog("CaptureController: failed to create offscreen renderer")
+            registerFailure()
             return
         }
         let renderer = SCNRenderer(device: device, options: nil)
@@ -129,6 +145,7 @@ final class CaptureController {
               let rep = NSBitmapImageRep(data: tiff),
               let png = rep.representation(using: .png, properties: [:]) else {
             NSLog("CaptureController: failed to encode PNG for \(path)")
+            registerFailure()
             return
         }
         do {
@@ -139,16 +156,23 @@ final class CaptureController {
             try png.write(to: url)
         } catch {
             NSLog("CaptureController: failed to write \(path): \(error)")
+            registerFailure()
         }
     }
 
     /// Stop the loop and quit the application once the capture is complete.
-    /// Uses `exit(0)` directly: in capture runs the app is headless, and
+    /// Uses `exit` directly: in capture runs the app quits by itself, and
     /// `NSApp.terminate` depends on app-lifecycle plumbing that may not be
-    /// delivered in a background GUI context.
+    /// delivered in a background GUI context. Losing any frame makes the exit
+    /// status non-zero so a calling script can retry instead of publishing a
+    /// recording with silent holes.
     private func finish() {
         scene?.onFrameRendered = nil
         scene?.stop()
+        if failures > 0 {
+            NSLog("CaptureController: capture finished with \(failures) failed frame(s)")
+            exit(1)
+        }
         NSLog("CaptureController: capture complete")
         exit(0)
     }

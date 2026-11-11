@@ -1,4 +1,5 @@
 import AppKit
+import os
 import SceneKit
 import QuartzCore
 import AttractorCore
@@ -60,6 +61,14 @@ public final class SimulationScene: NSObject {
     public var fixedFrameInterval: Double?
     /// Guards against signalling a restart more than once.
     private var hasSignaledRestart = false
+    private static let logger = Logger(
+        subsystem: "io.github.xekchansky.AttractorRender",
+        category: "scene"
+    )
+    /// How often the corner overlay text is refreshed. Rebuilding the label
+    /// string every frame is wasted work at 60 Hz; twice a second reads as
+    /// live without the churn.
+    private static let overlayUpdateInterval: CFTimeInterval = 0.5
 
     /// Create the scene around a ready-to-run engine.
     ///
@@ -191,7 +200,7 @@ public final class SimulationScene: NSObject {
     private func requestRestart(reason: String) {
         guard !hasSignaledRestart else { return }
         hasSignaledRestart = true
-        NSLog("AttractorRender: \(reason), requesting restart")
+        Self.logger.notice("\(reason, privacy: .public), requesting restart")
         stop()
         onNeedsRestart?()
     }
@@ -265,7 +274,7 @@ public final class SimulationScene: NSObject {
                 )
             }
 
-            if now - lastOverlayUpdate > 0.5 {
+            if now - lastOverlayUpdate > Self.overlayUpdateInterval {
                 overlay.stringValue = Self.overlayText(for: selection, state: engine.state)
                 lastOverlayUpdate = now
             }

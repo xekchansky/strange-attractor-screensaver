@@ -303,4 +303,39 @@ struct SimulationHealthMonitorTests {
         }
         #expect(issue == .periodic)
     }
+
+    @Test("Invalid thresholds are sanitized instead of flipping every check")
+    func thresholdsAreSanitized() {
+        let thresholds = SimulationHealthThresholds(
+            warmupSteps: -10,
+            collapseWindowSteps: 0,
+            collapseSpan: .nan,
+            divergenceLimit: -1,
+            historyCapacity: 0,
+            minimumPeriodSteps: 0,
+            periodicValidationWindow: 10_000,
+            periodicCheckInterval: 0,
+            periodicMeanDistanceFraction: 5,
+            hotPhaseSteps: -1,
+            warmPhaseSteps: -1,
+            hotCheckInterval: 0,
+            warmCheckInterval: -5,
+            coldCheckInterval: 0
+        )
+        #expect(thresholds.warmupSteps >= 0)
+        #expect(thresholds.collapseWindowSteps >= 1)
+        #expect(thresholds.collapseSpan.isFinite && thresholds.collapseSpan >= 0)
+        #expect(thresholds.divergenceLimit > 0)
+        #expect(thresholds.historyCapacity >= 2)
+        #expect(thresholds.minimumPeriodSteps >= 1)
+        #expect(thresholds.periodicValidationWindow >= 1)
+        #expect(thresholds.periodicValidationWindow < thresholds.historyCapacity)
+        #expect(thresholds.periodicCheckInterval >= 1)
+        #expect(thresholds.periodicMeanDistanceFraction >= 0)
+        #expect(thresholds.periodicMeanDistanceFraction <= 1)
+        #expect(thresholds.warmPhaseSteps >= 0)
+        #expect(thresholds.hotCheckInterval >= 1)
+        #expect(thresholds.warmCheckInterval >= 1)
+        #expect(thresholds.coldCheckInterval >= 1)
+    }
 }

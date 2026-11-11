@@ -62,7 +62,7 @@ final class CameraController {
     func update(
         dt: Double,
         rotationSpeed: Double,
-        around trace: [State],
+        around trace: TraceBuffer,
         cameraNode: SCNNode
     ) {
         frame += 1
@@ -84,7 +84,7 @@ final class CameraController {
     }
 
     /// Compute the bounding box of `trace` and a camera distance that frames it.
-    private static func framing(for trace: [State]) -> (center: SCNVector3, distance: CGFloat) {
+    private static func framing(for trace: TraceBuffer) -> (center: SCNVector3, distance: CGFloat) {
         guard let first = trace.first else { return (SCNVector3Zero, 8) }
 
         var minX = CGFloat(first.x), maxX = CGFloat(first.x)
