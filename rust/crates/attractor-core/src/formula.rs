@@ -1,10 +1,10 @@
-//! Parsed arithmetic expressions and their syntax errors.
+//! Parsed arithmetic expressions, their evaluation and their errors.
 //!
-//! Evaluation is added in I2 together with the golden fixtures; I1 needs the
-//! syntax tree only so catalog validation can reject malformed formulas,
-//! unknown functions and undeclared variables before the screen saver starts.
+//! The syntax tree landed in I1 so catalog validation could reject malformed
+//! formulas, unknown functions and undeclared variables before the screen
+//! saver starts. Evaluation and the golden fixtures arrived in I2.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt;
 
@@ -107,6 +107,44 @@ impl Expression {
         functions.into_iter().collect()
     }
 
+    /// Evaluate the expression tree against a set of variable bindings.
+    ///
+    /// `variables` maps a name to a value: the state coordinates `x`/`y`/`z`
+    /// plus the attractor's parameters. Evaluation matches the Swift oracle:
+    /// a missing binding is [`FormulaError::UnknownVariable`], division by an
+    /// exactly zero divisor and the domain limits of `sqrt`/`ln`/`log` are
+    /// [`FormulaError::EvaluationFailed`], and every other function is
+    /// [`FormulaError::UnknownFunction`].
+    pub fn evaluate(&self, variables: &HashMap<String, f64>) -> Result<f64, FormulaError> {
+        match self {
+            Self::Constant(value) => Ok(*value),
+            Self::Variable(name) => variables
+                .get(name)
+                .copied()
+                .ok_or_else(|| FormulaError::UnknownVariable(name.clone())),
+            Self::Negate(expression) => Ok(-expression.evaluate(variables)?),
+            Self::Add(lhs, rhs) => Ok(lhs.evaluate(variables)? + rhs.evaluate(variables)?),
+            Self::Subtract(lhs, rhs) => Ok(lhs.evaluate(variables)? - rhs.evaluate(variables)?),
+            Self::Multiply(lhs, rhs) => Ok(lhs.evaluate(variables)? * rhs.evaluate(variables)?),
+            Self::Divide(lhs, rhs) => {
+                // The Swift oracle evaluates the divisor first, so a zero
+                // divisor wins over an error in the dividend.
+                let divisor = rhs.evaluate(variables)?;
+                if divisor == 0.0 {
+                    return Err(FormulaError::EvaluationFailed("division by zero".into()));
+                }
+                Ok(lhs.evaluate(variables)? / divisor)
+            }
+            Self::Power(base, exponent) => Ok(base
+                .evaluate(variables)?
+                .powf(exponent.evaluate(variables)?)),
+            Self::Function(name, argument) => {
+                let value = argument.evaluate(variables)?;
+                apply_function(name, value)
+            }
+        }
+    }
+
     fn collect_variables(&self, names: &mut BTreeSet<String>) {
         match self {
             Self::Constant(_) => {}
@@ -143,5 +181,37 @@ impl Expression {
                 argument.collect_functions(names);
             }
         }
+    }
+}
+
+/// Apply one of [`Expression::SUPPORTED_FUNCTIONS`] to an evaluated argument.
+///
+/// `ln` and `log` are both the natural logarithm, as in the Swift oracle.
+/// The domain checks reject NaN explicitly, matching Swift's `guard`, where
+/// NaN fails both `value >= 0` and `value > 0`.
+fn apply_function(name: &str, value: f64) -> Result<f64, FormulaError> {
+    match name {
+        "sin" => Ok(value.sin()),
+        "cos" => Ok(value.cos()),
+        "tan" => Ok(value.tan()),
+        "sqrt" => {
+            if value.is_nan() || value < 0.0 {
+                return Err(FormulaError::EvaluationFailed(format!(
+                    "sqrt of a negative number (got {value})"
+                )));
+            }
+            Ok(value.sqrt())
+        }
+        "abs" => Ok(value.abs()),
+        "exp" => Ok(value.exp()),
+        "ln" | "log" => {
+            if value.is_nan() || value <= 0.0 {
+                return Err(FormulaError::EvaluationFailed(format!(
+                    "logarithm of a non-positive number (got {value})"
+                )));
+            }
+            Ok(value.ln())
+        }
+        other => Err(FormulaError::UnknownFunction(other.to_owned())),
     }
 }
