@@ -321,13 +321,17 @@ documented and reproducible.
 **Goal:** the integration, randomness and buffering contract is identical.
 
 **Deliverables:** `ODESolver` (Euler + RK4), `SplitMix64` (bit-exact),
-`Randomizer`, `SimulationStepScheduler`, `TraceBuffer` (ring),
-`RestartLimiter`.
+`Randomizer`, `AttractorSelection` (the data aggregate the randomizer returns;
+model building stays in I4), `SimulationStepScheduler`, `TraceBuffer` (ring),
+`RestartLimiter`. `RandomSource` reproduces the Swift standard library's range
+drawing (Lemire's `next(upperBound:)`, `Int.random(in:)`, the 53-bit
+`Double.random(in:using:)`), so a seed selects the same values bit for bit.
 
 **Tests:** port `ODESolverTests`, `SplitMix64Tests` (exact sequences),
 `TraceBufferTests` + property tests, `RestartLimiterTests`,
 `SimulationStepSchedulerTests`; short-horizon golden trajectories for Lorenz,
-Chua and Aizawa (1e-9 relative); long-run invariant tests (finite, bounded).
+Chua and Aizawa (1e-9 relative); a seeded-selection fixture from the Swift
+oracle compared exactly; long-run invariant tests (finite, bounded).
 
 **Verify:** `cargo test -p attractor-core`.
 
@@ -336,8 +340,9 @@ Chua and Aizawa (1e-9 relative); long-run invariant tests (finite, bounded).
 **Goal:** a seeded end-to-end simulation matches Swift bit-for-bit on the RNG
 and within tolerance on the trace.
 
-**Deliverables:** `AttractorEngine`, `AttractorSelection`,
-`SimulationHealthMonitor`, `DebugConfig`.
+**Deliverables:** `AttractorEngine`, `AttractorModel` (formulas bound to
+parameters, plus `AttractorSelection::build_model`), `SimulationHealthMonitor`,
+`DebugConfig`.
 
 **Tests:** port `AttractorEngineTests`, `SimulationHealthMonitorTests`
 (fixed point, limit cycle, divergence, non-finite states), determinism tests

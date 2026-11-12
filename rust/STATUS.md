@@ -10,9 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I2 — formula evaluation and golden fixtures**
-  (2026-11-12)
-- Next iteration: **I3 — numerical core**
+- Last completed iteration: **I3 — numerical core** (2026-11-12)
+- Next iteration: **I4 — engine, selection and health monitor**
 
 ## Verification
 
@@ -48,7 +47,7 @@ prerequisites; `spike/README.md` has the full recipe.
 - [x] I0.5 — renderer and web spike, timeboxed
 - [x] I1 — data model and catalog
 - [x] I2 — formula evaluation and golden fixtures
-- [ ] I3 — numerical core
+- [x] I3 — numerical core
 - [ ] I4 — engine, selection and health monitor
 - [ ] I5 — view layer, no GPU
 - [ ] I6 — wgpu renderer and CLI capture
@@ -63,12 +62,13 @@ prerequisites; `spike/README.md` has the full recipe.
 ## Swift oracle
 
 Pinned at **`dfbadb8`**, the last commit that touched `Core/Sources`. The
-golden fixtures were generated from that tree on 2026-11-12. The generator
-(`Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`) was added in
-the I2 commit on top of `dfbadb8`; to reproduce the fixtures, check out
-`dfbadb8`, copy the generator in, and run the command in
+golden fixtures were generated from that tree on 2026-11-12. The generators
+(`Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`, added in the
+I2 commit, and `NumericalFixtureDumpTests.swift`, added in the I3 commit) sit
+on top of `dfbadb8`; to reproduce the fixtures, check out `dfbadb8`, copy the
+generators in, and run the commands in
 `rust/crates/attractor-core/tests/fixtures/README.md`. After I12 retires
-`Core/`, the oracle tag will contain the generator, so the checkout alone is
+`Core/`, the oracle tag will contain the generators, so the checkout alone is
 enough.
 
 ## Notes and risks
@@ -123,12 +123,51 @@ enough.
   generator if cross-platform libm fidelity of those functions becomes a
   requirement. Also untested domain edges: `ln(NaN)`, `sqrt(-0.0)`, a `-0.0`
   divisor, and the dividend side of division precedence (`1 / q`).
+- **I3**: the numerical core is ported in `ode_solver`, `splitmix64`,
+  `random`, `randomizer`, `simulation_step_scheduler`, `trace_buffer` and
+  `restart_limiter`; `AttractorSelection` (the plain data aggregate) also
+  lands here because it is the randomizer's return type. `AttractorModel`,
+  `DebugConfig` and the engine stay in I4, which adds model building to the
+  selection.
+- **I3 deterministic RNG**: `SplitMix64` is bit-identical to Swift.
+  `RandomSource` carries the Swift standard library's range-drawing algorithms
+  as provided methods — Lemire's `next(upperBound:)`, `Int.random(in:)` and
+  the 53-bit `Double.random(in:using:)` — so the randomizer consumes the same
+  draws in the same order as Swift (parameters in declaration order, then the
+  five hyperparameters, then x/y/z). `tests/randomizer_fixtures.rs` proves it
+  bit for bit for 16 seeds over the whole catalog, not just that values fall
+  in range. The entropy-backed Swift overloads (`select` without a generator)
+  are not ported: every entry point takes a `RandomSource`, and the player
+  picks a seeding source in I7a.
+- **I3 numerical fixtures**: `tests/fixtures/trajectories.json` holds 1000
+  RK4 steps for Lorenz, Chua and Aizawa plus 500 Euler steps for Lorenz, all
+  from `DebugConfig` midpoints and the offset start; the Rust integration
+  matches within `1e-9` relative (absolute floor `1e-9`).
+  `tests/trajectory_fixtures.rs` also runs 20 000-step long-run invariants
+  (finite, bounded, still moving) and checks both methods stay finite on
+  Lorenz. The tolerance is safe because the compared horizon is short; long
+  horizons are covered only by invariants, as the numeric contract requires.
+- **I3 buffer tests**: `TraceBuffer` exposes `len`, `Index`, `iter`, `first`
+  and `last` instead of Swift's collection protocol; its property test
+  compares 200 random appends per capacity (1–8) against a reference
+  `VecDeque`. No `proptest` dependency was added.
+- **I3 ruling**: the design listed `AttractorSelection` under I4, but the
+  randomizer returns one, so the aggregate moved to I3. Cost of the split:
+  `build_model` and the engine wait for `AttractorModel`, which is still I4.
+- **I3 oracle caveat**: Swift documents that its standard-library random
+  algorithms may change between compiler versions. The fixtures pin Swift
+  6.4.2 behaviour; re-run the generator if the oracle toolchain changes.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
   use the default locations; nothing in the repository depends on this.
   Likewise, `swift test` inside the agent sandbox needs `--disable-sandbox`,
-  because SwiftPM cannot start its own nested sandbox there.
+  because SwiftPM cannot start its own nested sandbox there. When that flag is
+  unavailable, the same fixture generators can be driven by compiling the
+  `Core/Sources` files with `swiftc` directly (excluding
+  `AttractorCatalog.swift`, whose `Bundle.module` is SwiftPM-generated, and
+  loading `attractors.json` by path); the values are identical because both
+  paths call the same oracle functions.
 - The `rust` CI job runs on `ubuntu-latest`. It is independent of the Swift
   jobs, which still run on `macos-26` unchanged.
 - The workflow's `push` trigger now includes `rust-port`; without it the Rust
