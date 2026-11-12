@@ -1,0 +1,357 @@
+{
+  "entries" : [
+    {
+      "attractor" : "halvorsen",
+      "initialState" : {
+        "x" : "-0.50862210231973726",
+        "y" : "0.90406138273565317",
+        "z" : "-0.20706404874237272"
+      },
+      "parameters" : {
+        "a" : "1.3363055994097019"
+      },
+      "seed" : 0,
+      "settings" : {
+        "cameraRotationSpeed" : "0.13190400747016373",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "2.941763956307657",
+        "stepSize" : "0.0041586026295555864",
+        "trailColorSpeed" : "0.13183144105453143",
+        "trailLength" : 3043
+      }
+    },
+    {
+      "attractor" : "chua",
+      "initialState" : {
+        "x" : "0.10542036897532925",
+        "y" : "-0.045062092529710274",
+        "z" : "0.030078997501588933"
+      },
+      "parameters" : {
+        "alpha" : "15.845781757262703",
+        "beta" : "26.068103028945476",
+        "m0" : "-1.1477820391472113",
+        "m1" : "-0.71667205897520925"
+      },
+      "seed" : 1,
+      "settings" : {
+        "cameraRotationSpeed" : "0.25692015395529444",
+        "colorMode" : "age",
+        "simulationSpeed" : "2.7546973735283462",
+        "stepSize" : "0.00070515775676470449",
+        "trailColorSpeed" : "0.12137717109924166",
+        "trailLength" : 6764
+      }
+    },
+    {
+      "attractor" : "sprott_a",
+      "initialState" : {
+        "x" : "0.47817464869515836",
+        "y" : "-0.49937525561739604",
+        "z" : "0.45523192916778021"
+      },
+      "parameters" : {
+
+      },
+      "seed" : 2,
+      "settings" : {
+        "cameraRotationSpeed" : "0.32962574625850893",
+        "colorMode" : "depth",
+        "simulationSpeed" : "2.1912761628000106",
+        "stepSize" : "0.0084948981032429496",
+        "trailColorSpeed" : "0.12789717179527854",
+        "trailLength" : 4080
+      }
+    },
+    {
+      "attractor" : "rossler",
+      "initialState" : {
+        "x" : "0.39687229080269404",
+        "y" : "0.42377252093931106",
+        "z" : "-0.039670991891285645"
+      },
+      "parameters" : {
+        "a" : "0.22002935135929025",
+        "b" : "0.21129746825466245",
+        "c" : "5.1093001051576783"
+      },
+      "seed" : 3,
+      "settings" : {
+        "cameraRotationSpeed" : "0.14054375757434517",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "2.2724446314552957",
+        "stepSize" : "0.0052986346526889098",
+        "trailColorSpeed" : "0.27217960852788609",
+        "trailLength" : 13893
+      }
+    },
+    {
+      "attractor" : "lu",
+      "initialState" : {
+        "x" : "0.58809574642434681",
+        "y" : "0.39361567151987864",
+        "z" : "0.086444352572794703"
+      },
+      "parameters" : {
+        "a" : "37.569627383998871",
+        "b" : "3.1436468598019864",
+        "c" : "19.96709705530867"
+      },
+      "seed" : 4,
+      "settings" : {
+        "cameraRotationSpeed" : "0.37620398071359007",
+        "colorMode" : "depth",
+        "simulationSpeed" : "2.173436686613889",
+        "stepSize" : "0.0063674829350391805",
+        "trailColorSpeed" : "0.16218482025106223",
+        "trailLength" : 3090
+      }
+    },
+    {
+      "attractor" : "aizawa",
+      "initialState" : {
+        "x" : "-0.047292771432165703",
+        "y" : "0.45467878768352477",
+        "z" : "0.43897519891601577"
+      },
+      "parameters" : {
+        "a" : "0.97523070158382241",
+        "b" : "0.64654183313549241",
+        "c" : "0.51986788226532055",
+        "d" : "3.1879601217024223",
+        "e" : "0.23806089276186215",
+        "f" : "0.14855635238598527"
+      },
+      "seed" : 5,
+      "settings" : {
+        "cameraRotationSpeed" : "0.2810321664002734",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "1.8529026781305469",
+        "stepSize" : "0.0070666089323709533",
+        "trailColorSpeed" : "0.16261877284539139",
+        "trailLength" : 9640
+      }
+    },
+    {
+      "attractor" : "sprott_b",
+      "initialState" : {
+        "x" : "-0.59468106770251405",
+        "y" : "-0.76424467918165395",
+        "z" : "0.81748995633663979"
+      },
+      "parameters" : {
+
+      },
+      "seed" : 6,
+      "settings" : {
+        "cameraRotationSpeed" : "0.13166165484084991",
+        "colorMode" : "trail",
+        "simulationSpeed" : "1.1126858012042515",
+        "stepSize" : "0.0066778823242856734",
+        "trailColorSpeed" : "0.18768554914539259",
+        "trailLength" : 6942
+      }
+    },
+    {
+      "attractor" : "aizawa",
+      "initialState" : {
+        "x" : "0.37133175987674394",
+        "y" : "0.36400766229359893",
+        "z" : "0.048287416599960165"
+      },
+      "parameters" : {
+        "a" : "0.90167882945281563",
+        "b" : "0.78015213612137679",
+        "c" : "0.61658605860561555",
+        "d" : "3.4524418950114684",
+        "e" : "0.22494315222827435",
+        "f" : "0.096795300422287345"
+      },
+      "seed" : 7,
+      "settings" : {
+        "cameraRotationSpeed" : "0.22394241922533381",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "1.2685165976168975",
+        "stepSize" : "0.0059684604349150181",
+        "trailColorSpeed" : "0.075889986836252962",
+        "trailLength" : 19519
+      }
+    },
+    {
+      "attractor" : "sprott_a",
+      "initialState" : {
+        "x" : "-0.28615731849203652",
+        "y" : "-0.83976944326596681",
+        "z" : "-0.12639279340135467"
+      },
+      "parameters" : {
+
+      },
+      "seed" : 8,
+      "settings" : {
+        "cameraRotationSpeed" : "0.2608339760723174",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "2.3780587083127109",
+        "stepSize" : "0.0076716885775503585",
+        "trailColorSpeed" : "0.065954464522003112",
+        "trailLength" : 4249
+      }
+    },
+    {
+      "attractor" : "sprott_b",
+      "initialState" : {
+        "x" : "0.96709705530867018",
+        "y" : "-0.56192883733768273",
+        "z" : "0.57832195669278685"
+      },
+      "parameters" : {
+
+      },
+      "seed" : 9,
+      "settings" : {
+        "cameraRotationSpeed" : "0.33544410773952937",
+        "colorMode" : "depth",
+        "simulationSpeed" : "1.5306448811983666",
+        "stepSize" : "0.0085041693577496726",
+        "trailColorSpeed" : "0.11563835545588196",
+        "trailLength" : 2687
+      }
+    },
+    {
+      "attractor" : "lorenz",
+      "initialState" : {
+        "x" : "-0.51789064794103079",
+        "y" : "-0.42274742418786815",
+        "z" : "-0.99691834883950636"
+      },
+      "parameters" : {
+        "a" : "9.7343671530089999",
+        "b" : "2.5654863857393697",
+        "r" : "29.050650227286972"
+      },
+      "seed" : 10,
+      "settings" : {
+        "cameraRotationSpeed" : "0.33621286927787453",
+        "colorMode" : "age",
+        "simulationSpeed" : "2.8979090351463408",
+        "stepSize" : "0.0091377881462535015",
+        "trailColorSpeed" : "0.24615707528906799",
+        "trailLength" : 7840
+      }
+    },
+    {
+      "attractor" : "chen",
+      "initialState" : {
+        "x" : "-0.67235390188226285",
+        "y" : "-0.49154855687313392",
+        "z" : "0.82340085064437973"
+      },
+      "parameters" : {
+        "a" : "37.787095455321158",
+        "b" : "3.0828254052110089",
+        "c" : "28.018456124843148"
+      },
+      "seed" : 11,
+      "settings" : {
+        "cameraRotationSpeed" : "0.13015434371707851",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "2.1038753844235343",
+        "stepSize" : "0.004991155303721918",
+        "trailColorSpeed" : "0.24499551140591597",
+        "trailLength" : 4043
+      }
+    },
+    {
+      "attractor" : "chua",
+      "initialState" : {
+        "x" : "0.17663287070167222",
+        "y" : "0.1266354434059741",
+        "z" : "-0.43298699225511539"
+      },
+      "parameters" : {
+        "alpha" : "16.039463266780569",
+        "beta" : "25.258212698973736",
+        "m0" : "-1.124758048027684",
+        "m1" : "-0.70443502919784651"
+      },
+      "seed" : 12,
+      "settings" : {
+        "cameraRotationSpeed" : "0.32515762233819079",
+        "colorMode" : "spatial",
+        "simulationSpeed" : "1.2786540134727831",
+        "stepSize" : "0.00051764960259982542",
+        "trailColorSpeed" : "0.12925799282010914",
+        "trailLength" : 2840
+      }
+    },
+    {
+      "attractor" : "sprott_c",
+      "initialState" : {
+        "x" : "-0.21315807103466522",
+        "y" : "-0.57647992629086753",
+        "z" : "0.40504887276062074"
+      },
+      "parameters" : {
+
+      },
+      "seed" : 13,
+      "settings" : {
+        "cameraRotationSpeed" : "0.1874762195989027",
+        "colorMode" : "depth",
+        "simulationSpeed" : "2.2657053645128116",
+        "stepSize" : "0.0059721273910502354",
+        "trailColorSpeed" : "0.25414418861422322",
+        "trailLength" : 4096
+      }
+    },
+    {
+      "attractor" : "aizawa",
+      "initialState" : {
+        "x" : "-0.011168016359149435",
+        "y" : "0.091372239232672903",
+        "z" : "0.33146465744125775"
+      },
+      "parameters" : {
+        "a" : "0.90713058693706217",
+        "b" : "0.60298649531839565",
+        "c" : "0.63203755362633651",
+        "d" : "3.9001848271022981",
+        "e" : "0.23311186797084649",
+        "f" : "0.050047464248316013"
+      },
+      "seed" : 14,
+      "settings" : {
+        "cameraRotationSpeed" : "0.27017815945299278",
+        "colorMode" : "trail",
+        "simulationSpeed" : "2.9397758409043804",
+        "stepSize" : "0.0087741161585346908",
+        "trailColorSpeed" : "0.10435632110566466",
+        "trailLength" : 17102
+      }
+    },
+    {
+      "attractor" : "chua",
+      "initialState" : {
+        "x" : "0.095625729736749543",
+        "y" : "-0.33016042793022626",
+        "z" : "-0.38175072545044164"
+      },
+      "parameters" : {
+        "alpha" : "15.88015276597185",
+        "beta" : "25.6165628862822",
+        "m0" : "-1.1592040072546044",
+        "m1" : "-0.72462513009939566"
+      },
+      "seed" : 15,
+      "settings" : {
+        "cameraRotationSpeed" : "0.3300701888560591",
+        "colorMode" : "trail",
+        "simulationSpeed" : "2.575724521770268",
+        "stepSize" : "0.00076450618133873166",
+        "trailColorSpeed" : "0.13673246820901686",
+        "trailLength" : 5036
+      }
+    }
+  ],
+  "generator" : "Core\/Tests\/AttractorCoreTests\/NumericalFixtureDumpTests.swift"
+}
