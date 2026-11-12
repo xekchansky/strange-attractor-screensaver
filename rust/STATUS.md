@@ -10,9 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I4 — engine, selection and health monitor**
-  (2026-11-12)
-- Next iteration: **I5 — view layer, no GPU**
+- Last completed iteration: **I5 — view layer, no GPU** (2026-11-12)
+- Next iteration: **I6 — wgpu renderer and CLI capture**
 
 ## Verification
 
@@ -50,7 +49,7 @@ prerequisites; `spike/README.md` has the full recipe.
 - [x] I2 — formula evaluation and golden fixtures
 - [x] I3 — numerical core
 - [x] I4 — engine, selection and health monitor
-- [ ] I5 — view layer, no GPU
+- [x] I5 — view layer, no GPU
 - [ ] I6 — wgpu renderer and CLI capture
 - [ ] I7a — player and C ABI
 - [ ] I7b — macOS host migration
@@ -200,6 +199,50 @@ enough.
   (12 attractors × 4 starts × 8 000 steps) still finishes in about four
   seconds in a debug build. Optimize only if profiling in I6 shows the formula
   layer as a bottleneck.
+- **I5**: the GPU-free view layer lives in `attractor-view`: `Vector3` and
+  `Mat4` (column-major look-at), `CameraController` (the Swift orbit
+  constants, six-frame framing cache, 6% easing, `f32`-rounded position),
+  `TrailBuilder`/`TrailGeometry` (16 384-point budget, uniform stride, head
+  preservation, world-space ribbon radius, all four color modes) and
+  `OverlayModel`. Tests: `tests/math.rs`, `tests/camera.rs`,
+  `tests/trail.rs`, `tests/overlay.rs` and the golden
+  `tests/view_fixtures.rs`.
+- **I5 fidelity**: Swift's `SCNNode.position` getter and `SCNGeometrySource`
+  store `Float32` even though the API is `CGFloat`-typed (`SCNVector3` itself
+  keeps `f64`; verified with a probe). The Rust camera rounds its position
+  through `f32` on every update, and the ribbon rounds vertex positions and
+  colors through `f32` at the same points, so the committed fixture matches
+  bit for bit. The camera's center, distance and azimuth stay `f64`, like the
+  Swift controller's stored properties.
+- **I5 fixture**: `tests/fixtures/view_fixtures.json` records fourteen camera
+  positions around a fixed nine-point trace and the complete
+  position/color/index buffers for five trail cases (`trail` at offsets 0.0
+  and 0.3, `age`, `depth`, `spatial` at 0.3). The generator is
+  `Render/Tests/AttractorRenderTests/ViewFixtureDumpTests.swift`, enabled by
+  the new `AttractorRenderTests` target in `Render/Package.swift` and
+  disabled unless `ATTRACTOR_DUMP_FIXTURES=1`; `tests/fixtures/README.md` has
+  the command. SwiftPM cannot start its nested sandbox in the agent
+  environment, so the committed file was produced by compiling the same
+  source bodies with `swiftc`; the test target type-checks and the package
+  builds with `--disable-sandbox`, which CI does not need.
+- **I5 rulings**:
+  - The design calls 16 384 a "vertex budget"; Swift counts sampled trace
+    points, so a fully populated ribbon reaches 32 770 vertices. The Rust
+    builder keeps Swift's meaning (`TrailBuilder::DEFAULT_BUDGET` counts
+    points).
+  - `CameraController::random` takes an explicit `RandomSource`, because the
+    Swift initializer reaches into the system RNG, which is not seedable. The
+    draw mirrors `Double.random(in: 0..<2π)` (53 bits below 2^53). The
+    screensaver's random angle is not part of the seeded determinism
+    contract, so this is not a parity risk; captures use
+    `CameraController::new` with a pinned angle.
+  - The ribbon builder is stateful (`build` refills its buffers in place)
+    rather than a free function, matching `TraceRenderer`'s reuse rationale;
+    `TrailGeometry` owns the three buffers and exposes read-only accessors.
+- **I5 deferred (minor)**: `Mat4::look_at` has no perspective projection; I6
+  adds it with the aspect ratio. `OverlayModel` spells non-finite values the
+  way C does (`nan`, `inf`) for parity, but no test covers a non-finite state
+  (those are transient before a health-monitor restart).
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell

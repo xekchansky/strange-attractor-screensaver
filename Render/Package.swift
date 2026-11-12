@@ -26,6 +26,13 @@ let package = Package(
             dependencies: [
                 .product(name: "AttractorCore", package: "Core")
             ]
+        ),
+        // Golden-fixture generator for the Rust view layer, disabled unless
+        // ATTRACTOR_DUMP_FIXTURES=1. Not run by CI; it pins the Rust port to
+        // the Swift camera and ribbon implementation.
+        .testTarget(
+            name: "AttractorRenderTests",
+            dependencies: ["AttractorRender"]
         )
     ]
 )
