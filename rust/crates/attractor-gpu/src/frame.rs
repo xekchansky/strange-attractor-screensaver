@@ -153,11 +153,6 @@ impl FrameRenderer {
         self.sample_count
     }
 
-    /// Overlay font and margin multiplier.
-    pub const fn overlay_scale(&self) -> f32 {
-        self.overlay_scale
-    }
-
     /// Retarget the renderer at a new frame size.
     ///
     /// The pipelines and the ribbon buffers survive; only the attachment

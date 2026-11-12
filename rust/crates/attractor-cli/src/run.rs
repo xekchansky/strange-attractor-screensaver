@@ -60,11 +60,6 @@ impl PreparedRun {
             self.height.saturating_mul(self.capture_scale),
         )
     }
-
-    /// Font and margin multiplier of the overlay.
-    pub fn overlay_scale(&self) -> f32 {
-        self.capture_scale as f32
-    }
 }
 
 /// What a successful run wrote.

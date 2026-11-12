@@ -147,6 +147,46 @@ fn division_checks_the_divisor_before_the_dividend() {
 }
 
 #[test]
+fn a_logarithm_of_nan_is_an_evaluation_error() {
+    // NaN fails Swift's `guard value > 0` too, even though an IEEE
+    // comparison against NaN would be false either way.
+    assert!(matches!(
+        evaluate("ln(x)", &[("x", f64::NAN)]),
+        Err(FormulaError::EvaluationFailed(_))
+    ));
+}
+
+#[test]
+fn a_negative_zero_square_root_stays_inside_the_domain() {
+    // `-0.0` compares equal to zero, so the guard lets it through and the
+    // result keeps its sign.
+    let value = evaluate("sqrt(x)", &[("x", -0.0)]).unwrap();
+    assert_eq!(value.to_bits(), (-0.0f64).to_bits());
+}
+
+#[test]
+fn a_negative_zero_divisor_is_rejected() {
+    assert!(matches!(
+        evaluate("1 / x", &[("x", -0.0)]),
+        Err(FormulaError::EvaluationFailed(_))
+    ));
+}
+
+#[test]
+fn the_dividend_is_evaluated_only_after_a_valid_divisor() {
+    // A valid divisor lets the dividend's own error surface...
+    assert_eq!(
+        evaluate("q / 2", &[]),
+        Err(FormulaError::UnknownVariable("q".into()))
+    );
+    // ...and a valid dividend never masks an unknown divisor.
+    assert_eq!(
+        evaluate("1 / q", &[]),
+        Err(FormulaError::UnknownVariable("q".into()))
+    );
+}
+
+#[test]
 fn a_negative_base_with_a_fractional_exponent_yields_nan() {
     // `pow` has no domain check in the oracle; it returns NaN.
     assert!(evaluate("(-1) ^ 0.5", &[]).unwrap().is_nan());

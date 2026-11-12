@@ -110,6 +110,11 @@ impl CommandLineArguments {
     /// Largest accepted logical width or height.
     pub const MAXIMUM_DIMENSION: u32 = 16_384;
 
+    /// Largest accepted `--frames` value: one hour of simulated time at the
+    /// capture frame rate, matching the `--record-seconds` cap. A mistyped
+    /// huge value would otherwise keep the renderer busy indefinitely.
+    pub const MAXIMUM_FRAMES: usize = 216_000;
+
     /// Usage text shown by `--help` and after a parse error.
     pub const USAGE: &str = "\
 Usage: attractor-cli [options]
@@ -131,6 +136,7 @@ Options:
       --frame-stride <n>      capture every n-th rendered frame (default 2)
       --frames <n>            simulation frames before a screenshot (default
                               90), or the number of frames to record
+                              (at most 216000, one hour at 60 fps)
       --warmup-steps <n>      integration steps fast-forwarded before capture
                               (default 60000; 0 records the trail from the start)
       --capture-scale <n>     resolution multiplier (default 2; 1-4)
@@ -287,7 +293,7 @@ required. The interactive surfaces are hosted by the platform shells.
                 }
                 "--frames" => {
                     let raw = take_value(arguments, &mut index, argument)?;
-                    frames = Some(parse_usize(argument, &raw, usize::MAX)?);
+                    frames = Some(parse_usize(argument, &raw, Self::MAXIMUM_FRAMES)?);
                 }
                 "--width" => {
                     let raw = take_value(arguments, &mut index, argument)?;
