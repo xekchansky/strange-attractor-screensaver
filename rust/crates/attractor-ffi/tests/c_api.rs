@@ -4,9 +4,10 @@ use std::ffi::CStr;
 use std::ptr;
 
 use attractor_ffi::{
-    ATTRACTOR_PLAYER_INVALID_ARGUMENT, ATTRACTOR_PLAYER_OK, ATTRACTOR_PLAYER_RESTART_DEFERRED,
-    ATTRACTOR_PLAYER_RESTARTED, AttractorPlayerOptions, attractor_player_create,
-    attractor_player_destroy, attractor_player_height, attractor_player_last_error,
+    ATTRACTOR_PLAYER_ERROR, ATTRACTOR_PLAYER_INVALID_ARGUMENT, ATTRACTOR_PLAYER_OK,
+    ATTRACTOR_PLAYER_RESTART_DEFERRED, ATTRACTOR_PLAYER_RESTARTED, AttractorPlayerOptions,
+    attractor_player_attach_layer, attractor_player_create, attractor_player_destroy,
+    attractor_player_draw, attractor_player_height, attractor_player_last_error,
     attractor_player_render, attractor_player_resize, attractor_player_restart,
     attractor_player_tick, attractor_player_width,
 };
@@ -80,6 +81,14 @@ fn null_and_invalid_arguments_are_rejected() {
     );
     assert_eq!(
         unsafe { attractor_player_restart(ptr::null_mut()) },
+        ATTRACTOR_PLAYER_INVALID_ARGUMENT
+    );
+    assert_eq!(
+        unsafe { attractor_player_attach_layer(ptr::null_mut(), ptr::null_mut()) },
+        ATTRACTOR_PLAYER_INVALID_ARGUMENT
+    );
+    assert_eq!(
+        unsafe { attractor_player_draw(ptr::null_mut()) },
         ATTRACTOR_PLAYER_INVALID_ARGUMENT
     );
     assert_eq!(unsafe { attractor_player_width(ptr::null()) }, 0);
@@ -177,6 +186,38 @@ fn a_native_player_renders_ink() {
         ATTRACTOR_PLAYER_OK
     );
     assert!(lit_pixels(&pixels) > 0, "the ribbon must draw ink");
+    unsafe { attractor_player_destroy(player) };
+}
+
+#[test]
+fn a_missing_presentation_layer_is_reported() {
+    let options = options(true);
+    let player = unsafe { attractor_player_create(&options) };
+    assert!(!player.is_null());
+
+    assert_eq!(
+        unsafe { attractor_player_attach_layer(player, ptr::null_mut()) },
+        ATTRACTOR_PLAYER_INVALID_ARGUMENT
+    );
+    let message = unsafe { CStr::from_ptr(attractor_player_last_error(player)) }
+        .to_str()
+        .expect("the error is UTF-8");
+    assert!(
+        message.contains("layer"),
+        "the error must mention the layer: {message}"
+    );
+
+    assert_eq!(
+        unsafe { attractor_player_draw(player) },
+        ATTRACTOR_PLAYER_ERROR
+    );
+    let message = unsafe { CStr::from_ptr(attractor_player_last_error(player)) }
+        .to_str()
+        .expect("the error is UTF-8");
+    assert!(
+        message.contains("no presentation layer"),
+        "the error must explain the missing layer: {message}"
+    );
     unsafe { attractor_player_destroy(player) };
 }
 

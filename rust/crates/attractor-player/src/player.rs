@@ -7,7 +7,7 @@ use attractor_core::{
     SimulationHealthIssue, SimulationHealthMonitor, SimulationStepScheduler, SplitMix64, State,
     randomizer,
 };
-use attractor_gpu::{FrameRenderer, GpuContext, SAMPLE_COUNT};
+use attractor_gpu::{FrameRenderer, GpuContext, SAMPLE_COUNT, SurfaceTarget};
 use attractor_view::{CameraController, Mat4, OverlayModel, TrailBuilder, TrailGeometry};
 
 use crate::error::PlayerError;
@@ -102,6 +102,7 @@ pub struct Player {
     overlay_scale: f32,
     sample_count: u32,
     renderer: Option<FrameRenderer>,
+    surface_renderer: Option<FrameRenderer>,
 }
 
 impl Player {
@@ -150,6 +151,7 @@ impl Player {
             overlay_scale: options.overlay_scale,
             sample_count: options.sample_count.max(1),
             renderer: None,
+            surface_renderer: None,
         })
     }
 
@@ -182,7 +184,14 @@ impl Player {
     pub fn tick(&mut self, dt: f64) -> Result<TickEvent, PlayerError> {
         // Sanitize once: a non-finite or negative interval comes from a clock
         // epoch reset, and passing it to the camera would poison its angles.
-        let dt = if dt.is_finite() && dt > 0.0 { dt } else { 0.0 };
+        // A finite but huge interval is a sleep/suspend jump; the Swift scene
+        // clamps it to the scheduler's bound before it reaches the camera and
+        // the color gradient, so the same frame is drawn after a wake-up.
+        let dt = if dt.is_finite() && dt > 0.0 {
+            dt.min(self.scheduler.maximum_frame_interval())
+        } else {
+            0.0
+        };
         self.elapsed += dt;
         if self.pending_restart {
             return self.retry_restart(dt);
@@ -266,6 +275,57 @@ impl Player {
             Some(&overlay),
         )?;
         Ok(pixels)
+    }
+
+    /// Draw the current frame into a presentation surface and present it.
+    ///
+    /// The swap chain is retargeted to the player's frame size first, so a
+    /// host may call [`Player::resize`] and this method on every display
+    /// change. A frame the surface cannot hand out (a timeout or an occluded
+    /// layer) is skipped and reported as success: there is nothing to draw.
+    pub fn render_to_surface(
+        &mut self,
+        context: &GpuContext,
+        target: &mut SurfaceTarget,
+    ) -> Result<(), PlayerError> {
+        target.resize(context, self.width, self.height)?;
+        let Some(frame) = target.acquire(context)? else {
+            return Ok(());
+        };
+        let format = target.format();
+        if self
+            .surface_renderer
+            .as_ref()
+            .is_none_or(|renderer| renderer.format() != format)
+        {
+            self.surface_renderer = Some(FrameRenderer::for_surface(
+                context,
+                format,
+                self.width,
+                self.height,
+                self.overlay_scale,
+                self.sample_count,
+            )?);
+        }
+        let renderer = self
+            .surface_renderer
+            .as_mut()
+            .expect("the surface renderer was just created");
+        renderer.resize(context, self.width, self.height, self.overlay_scale)?;
+
+        let aspect = f64::from(self.width) / f64::from(self.height);
+        let view_projection = self.camera.view_projection(aspect);
+        let overlay = OverlayModel::new(&self.selection, self.engine.state()).text();
+        let view = frame.texture.create_view(&Default::default());
+        renderer.render_to_view(
+            context,
+            &view,
+            self.builder.geometry(),
+            &view_projection,
+            Some(&overlay),
+        )?;
+        context.queue().present(frame);
+        Ok(())
     }
 
     /// The selection this player runs.

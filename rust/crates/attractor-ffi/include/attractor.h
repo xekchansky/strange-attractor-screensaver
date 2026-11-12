@@ -65,6 +65,16 @@ int32_t attractor_player_tick(AttractorPlayer *player, double dt,
 int32_t attractor_player_render(AttractorPlayer *player, uint8_t *pixels,
                                 size_t pixels_len);
 
+/* Attach a native presentation layer to the player.
+ * On macOS the argument is a CAMetalLayer * owned by the host view; the layer
+ * must outlive the player. After attaching, attractor_player_draw presents
+ * frames into the layer instead of reading them back. */
+int32_t attractor_player_attach_layer(AttractorPlayer *player, void *layer);
+
+/* Draw the current frame into the attached layer and present it.
+ * Returns ATTRACTOR_PLAYER_ERROR when no layer was attached. */
+int32_t attractor_player_draw(AttractorPlayer *player);
+
 /* Retarget the player at a new surface size. */
 int32_t attractor_player_resize(AttractorPlayer *player, uint32_t width,
                                 uint32_t height, float overlay_scale);

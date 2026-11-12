@@ -31,7 +31,7 @@ fn lit_in_lower_half(pixels: &[u8], width: u32, height: u32) -> usize {
 #[test]
 fn overlay_text_lays_out_on_a_gpu_context() {
     let Some(context) = context() else { return };
-    let mut overlay = TextOverlay::new(&context, 2.0, 1);
+    let mut overlay = TextOverlay::new(&context, attractor_gpu::TARGET_FORMAT, 2.0, 1);
     overlay
         .prepare(
             &context,
@@ -78,7 +78,7 @@ fn the_overlay_draws_glyphs_into_the_lower_left_corner() {
 #[test]
 fn empty_overlay_text_lays_out() {
     let Some(context) = context() else { return };
-    let mut overlay = TextOverlay::new(&context, 1.0, 1);
+    let mut overlay = TextOverlay::new(&context, attractor_gpu::TARGET_FORMAT, 1.0, 1);
     overlay
         .prepare(&context, "", 64, 48)
         .expect("empty text lays out");

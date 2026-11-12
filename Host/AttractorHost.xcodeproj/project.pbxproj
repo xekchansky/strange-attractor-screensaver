@@ -7,52 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00ED0F7D577363B330E26DB3 /* AttractorCore in Frameworks */ = {isa = PBXBuildFile; productRef = 65FD9878B676A21AF42ED04F /* AttractorCore */; };
-		123D0EF94D861EBDB087AE14 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B144DB4557DE651C734988 /* main.swift */; };
-		179676ACAAE78861B891061E /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F77F13FEE8588ADDCE67BBE8 /* AppDelegate.swift */; };
-		1CE42147E4C4A3A0AB01D4FC /* AttractorScreensaver.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2ECC2BB84A389C7239FFBE19 /* AttractorScreensaver.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		251676FB6987D0EE0A1E118C /* AttractorRender in Frameworks */ = {isa = PBXBuildFile; productRef = C283A927C31473A33DB611DF /* AttractorRender */; };
 		2A1D51AB0E44EA9A044C42F8 /* ScreensaverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1B0DC2480083A6C34F7496 /* ScreensaverView.swift */; };
-		599D1A91004D656DCA445F72 /* AttractorRender in Frameworks */ = {isa = PBXBuildFile; productRef = 446157FF246E465CDB3FC7AC /* AttractorRender */; };
-		73FD41F36E074FECE80583DA /* ScreensaverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1B0DC2480083A6C34F7496 /* ScreensaverView.swift */; };
-		FA8D333EF843A65BC2904532 /* AttractorCore in Frameworks */ = {isa = PBXBuildFile; productRef = 61C23A5F40D16C4ABE4555EF /* AttractorCore */; };
+		3421A8B957A65C6B704D1803 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE9A175D9DC1DBDDE5959D20 /* QuartzCore.framework */; };
+		63C9F2B73162400C1439C3DF /* MetalSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E41B31E4D60EE0584046ECE /* MetalSurfaceView.swift */; };
+		8B7A3D545ABFE05591BEC7AB /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 24A14E0C288FF6BBB5840F32 /* CoreFoundation.framework */; };
+		ABCD13533F8CE50A43CFF538 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E839399C02FA6B33181C3DBB /* Metal.framework */; };
+		B16579CD4D76631A10CAD6D5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 72CA9C7819711C857CEE33A5 /* Foundation.framework */; };
+		B4D66A09D78085E49585AA3A /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0733F3C24A142200AC6B3147 /* CoreGraphics.framework */; };
+		D19AF88C55BE679367D79D57 /* AttractorPlayerHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = F035933C14295AA784F88B59 /* AttractorPlayerHost.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		152DCDA68B6E92092158ADDB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 434F36C4E032CB238B2AAA23 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C3CE4E1FA474804A52E8D299;
-			remoteInfo = AttractorScreensaver;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		472E180875DF9A9A10C8A75F /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				1CE42147E4C4A3A0AB01D4FC /* AttractorScreensaver.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		160E0A3E337748C8D5EC451E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0733F3C24A142200AC6B3147 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		24A14E0C288FF6BBB5840F32 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		256901B098BC4243D8A97719 /* AttractorSaver.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AttractorSaver.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
-		2ECC2BB84A389C7239FFBE19 /* AttractorScreensaver.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AttractorScreensaver.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		36B144DB4557DE651C734988 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
-		385C089E0820C8B748DE3BA2 /* AttractorHostApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AttractorHostApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		45E153C8D16A78739056EB51 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		34EE3FA5881EAF271A22750F /* AttractorBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AttractorBridge.h; sourceTree = "<group>"; };
 		4F1B0DC2480083A6C34F7496 /* ScreensaverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreensaverView.swift; sourceTree = "<group>"; };
-		D2E27E07AE5386E4D5740D79 /* Render */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Render; path = ../Render; sourceTree = SOURCE_ROOT; };
-		E932A65B2C908C3BEA15E13E /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = ../Core; sourceTree = SOURCE_ROOT; };
-		F77F13FEE8588ADDCE67BBE8 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		72CA9C7819711C857CEE33A5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		8E41B31E4D60EE0584046ECE /* MetalSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalSurfaceView.swift; sourceTree = "<group>"; };
+		CE9A175D9DC1DBDDE5959D20 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		E839399C02FA6B33181C3DBB /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		F035933C14295AA784F88B59 /* AttractorPlayerHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttractorPlayerHost.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,56 +35,31 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00ED0F7D577363B330E26DB3 /* AttractorCore in Frameworks */,
-				251676FB6987D0EE0A1E118C /* AttractorRender in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		868141BCE46D5289F88B6B48 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				FA8D333EF843A65BC2904532 /* AttractorCore in Frameworks */,
-				599D1A91004D656DCA445F72 /* AttractorRender in Frameworks */,
+				ABCD13533F8CE50A43CFF538 /* Metal.framework in Frameworks */,
+				3421A8B957A65C6B704D1803 /* QuartzCore.framework in Frameworks */,
+				B4D66A09D78085E49585AA3A /* CoreGraphics.framework in Frameworks */,
+				8B7A3D545ABFE05591BEC7AB /* CoreFoundation.framework in Frameworks */,
+				B16579CD4D76631A10CAD6D5 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0D2A20FB9B8D70D7AF0D9E21 /* AppSources */ = {
-			isa = PBXGroup;
-			children = (
-				F77F13FEE8588ADDCE67BBE8 /* AppDelegate.swift */,
-				160E0A3E337748C8D5EC451E /* Info.plist */,
-				36B144DB4557DE651C734988 /* main.swift */,
-			);
-			path = AppSources;
-			sourceTree = "<group>";
-		};
 		359EA0F5C87786C45D914755 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				385C089E0820C8B748DE3BA2 /* AttractorHostApp.app */,
 				256901B098BC4243D8A97719 /* AttractorSaver.bundle */,
-				2ECC2BB84A389C7239FFBE19 /* AttractorScreensaver.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		4587B297DFC85D373384E90F /* Packages */ = {
-			isa = PBXGroup;
-			children = (
-				E932A65B2C908C3BEA15E13E /* Core */,
-				D2E27E07AE5386E4D5740D79 /* Render */,
-			);
-			name = Packages;
 			sourceTree = "<group>";
 		};
 		5E5A53459F7E6011A4C113BB /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				45E153C8D16A78739056EB51 /* Info.plist */,
+				34EE3FA5881EAF271A22750F /* AttractorBridge.h */,
+				F035933C14295AA784F88B59 /* AttractorPlayerHost.swift */,
+				8E41B31E4D60EE0584046ECE /* MetalSurfaceView.swift */,
 				4F1B0DC2480083A6C34F7496 /* ScreensaverView.swift */,
 			);
 			path = Sources;
@@ -118,39 +68,32 @@
 		89FBE7D4CF267FA2DD56C954 = {
 			isa = PBXGroup;
 			children = (
-				0D2A20FB9B8D70D7AF0D9E21 /* AppSources */,
-				4587B297DFC85D373384E90F /* Packages */,
 				5E5A53459F7E6011A4C113BB /* Sources */,
+				C83BE1C7A43D2CFEC4AA8D60 /* Frameworks */,
 				359EA0F5C87786C45D914755 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		C83BE1C7A43D2CFEC4AA8D60 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				24A14E0C288FF6BBB5840F32 /* CoreFoundation.framework */,
+				0733F3C24A142200AC6B3147 /* CoreGraphics.framework */,
+				72CA9C7819711C857CEE33A5 /* Foundation.framework */,
+				E839399C02FA6B33181C3DBB /* Metal.framework */,
+				CE9A175D9DC1DBDDE5959D20 /* QuartzCore.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		192D0D9F68D0A6832B75DBCA /* AttractorHostApp */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = CEC957F894FFFBBB4CFB4B08 /* Build configuration list for PBXNativeTarget "AttractorHostApp" */;
-			buildPhases = (
-				A4C03D312BA5C47D5DF741EC /* Sources */,
-				472E180875DF9A9A10C8A75F /* Embed Foundation Extensions */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				F629BA2514310C63A310C750 /* PBXTargetDependency */,
-			);
-			name = AttractorHostApp;
-			packageProductDependencies = (
-			);
-			productName = AttractorHostApp;
-			productReference = 385C089E0820C8B748DE3BA2 /* AttractorHostApp.app */;
-			productType = "com.apple.product-type.application";
-		};
 		4356118B014B9925F81AAEE7 /* AttractorSaver */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 47936E3DFE6AB70E823CD4CF /* Build configuration list for PBXNativeTarget "AttractorSaver" */;
 			buildPhases = (
+				072EE6557ED796B527F28DC2 /* Build the Rust player */,
 				EDA44493B033D9BC0A1C341C /* Sources */,
 				15204CCB93B1260C7BFC884D /* Frameworks */,
 			);
@@ -160,32 +103,10 @@
 			);
 			name = AttractorSaver;
 			packageProductDependencies = (
-				65FD9878B676A21AF42ED04F /* AttractorCore */,
-				C283A927C31473A33DB611DF /* AttractorRender */,
 			);
 			productName = AttractorSaver;
 			productReference = 256901B098BC4243D8A97719 /* AttractorSaver.bundle */;
 			productType = "com.apple.product-type.bundle";
-		};
-		C3CE4E1FA474804A52E8D299 /* AttractorScreensaver */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 0F2C64D3FDFBB9350613AF03 /* Build configuration list for PBXNativeTarget "AttractorScreensaver" */;
-			buildPhases = (
-				EDE5A8E1CDC83137A0AA64FD /* Sources */,
-				868141BCE46D5289F88B6B48 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = AttractorScreensaver;
-			packageProductDependencies = (
-				61C23A5F40D16C4ABE4555EF /* AttractorCore */,
-				446157FF246E465CDB3FC7AC /* AttractorRender */,
-			);
-			productName = AttractorScreensaver;
-			productReference = 2ECC2BB84A389C7239FFBE19 /* AttractorScreensaver.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -196,15 +117,7 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					192D0D9F68D0A6832B75DBCA = {
-						DevelopmentTeam = "";
-						ProvisioningStyle = Manual;
-					};
 					4356118B014B9925F81AAEE7 = {
-						DevelopmentTeam = "";
-						ProvisioningStyle = Manual;
-					};
-					C3CE4E1FA474804A52E8D299 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
@@ -219,91 +132,52 @@
 			);
 			mainGroup = 89FBE7D4CF267FA2DD56C954;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				F0B1FF7F8C5BC95626A0B6B0 /* XCLocalSwiftPackageReference "../Core" */,
-				C7D4EF7EE52A55CAAB30627C /* XCLocalSwiftPackageReference "../Render" */,
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 359EA0F5C87786C45D914755 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C3CE4E1FA474804A52E8D299 /* AttractorScreensaver */,
-				192D0D9F68D0A6832B75DBCA /* AttractorHostApp */,
 				4356118B014B9925F81AAEE7 /* AttractorSaver */,
 			);
 		};
 /* End PBXProject section */
 
-/* Begin PBXSourcesBuildPhase section */
-		A4C03D312BA5C47D5DF741EC /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
+/* Begin PBXShellScriptBuildPhase section */
+		072EE6557ED796B527F28DC2 /* Build the Rust player */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
-				179676ACAAE78861B891061E /* AppDelegate.swift in Sources */,
-				123D0EF94D861EBDB087AE14 /* main.swift in Sources */,
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build the Rust player";
+			outputFileListPaths = (
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "set -euo pipefail\n\nRUST_DIR=\"$SRCROOT/../rust\"\nif [ -d \"$RUST_DIR/.toolchain/cargo\" ]; then\n  export CARGO_HOME=\"$RUST_DIR/.toolchain/cargo\"\n  export RUSTUP_HOME=\"$RUST_DIR/.toolchain/rustup\"\nfi\nfind_tool() {\n  local tool=\"$1\"\n  if command -v \"$tool\" >/dev/null 2>&1; then\n    command -v \"$tool\"\n    return\n  fi\n  for candidate in \"$HOME/.cargo/bin/$tool\" \"/opt/homebrew/bin/$tool\" \"/usr/local/bin/$tool\"; do\n    if [ -x \"$candidate\" ]; then\n      echo \"$candidate\"\n      return\n    fi\n  done\n}\nCARGO=\"${CARGO:-$(find_tool cargo)}\"\nRUSTC=\"${RUSTC:-$(find_tool rustc)}\"\nif [ -z \"$CARGO\" ] || [ -z \"$RUSTC\" ]; then\n  echo \"error: the Rust toolchain was not found; install Rust or set CARGO and RUSTC\" >&2\n  exit 1\nfi\n\nlibraries=()\nfor arch in $ARCHS; do\n  case \"$arch\" in\n    arm64) rust_target=\"aarch64-apple-darwin\" ;;\n    x86_64) rust_target=\"x86_64-apple-darwin\" ;;\n    *)\n      echo \"error: unsupported architecture '$arch'\" >&2\n      exit 1\n      ;;\n  esac\n  lib_dir=$(\"$RUSTC\" --print target-libdir --target \"$rust_target\" 2>/dev/null || true)\n  if [ -z \"$lib_dir\" ] || [ ! -d \"$lib_dir\" ]; then\n    echo \"error: the Rust standard library for $rust_target is missing;\" >&2\n    echo \"       run 'rustup target add $rust_target' or build with ARCHS=$NATIVE_ARCH\" >&2\n    exit 1\n  fi\n  \"$CARGO\" build --manifest-path \"$RUST_DIR/Cargo.toml\" --locked --release \\\n    -p attractor-ffi --target \"$rust_target\"\n  libraries+=(\"$RUST_DIR/target/$rust_target/release/libattractor_ffi.a\")\ndone\n\nif [ \"${#libraries[@]}\" -eq 1 ]; then\n  cp \"${libraries[0]}\" \"$BUILT_PRODUCTS_DIR/libattractor_ffi.a\"\nelse\n  xcrun lipo -create \"${libraries[@]}\" -output \"$BUILT_PRODUCTS_DIR/libattractor_ffi.a\"\nfi\n";
 		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
 		EDA44493B033D9BC0A1C341C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D19AF88C55BE679367D79D57 /* AttractorPlayerHost.swift in Sources */,
+				63C9F2B73162400C1439C3DF /* MetalSurfaceView.swift in Sources */,
 				2A1D51AB0E44EA9A044C42F8 /* ScreensaverView.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		EDE5A8E1CDC83137A0AA64FD /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				73FD41F36E074FECE80583DA /* ScreensaverView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXTargetDependency section */
-		F629BA2514310C63A310C750 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C3CE4E1FA474804A52E8D299 /* AttractorScreensaver */;
-			targetProxy = 152DCDA68B6E92092158ADDB /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin XCBuildConfiguration section */
-		168E643E21A1D9BA37916D0E /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				INFOPLIST_FILE = Sources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost.AttractorScreensaver;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
-		6CF9E36A438F4E6519C76BA0 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				INFOPLIST_FILE = Sources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost.AttractorScreensaver;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
 		70657D9EF666983E571FDFA7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -314,32 +188,17 @@
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = SaverSources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_LDFLAGS = "$(inherited) -lattractor_ffi -liconv";
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorSaver;
 				PRODUCT_NAME = AttractorSaver;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/AttractorBridge.h;
 				SWIFT_VERSION = 6.0;
 				WRAPPER_EXTENSION = saver;
 			};
 			name = Release;
-		};
-		76F05ED0BB3E578EA2D84E6F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				INFOPLIST_FILE = AppSources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost;
-				PRODUCT_NAME = AttractorHost;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
 		};
 		B2BFF104B94152E160F5F9DE /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -351,10 +210,13 @@
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = SaverSources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_LDFLAGS = "$(inherited) -lattractor_ffi -liconv";
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorSaver;
 				PRODUCT_NAME = AttractorSaver;
 				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = Sources/AttractorBridge.h;
 				SWIFT_VERSION = 6.0;
 				WRAPPER_EXTENSION = saver;
 			};
@@ -479,50 +341,14 @@
 			};
 			name = Release;
 		};
-		F4EF571B23ABC30B6C6F4A30 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGN_STYLE = Manual;
-				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = "";
-				INFOPLIST_FILE = AppSources/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.xekchansky.AttractorHost;
-				PRODUCT_NAME = AttractorHost;
-				SDKROOT = macosx;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0F2C64D3FDFBB9350613AF03 /* Build configuration list for PBXNativeTarget "AttractorScreensaver" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				6CF9E36A438F4E6519C76BA0 /* Debug */,
-				168E643E21A1D9BA37916D0E /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
 		47936E3DFE6AB70E823CD4CF /* Build configuration list for PBXNativeTarget "AttractorSaver" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B2BFF104B94152E160F5F9DE /* Debug */,
 				70657D9EF666983E571FDFA7 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		CEC957F894FFFBBB4CFB4B08 /* Build configuration list for PBXNativeTarget "AttractorHostApp" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				76F05ED0BB3E578EA2D84E6F /* Debug */,
-				F4EF571B23ABC30B6C6F4A30 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -537,36 +363,6 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		C7D4EF7EE52A55CAAB30627C /* XCLocalSwiftPackageReference "../Render" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Render;
-		};
-		F0B1FF7F8C5BC95626A0B6B0 /* XCLocalSwiftPackageReference "../Core" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../Core;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		446157FF246E465CDB3FC7AC /* AttractorRender */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AttractorRender;
-		};
-		61C23A5F40D16C4ABE4555EF /* AttractorCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AttractorCore;
-		};
-		65FD9878B676A21AF42ED04F /* AttractorCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AttractorCore;
-		};
-		C283A927C31473A33DB611DF /* AttractorRender */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AttractorRender;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 434F36C4E032CB238B2AAA23 /* Project object */;
 }

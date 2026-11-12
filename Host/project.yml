@@ -1,91 +1,17 @@
-# xcodegen spec for the .appex screensaver host (M5).
-# Regenerate the project with:  xcodegen generate   (from Host/)
+# xcodegen spec for the classic `.saver` bundle (I7b).
+# Regenerate the project with:  cd Host && xcodegen generate
+#
+# The screen saver links the Rust player as a static library. The pre-build
+# script compiles `attractor-ffi` for every architecture Xcode asks for, so a
+# Release build produces a universal bundle when both Rust targets are
+# installed. The `.appex` and container-app targets were removed by D10.
 name: AttractorHost
 options:
   deploymentTarget:
     macOS: "13.0"
   createIntermediateGroups: true
 
-packages:
-  AttractorCore:
-    path: ../Core
-  AttractorRender:
-    path: ../Render
-
 targets:
-  AttractorScreensaver:
-    type: app-extension
-    platform: macOS
-    sources:
-      - Sources
-    dependencies:
-      - package: AttractorCore
-        product: AttractorCore
-      - package: AttractorRender
-        product: AttractorRender
-    info:
-      path: Sources/Info.plist
-      properties:
-        CFBundleDisplayName: AttractorSaver
-        CFBundlePackageType: XPC!
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
-        NSHighResolutionCapable: true
-        # Modern Screen Saver app-extension: the system loads the principal
-        # class derived from $(PRODUCT_MODULE_NAME) to display the saver.
-        # NOTE: lsregister shows the real extension point is "com.apple.screensaver"
-        # (not "com.apple.ScreenSaver.Saver") on this macOS — the wrong id made
-        # System Settings ignore the extension entirely.
-        NSExtension:
-          NSExtensionPointIdentifier: com.apple.screensaver
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.xekchansky.AttractorHost.AttractorScreensaver
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGNING_ALLOWED: "NO"
-        DEVELOPMENT_TEAM: ""
-        SWIFT_VERSION: "6.0"
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
-        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
-        COMBINE_HIDPI_IMAGES: "YES"
-
-  # Minimal container app that embeds the screensaver extension in
-  # Contents/PlugIns. System Settings discovers installable screen savers
-  # from such apps, so this wrapper is how the .appex actually shows up in
-  # the screen saver list.
-  AttractorHostApp:
-    type: application
-    platform: macOS
-    sources:
-      - AppSources
-    dependencies:
-      - target: AttractorScreensaver
-        embed: true
-    info:
-      path: AppSources/Info.plist
-      properties:
-        CFBundleDisplayName: AttractorSaver
-        CFBundlePackageType: APPL
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
-        NSPrincipalClass: NSApplication
-        LSMinimumSystemVersion: "13.0"
-    settings:
-      base:
-        PRODUCT_NAME: AttractorHost
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.xekchansky.AttractorHost
-        CODE_SIGN_STYLE: Manual
-        CODE_SIGNING_ALLOWED: "NO"
-        DEVELOPMENT_TEAM: ""
-        SWIFT_VERSION: "6.0"
-        MACOSX_DEPLOYMENT_TARGET: "13.0"
-        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
-
-  # Classic legacy .saver bundle that macOS actually loads for manually
-  # installed screen savers (the system's own savers and any in
-  # ~/Library/Screen Savers/ are .saver bundles — the .appex path above is only
-  # for App Store distribution and is ignored by System Settings otherwise).
   AttractorSaver:
     type: bundle
     platform: macOS
@@ -95,11 +21,6 @@ targets:
       - path: Sources
         excludes:
           - Info.plist
-    dependencies:
-      - package: AttractorCore
-        product: AttractorCore
-      - package: AttractorRender
-        product: AttractorRender
     info:
       path: SaverSources/Info.plist
       properties:
@@ -110,6 +31,72 @@ targets:
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         NSPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
+    dependencies:
+      # The native artifacts reported by
+      #   cargo rustc -p attractor-ffi --release -- --print native-static-libs
+      - sdk: Metal.framework
+      - sdk: QuartzCore.framework
+      - sdk: CoreGraphics.framework
+      - sdk: CoreFoundation.framework
+      - sdk: Foundation.framework
+    preBuildScripts:
+      - name: Build the Rust player
+        basedOnDependencyAnalysis: false
+        shell: /bin/bash
+        script: |
+          set -euo pipefail
+
+          RUST_DIR="$SRCROOT/../rust"
+          if [ -d "$RUST_DIR/.toolchain/cargo" ]; then
+            export CARGO_HOME="$RUST_DIR/.toolchain/cargo"
+            export RUSTUP_HOME="$RUST_DIR/.toolchain/rustup"
+          fi
+          find_tool() {
+            local tool="$1"
+            if command -v "$tool" >/dev/null 2>&1; then
+              command -v "$tool"
+              return
+            fi
+            for candidate in "$HOME/.cargo/bin/$tool" "/opt/homebrew/bin/$tool" "/usr/local/bin/$tool"; do
+              if [ -x "$candidate" ]; then
+                echo "$candidate"
+                return
+              fi
+            done
+          }
+          CARGO="${CARGO:-$(find_tool cargo)}"
+          RUSTC="${RUSTC:-$(find_tool rustc)}"
+          if [ -z "$CARGO" ] || [ -z "$RUSTC" ]; then
+            echo "error: the Rust toolchain was not found; install Rust or set CARGO and RUSTC" >&2
+            exit 1
+          fi
+
+          libraries=()
+          for arch in $ARCHS; do
+            case "$arch" in
+              arm64) rust_target="aarch64-apple-darwin" ;;
+              x86_64) rust_target="x86_64-apple-darwin" ;;
+              *)
+                echo "error: unsupported architecture '$arch'" >&2
+                exit 1
+                ;;
+            esac
+            lib_dir=$("$RUSTC" --print target-libdir --target "$rust_target" 2>/dev/null || true)
+            if [ -z "$lib_dir" ] || [ ! -d "$lib_dir" ]; then
+              echo "error: the Rust standard library for $rust_target is missing;" >&2
+              echo "       run 'rustup target add $rust_target' or build with ARCHS=$NATIVE_ARCH" >&2
+              exit 1
+            fi
+            "$CARGO" build --manifest-path "$RUST_DIR/Cargo.toml" --locked --release \
+              -p attractor-ffi --target "$rust_target"
+            libraries+=("$RUST_DIR/target/$rust_target/release/libattractor_ffi.a")
+          done
+
+          if [ "${#libraries[@]}" -eq 1 ]; then
+            cp "${libraries[0]}" "$BUILT_PRODUCTS_DIR/libattractor_ffi.a"
+          else
+            xcrun lipo -create "${libraries[@]}" -output "$BUILT_PRODUCTS_DIR/libattractor_ffi.a"
+          fi
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.xekchansky.AttractorSaver
@@ -121,23 +108,13 @@ targets:
         DEVELOPMENT_TEAM: ""
         SWIFT_VERSION: "6.0"
         MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/AttractorBridge.h
+        LIBRARY_SEARCH_PATHS: "$(inherited) $(BUILT_PRODUCTS_DIR)"
+        OTHER_LDFLAGS: "$(inherited) -lattractor_ffi -liconv"
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: "YES"
 
 schemes:
-  AttractorHost:
-    build:
-      targets:
-        AttractorHostApp: all
-    run:
-      config: Debug
-
-  AttractorScreensaver:
-    build:
-      targets:
-        AttractorScreensaver: all
-    run:
-      config: Debug
-
   AttractorSaver:
     build:
       targets:

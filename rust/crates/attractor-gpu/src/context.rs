@@ -5,11 +5,12 @@ use std::fmt;
 
 /// A wgpu instance together with the adapter and device every renderer needs.
 ///
-/// The context is headless: it never creates a surface. Windows and the
-/// screensaver host add a surface to the same instance in I7–I11.
+/// The context itself is headless. A shell that presents on screen creates a
+/// [`crate::SurfaceTarget`] from the same instance, adapter and device, so the
+/// offscreen capture path and the live host share one GPU stack.
 pub struct GpuContext {
-    /// Kept alive for surface creation in later iterations.
-    _instance: wgpu::Instance,
+    instance: wgpu::Instance,
+    adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
     info: wgpu::AdapterInfo,
@@ -52,11 +53,22 @@ impl GpuContext {
             pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
                 .map_err(GpuError::NoDevice)?;
         Ok(Self {
-            _instance: instance,
+            instance,
+            adapter,
             device,
             queue,
             info,
         })
+    }
+
+    /// The instance every surface is created from.
+    pub fn instance(&self) -> &wgpu::Instance {
+        &self.instance
+    }
+
+    /// The adapter the device was created from.
+    pub fn adapter(&self) -> &wgpu::Adapter {
+        &self.adapter
     }
 
     /// Description of the adapter in use.
@@ -107,6 +119,14 @@ pub enum GpuError {
     Poll(wgpu::PollError),
     /// The readback callback never ran.
     ReadbackCancelled,
+    /// A presentation surface could not be created from the native layer.
+    Surface(wgpu::CreateSurfaceError),
+    /// The surface supports no format the renderer can draw into.
+    UnsupportedSurface,
+    /// The swap chain could not hand out a frame.
+    SurfaceAcquire(&'static str),
+    /// The renderer has no offscreen texture to read a frame back from.
+    NoReadbackTarget,
 }
 
 impl fmt::Display for GpuError {
@@ -121,6 +141,24 @@ impl fmt::Display for GpuError {
             Self::MapRange(error) => write!(formatter, "cannot map the readback range: {error}"),
             Self::Poll(error) => write!(formatter, "GPU poll failed: {error}"),
             Self::ReadbackCancelled => write!(formatter, "the readback callback was cancelled"),
+            Self::Surface(error) => {
+                write!(formatter, "cannot create the presentation surface: {error}")
+            }
+            Self::UnsupportedSurface => {
+                write!(
+                    formatter,
+                    "the presentation surface supports no usable format"
+                )
+            }
+            Self::SurfaceAcquire(reason) => {
+                write!(formatter, "cannot acquire a surface frame: {reason}")
+            }
+            Self::NoReadbackTarget => {
+                write!(
+                    formatter,
+                    "the renderer has no offscreen target to read back"
+                )
+            }
         }
     }
 }
@@ -133,7 +171,12 @@ impl Error for GpuError {
             Self::Readback(error) => Some(error),
             Self::MapRange(error) => Some(error),
             Self::Poll(error) => Some(error),
-            Self::InvalidFrameSize { .. } | Self::ReadbackCancelled => None,
+            Self::Surface(error) => Some(error),
+            Self::InvalidFrameSize { .. }
+            | Self::ReadbackCancelled
+            | Self::UnsupportedSurface
+            | Self::SurfaceAcquire(_)
+            | Self::NoReadbackTarget => None,
         }
     }
 }

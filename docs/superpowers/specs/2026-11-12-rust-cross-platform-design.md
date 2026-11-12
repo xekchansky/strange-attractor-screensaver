@@ -445,6 +445,34 @@ fullscreen, multi-display, wake/sleep, health-monitor restart.
 **Done when:** manual visual comparison against the pinned pre-migration
 build shows no regression; documented in `rust/STATUS.md`.
 
+**Implementation notes (I7b).**
+- The host is now `MetalSurfaceView` (a layer-backed `NSView` owning the
+  `CAMetalLayer`) plus `AttractorPlayerHost` (a 60 Hz run-loop timer that maps
+  start/stop/resize onto the C ABI). It imports neither `AttractorCore` nor
+  `AttractorRender`; the overlay is engine-rendered (D8). The `.appex` target,
+  its container app and `AppSources/` are deleted, leaving the classic
+  `.saver` (D10).
+- "SceneKit renderer removed" means removed from the host path. `Render/` and
+  `Demo/` remain until I12: the iteration's verification requires `Demo` to
+  build, and the pre-migration Swift build is the visual reference pinned in
+  `rust/STATUS.md`.
+- Surface rendering lives in `attractor-gpu`: `SurfaceTarget` wraps a swap
+  chain created from `SurfaceTargetUnsafe::CoreAnimationLayer`, and
+  `FrameRenderer::for_surface`/`render_to_view` draw the same ribbon and text
+  pipelines into an external texture view. `Player::render_to_surface` owns
+  acquire/draw/present; `attractor-ffi` exposes
+  `attractor_player_attach_layer` and `attractor_player_draw`. The Swift host
+  passes the layer pointer and the player keeps it alive by contract.
+- `Player::tick` clamps a finite frame interval to the scheduler bound before
+  the camera and the colour gradient see it, matching the Swift scene after a
+  sleep/wake jump.
+- The Xcode target builds the Rust static library in a pre-build phase for
+  every `ARCHS` entry and links it; the universal Release prerequisite
+  (`x86_64-apple-darwin` Rust std) is stated in `rust/STATUS.md`.
+- The manual checklist (preview pane, fullscreen, multi-display, wake/sleep,
+  health-monitor restart) remains open until a GUI pass; the iteration is
+  recorded as "done (manual: pending)".
+
 ### I8 — Windows `.scr` (M)
 
 **Deliverables:** `attractor-windows-saver` with `/s`, `/c`, `/p HWND`,
