@@ -221,6 +221,32 @@ fn a_missing_presentation_layer_is_reported() {
     unsafe { attractor_player_destroy(player) };
 }
 
+/// The layer entry point keeps its ABI on every platform, but only Apple
+/// platforms can build a surface today; elsewhere it must fail cleanly.
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[test]
+fn attaching_a_layer_is_unsupported_off_apple() {
+    let options = options(true);
+    let player = unsafe { attractor_player_create(&options) };
+    assert!(!player.is_null());
+    let layer = ptr::NonNull::<u8>::dangling()
+        .as_ptr()
+        .cast::<std::ffi::c_void>();
+
+    assert_eq!(
+        unsafe { attractor_player_attach_layer(player, layer) },
+        ATTRACTOR_PLAYER_ERROR
+    );
+    let message = unsafe { CStr::from_ptr(attractor_player_last_error(player)) }
+        .to_str()
+        .expect("the error is UTF-8");
+    assert!(
+        message.contains("not supported"),
+        "the error must explain the platform: {message}"
+    );
+    unsafe { attractor_player_destroy(player) };
+}
+
 #[test]
 fn a_zero_extent_resize_is_rejected_with_a_message() {
     let options = options(true);

@@ -216,7 +216,8 @@ pub unsafe extern "C" fn attractor_player_render(
 ///
 /// On macOS `layer` is a `CAMetalLayer *` owned by the host view; the layer
 /// must outlive the player. Once attached, [`attractor_player_draw`] presents
-/// frames instead of reading them back.
+/// frames instead of reading them back. Other platforms have no constructor
+/// yet, so they report [`ATTRACTOR_PLAYER_ERROR`].
 ///
 /// # Safety
 ///
@@ -234,18 +235,26 @@ pub unsafe extern "C" fn attractor_player_attach_layer(
         player.set_error("the presentation layer is null");
         return ATTRACTOR_PLAYER_INVALID_ARGUMENT;
     }
-    let (width, height) = player.player.size();
-    // SAFETY: the caller guarantees the layer outlives the player.
-    match unsafe { SurfaceTarget::from_metal_layer(&player.context, layer, width, height) } {
-        Ok(surface) => {
-            player.surface = Some(surface);
-            player.clear_error();
-            ATTRACTOR_PLAYER_OK
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    {
+        let (width, height) = player.player.size();
+        // SAFETY: the caller guarantees the layer outlives the player.
+        match unsafe { SurfaceTarget::from_metal_layer(&player.context, layer, width, height) } {
+            Ok(surface) => {
+                player.surface = Some(surface);
+                player.clear_error();
+                ATTRACTOR_PLAYER_OK
+            }
+            Err(error) => {
+                player.set_error(error);
+                ATTRACTOR_PLAYER_ERROR
+            }
         }
-        Err(error) => {
-            player.set_error(error);
-            ATTRACTOR_PLAYER_ERROR
-        }
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+    {
+        player.set_error("native presentation layers are not supported on this platform");
+        ATTRACTOR_PLAYER_ERROR
     }
 }
 
