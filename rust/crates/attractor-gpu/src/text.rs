@@ -5,7 +5,6 @@ use glyphon::{
     SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport, Wrap,
 };
 
-use crate::TARGET_FORMAT;
 use crate::context::GpuContext;
 
 /// Font size of the overlay in logical pixels, matching the Swift label.
@@ -33,9 +32,14 @@ pub struct TextOverlay {
 }
 
 impl TextOverlay {
-    /// Create a text renderer for an sRGB target with `sample_count`
+    /// Create a text renderer for a `format` target with `sample_count`
     /// multisamples.
-    pub fn new(context: &GpuContext, scale: f32, sample_count: u32) -> Self {
+    pub fn new(
+        context: &GpuContext,
+        format: wgpu::TextureFormat,
+        scale: f32,
+        sample_count: u32,
+    ) -> Self {
         let scale = if scale.is_finite() && scale > 0.0 {
             scale
         } else {
@@ -49,7 +53,7 @@ impl TextOverlay {
 
         let cache = Cache::new(device);
         let viewport = Viewport::new(device, &cache);
-        let mut atlas = TextAtlas::new(device, context.queue(), &cache, TARGET_FORMAT);
+        let mut atlas = TextAtlas::new(device, context.queue(), &cache, format);
         let renderer = TextRenderer::new(
             &mut atlas,
             device,

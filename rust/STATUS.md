@@ -10,9 +10,12 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I7a — player and C ABI** (2026-11-12)
-- Last completed change: **deferred cleanup after I7a** (2026-11-12)
-- Next iteration: **I7b — macOS host migration**
+- Last completed iteration: **I7b — macOS host migration** (2026-11-12)
+- Last completed change: **I7b — macOS host migration** (2026-11-12)
+- Next iteration: **I8 — Windows `.scr`**
+- Pre-migration visual reference: **`ef3d61b`**, the last commit whose
+  `.saver` still rendered through SceneKit. The Rust host must match it
+  side by side (manual checklist below).
 
 ## Verification
 
@@ -32,6 +35,27 @@ The headless capture needs a real GPU adapter and therefore a GUI session:
 ```bash
 cargo run -p attractor-cli -- --attractor lorenz --seed 42 \
   --screenshot out.png --frames 120
+```
+
+The macOS host links the Rust player as a static library, so its build first
+compiles `attractor-ffi` for every architecture in `ARCHS`:
+
+```bash
+cd Host && xcodegen generate
+cd .. && xcodebuild -project Host/AttractorHost.xcodeproj -scheme AttractorSaver \
+  -configuration Release -derivedDataPath "$TMPDIR/host-dd" ARCHS=arm64 build
+```
+
+`ARCHS=arm64` keeps the local check single-architecture. A universal Release
+build needs the `x86_64-apple-darwin` standard library in the Rust toolchain;
+the build phase fails with an actionable message when it is missing.
+
+The Swift oracle checks (in the agent sandbox SwiftPM needs
+`--disable-sandbox`; a normal shell does not):
+
+```bash
+cd Core && swift test --disable-sandbox
+cd Demo && swift build --disable-sandbox
 ```
 
 The pipeline tests build through wgpu's `noop` backend, so they run without a
@@ -54,7 +78,7 @@ and I11 add them back against `attractor-wasm` and the Android shell.
 - [x] I5 — view layer, no GPU
 - [x] I6 — wgpu renderer and CLI capture
 - [x] I7a — player and C ABI
-- [ ] I7b — macOS host migration
+- [x] I7b — macOS host migration (done, manual: pending)
 - [ ] I8 — Windows `.scr`
 - [ ] I9 — web demo on GitHub Pages
 - [ ] I10 — Linux
@@ -380,6 +404,59 @@ enough.
   non-finite overlay spelling, the `--frames` cap, the fixture README run and
   the overlay pixel test. Two unused accessors (`FrameRenderer::overlay_scale`
   and `PreparedRun::overlay_scale`) were removed.
+- **I7b**: the classic `.saver` now runs on the Rust player. `attractor-gpu`
+  gained `SurfaceTarget` (a swap chain created from a `CAMetalLayer` through
+  `SurfaceTargetUnsafe::CoreAnimationLayer`) and
+  `FrameRenderer::for_surface`/`render_to_view` (the same multisample ribbon
+  and glyphon overlay pipelines drawing into an external texture view);
+  `Player::render_to_surface` acquires, draws and presents. `attractor-ffi`
+  gained `attractor_player_attach_layer` and `attractor_player_draw`, and the
+  hand-maintained header and its drift test were extended. The Swift host is
+  reduced to `MetalSurfaceView` (a layer-backed `NSView`) and
+  `AttractorPlayerHost` (a 60 Hz run-loop timer, resize, create/destroy); no
+  Swift code imports SceneKit or the catalog any more. The overlay is drawn by
+  the engine, as D8 requires.
+- **I7b surface verification**: a temporary example (deleted afterwards)
+  created a real `CAMetalLayer` through the Objective-C runtime, attached it
+  and presented 120 frames through the C ABI on Metal without an error. This
+  covers surface creation, swap-chain configuration, 4x MSAA resolve into the
+  drawable and presentation; it is not a substitute for the visual checklist.
+- **I7b wake-up parity**: `Player::tick` now clamps a finite interval to the
+  scheduler's `maximum_frame_interval` before it reaches the camera and the
+  colour gradient, exactly as the Swift `SimulationScene` did. A 60 s sleep
+  jump therefore draws the same frame as a normal frame at the 0.1 s bound;
+  `a_long_stall_is_clamped_like_the_swift_scene` pins it. The deferred-restart
+  retry uses the same clamped interval.
+- **I7b build**: `Host/project.yml` keeps only the classic `.saver` target
+  (the `.appex`, its container app and `AppSources/` are deleted, D10). A
+  pre-build phase compiles `attractor-ffi` for every `ARCHS` entry
+  (`arm64` → `aarch64-apple-darwin`, `x86_64` → `x86_64-apple-darwin`) and
+  `lipo`s the results into `libattractor_ffi.a`; the target links
+  `-lattractor_ffi -liconv` plus the frameworks reported by
+  `cargo rustc -p attractor-ffi --release -- --print native-static-libs`
+  (Metal, QuartzCore, CoreGraphics, CoreFoundation, Foundation). The bridging
+  header `Sources/AttractorBridge.h` includes the crate's `attractor.h`, so
+  the host and the later Android bridge share one declaration file. The local
+  Release check used `ARCHS=arm64`; a universal build requires the
+  `x86_64-apple-darwin` Rust standard library, and the script says so.
+- **I7b ruling (SceneKit removal)**: "SceneKit renderer removed" is read as
+  removed from the host path, not deleted from the repository. `Render/` and
+  `Demo/` stay until I12 because the I7b verification requires `Demo` to build
+  and the visual reference is the Swift path pinned at `ef3d61b`; deleting
+  them now would remove the oracle before the migration is accepted. Cost if
+  wrong: the repository carries the SceneKit package for a few more
+  iterations.
+- **I7b manual checklist (pending, needs a GUI session)**: install the built
+  `.saver` and compare with `ef3d61b` side by side — preview pane, fullscreen,
+  multi-display (one player per screen), wake/sleep (no camera or trail jump),
+  health-monitor restart (degenerate attractor replaced within the limiter
+  window), and no black frame in a fresh preview. The iteration is
+  "done (manual: pending)" until that pass is recorded here.
+- **I7b deferred**: `SurfaceTarget` currently has only the Metal constructor;
+  I8/I10 add constructors for a raw Windows/Linux window handle to the same
+  type, keeping one presentation path. Notarization stays deferred to I12
+  (D11).
+
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell

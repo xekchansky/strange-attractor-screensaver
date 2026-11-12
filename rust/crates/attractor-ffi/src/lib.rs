@@ -18,13 +18,13 @@
 //! thread at a time. A destroyed player pointer must not be used again.
 
 use std::error::Error;
-use std::ffi::{CString, c_char};
+use std::ffi::{CString, c_char, c_void};
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use attractor_core::catalog::{self, CatalogError};
 use attractor_core::{RandomizerError, SplitMix64, randomizer};
-use attractor_gpu::{GpuContext, GpuError};
+use attractor_gpu::{GpuContext, GpuError, SurfaceTarget};
 use attractor_player::{Player, PlayerError, PlayerOptions, RestartOutcome, TickEvent};
 
 /// The call succeeded.
@@ -57,9 +57,13 @@ pub struct AttractorPlayerOptions {
 }
 
 /// The opaque player handle.
+///
+/// Fields drop in declaration order, so the surface and the player (which
+/// owns GPU resources) are released before the context that created them.
 pub struct AttractorPlayer {
-    context: GpuContext,
+    surface: Option<SurfaceTarget>,
     player: Player,
+    context: GpuContext,
     last_error: Option<CString>,
 }
 
@@ -198,6 +202,79 @@ pub unsafe extern "C" fn attractor_player_render(
         Ok(frame) => {
             debug_assert_eq!(frame.len(), expected);
             unsafe { std::ptr::copy_nonoverlapping(frame.as_ptr(), pixels, expected) };
+            player.clear_error();
+            ATTRACTOR_PLAYER_OK
+        }
+        Err(error) => {
+            player.set_error(error);
+            ATTRACTOR_PLAYER_ERROR
+        }
+    }
+}
+
+/// Attach a native presentation layer to the player.
+///
+/// On macOS `layer` is a `CAMetalLayer *` owned by the host view; the layer
+/// must outlive the player. Once attached, [`attractor_player_draw`] presents
+/// frames instead of reading them back.
+///
+/// # Safety
+///
+/// `player` must be a live handle and `layer` must be a valid `CAMetalLayer`
+/// that outlives the player.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn attractor_player_attach_layer(
+    player: *mut AttractorPlayer,
+    layer: *mut c_void,
+) -> i32 {
+    let Some(player) = (unsafe { player.as_mut() }) else {
+        return ATTRACTOR_PLAYER_INVALID_ARGUMENT;
+    };
+    if layer.is_null() {
+        player.set_error("the presentation layer is null");
+        return ATTRACTOR_PLAYER_INVALID_ARGUMENT;
+    }
+    let (width, height) = player.player.size();
+    // SAFETY: the caller guarantees the layer outlives the player.
+    match unsafe { SurfaceTarget::from_metal_layer(&player.context, layer, width, height) } {
+        Ok(surface) => {
+            player.surface = Some(surface);
+            player.clear_error();
+            ATTRACTOR_PLAYER_OK
+        }
+        Err(error) => {
+            player.set_error(error);
+            ATTRACTOR_PLAYER_ERROR
+        }
+    }
+}
+
+/// Draw the current frame into the attached layer and present it.
+///
+/// Returns [`ATTRACTOR_PLAYER_ERROR`] when no layer was attached; the surface
+/// may skip a frame (a timeout or an occluded layer) and still report success.
+///
+/// # Safety
+///
+/// `player` must be a live handle with a layer attached.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn attractor_player_draw(player: *mut AttractorPlayer) -> i32 {
+    let Some(player) = (unsafe { player.as_mut() }) else {
+        return ATTRACTOR_PLAYER_INVALID_ARGUMENT;
+    };
+    if player.surface.is_none() {
+        player.set_error("no presentation layer is attached");
+        return ATTRACTOR_PLAYER_ERROR;
+    }
+    let result = {
+        let target = player
+            .surface
+            .as_mut()
+            .expect("the surface presence was checked above");
+        player.player.render_to_surface(&player.context, target)
+    };
+    match result {
+        Ok(()) => {
             player.clear_error();
             ATTRACTOR_PLAYER_OK
         }
@@ -402,8 +479,9 @@ fn create_player(options: &AttractorPlayerOptions) -> Result<AttractorPlayer, Cr
     )?;
 
     Ok(AttractorPlayer {
-        context,
+        surface: None,
         player,
+        context,
         last_error: None,
     })
 }

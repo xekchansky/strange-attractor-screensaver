@@ -72,6 +72,23 @@ fn the_same_seed_produces_the_same_geometry() {
 }
 
 #[test]
+fn a_long_stall_is_clamped_like_the_swift_scene() {
+    // A wake-up hands the player the whole sleep duration. The scheduler and
+    // the camera both work on the clamped interval, so that frame is exactly
+    // the frame a normal 0.1 s interval would have produced.
+    let mut stalled = player(11, pinned_options());
+    let mut regular = player(11, pinned_options());
+    stalled.tick(60.0).expect("the stalled frame advances");
+    regular.tick(0.1).expect("the regular frame advances");
+    assert_eq!(
+        stalled.geometry().positions(),
+        regular.geometry().positions()
+    );
+    assert_eq!(stalled.geometry().colors(), regular.geometry().colors());
+    assert_eq!(stalled.camera_azimuth(), regular.camera_azimuth());
+}
+
+#[test]
 fn different_seeds_produce_different_cameras() {
     // The camera azimuth is drawn from the same seeded source, so different
     // seeds must orbit to different sides and orient the ribbon differently.

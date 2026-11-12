@@ -11,6 +11,7 @@ mod capture;
 mod context;
 mod frame;
 mod ribbon;
+mod surface;
 #[cfg(feature = "text")]
 mod text;
 mod vertex;
@@ -19,6 +20,7 @@ pub use capture::{lit_pixels, write_png};
 pub use context::{GpuContext, GpuError};
 pub use frame::FrameRenderer;
 pub use ribbon::{RIBBON_SHADER, RibbonRenderer};
+pub use surface::{SurfaceTarget, choose_surface_format};
 #[cfg(feature = "text")]
 pub use text::TextOverlay;
 pub use vertex::Vertex;
