@@ -1,10 +1,11 @@
 //! A presentation surface created from a native platform handle.
 //!
 //! The macOS `.saver` owns a layer-backed `NSView` and passes its
-//! `CAMetalLayer` to the player. wgpu wraps that layer in a swap chain, so the
-//! frame is presented straight to the screen instead of being read back.
-//! Only the Apple constructor exists today; I8 and I10 add raw window-handle
-//! constructors for Windows and Linux to the same type.
+//! `CAMetalLayer` to the player; the Windows `.scr` passes its `HWND`. wgpu
+//! wraps either handle in a swap chain, so the frame is presented straight to
+//! the screen instead of being read back. The Apple and Windows constructors
+//! share one type, so every shell presents through the same code; I10 adds the
+//! X11 and Wayland handles.
 
 use crate::context::{GpuContext, GpuError};
 
@@ -39,6 +40,14 @@ enum SurfaceSource {
     /// The `CAMetalLayer` the surface was created from.
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     CoreAnimationLayer(*mut std::ffi::c_void),
+    /// The `HWND` (and its `HINSTANCE`) the surface was created from.
+    #[cfg(target_os = "windows")]
+    Win32Window {
+        /// Window handle the swap chain presents into.
+        hwnd: *mut std::ffi::c_void,
+        /// Module instance the window belongs to; may be null.
+        hinstance: *mut std::ffi::c_void,
+    },
 }
 
 impl SurfaceSource {
@@ -47,7 +56,30 @@ impl SurfaceSource {
         match self {
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             Self::CoreAnimationLayer(layer) => wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer),
+            #[cfg(target_os = "windows")]
+            Self::Win32Window { hwnd, hinstance } => win32_target(hwnd, hinstance),
         }
+    }
+}
+
+/// Wrap a Win32 window handle in wgpu's raw-handle target.
+///
+/// `hwnd` must be non-null; the constructor checks that before calling.
+#[cfg(target_os = "windows")]
+fn win32_target(
+    hwnd: *mut std::ffi::c_void,
+    hinstance: *mut std::ffi::c_void,
+) -> wgpu::SurfaceTargetUnsafe {
+    use std::num::NonZeroIsize;
+    use wgpu::rwh::{RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle};
+
+    // SAFETY: the caller of the public constructor guarantees a live HWND.
+    let hwnd = NonZeroIsize::new(hwnd as isize).expect("the window handle is non-null");
+    let mut window = Win32WindowHandle::new(hwnd);
+    window.hinstance = NonZeroIsize::new(hinstance as isize);
+    wgpu::SurfaceTargetUnsafe::RawHandle {
+        raw_display_handle: Some(RawDisplayHandle::Windows(WindowsDisplayHandle::new())),
+        raw_window_handle: RawWindowHandle::Win32(window),
     }
 }
 
@@ -90,6 +122,47 @@ impl SurfaceTarget {
         surface.configure(context.device(), &config);
         Ok(Self {
             source: SurfaceSource::CoreAnimationLayer(layer),
+            surface,
+            config,
+        })
+    }
+
+    /// Wrap the Win32 window `hwnd` in a swap chain sized `width`×`height`
+    /// pixels.
+    ///
+    /// The `.scr` shell calls this once per monitor window. `hinstance` is the
+    /// module handle the window class was registered with; pass null when it
+    /// is unknown.
+    ///
+    /// # Safety
+    ///
+    /// `hwnd` must be a live window that outlives the returned target.
+    #[cfg(target_os = "windows")]
+    pub unsafe fn from_window_handle(
+        context: &GpuContext,
+        hwnd: *mut std::ffi::c_void,
+        hinstance: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, GpuError> {
+        if hwnd.is_null() {
+            return Err(GpuError::InvalidWindowHandle);
+        }
+        if width == 0 || height == 0 {
+            return Err(GpuError::InvalidFrameSize { width, height });
+        }
+        let source = SurfaceSource::Win32Window { hwnd, hinstance };
+        // SAFETY: the caller guarantees the window outlives the surface.
+        let surface = unsafe {
+            context
+                .instance()
+                .create_surface_unsafe(source.into_unsafe())
+        }
+        .map_err(GpuError::Surface)?;
+        let config = surface_configuration(&surface, context.adapter(), width, height)?;
+        surface.configure(context.device(), &config);
+        Ok(Self {
+            source,
             surface,
             config,
         })
@@ -207,7 +280,7 @@ impl std::fmt::Debug for SurfaceTarget {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "windows"))]
 fn surface_configuration(
     surface: &wgpu::Surface<'_>,
     adapter: &wgpu::Adapter,

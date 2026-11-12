@@ -121,6 +121,8 @@ pub enum GpuError {
     ReadbackCancelled,
     /// A presentation surface could not be created from the native layer.
     Surface(wgpu::CreateSurfaceError),
+    /// The native window handle passed to `SurfaceTarget` was null.
+    InvalidWindowHandle,
     /// The surface supports no format the renderer can draw into.
     UnsupportedSurface,
     /// The swap chain could not hand out a frame.
@@ -144,6 +146,7 @@ impl fmt::Display for GpuError {
             Self::Surface(error) => {
                 write!(formatter, "cannot create the presentation surface: {error}")
             }
+            Self::InvalidWindowHandle => write!(formatter, "the window handle is null"),
             Self::UnsupportedSurface => {
                 write!(
                     formatter,
@@ -173,6 +176,7 @@ impl Error for GpuError {
             Self::Poll(error) => Some(error),
             Self::Surface(error) => Some(error),
             Self::InvalidFrameSize { .. }
+            | Self::InvalidWindowHandle
             | Self::ReadbackCancelled
             | Self::UnsupportedSurface
             | Self::SurfaceAcquire(_)

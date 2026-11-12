@@ -10,9 +10,12 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I7b — macOS host migration** (2026-11-12)
-- Last completed change: **I7b — macOS host migration** (2026-11-12)
-- Next iteration: **I8 — Windows `.scr`**
+- Last completed iteration: **I8 — Windows `.scr`** (2026-11-13, manual:
+  pending)
+- Last completed change: **I8 — Windows `.scr`** (2026-11-13)
+- Next iteration: **I9 — web demo on GitHub Pages**
+- Windows manual checklist: `crates/attractor-windows-saver/README.md`,
+  scheduled with the reviewer after I8 (design §6).
 - Pre-migration visual reference: **`ef3d61b`**, the last commit whose
   `.saver` still rendered through SceneKit. The Rust host must match it
   side by side (manual checklist below).
@@ -50,6 +53,25 @@ cd .. && xcodebuild -project Host/AttractorHost.xcodeproj -scheme AttractorSaver
 build needs the `x86_64-apple-darwin` standard library in the Rust toolchain;
 the build phase fails with an actionable message when it is missing.
 
+The Windows shell is cross-checked from the macOS host against the GNU
+target's standard library (`rustup target add x86_64-pc-windows-gnu`); both
+commands compile and lint the Win32 code without linking it:
+
+```bash
+cd rust
+cargo check -p attractor-windows-saver --target x86_64-pc-windows-gnu --all-targets
+cargo clippy -p attractor-windows-saver -p attractor-gpu \
+  --target x86_64-pc-windows-gnu --all-targets -- -D warnings
+```
+
+The `.scr` self-test renders through the shared player and therefore runs on
+every platform, which is how the Windows path is smoke-checked locally:
+
+```bash
+cargo run -p attractor-windows-saver -- --self-test
+cargo run -p attractor-windows-saver -- --self-test --noop
+```
+
 The Swift oracle checks (in the agent sandbox SwiftPM needs
 `--disable-sandbox`; a normal shell does not):
 
@@ -80,7 +102,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
 - [x] I7a — player and C ABI
 - [x] I7b — macOS host migration (done; manual: preview + fullscreen
   verified 2026-11-12, multi-display pending)
-- [ ] I8 — Windows `.scr`
+- [x] I8 — Windows `.scr` (done; manual: pending, checklist in the crate
+  README)
 - [ ] I9 — web demo on GitHub Pages
 - [ ] I10 — Linux
 - [ ] I11 — Android live wallpaper
@@ -473,6 +496,66 @@ enough.
   I8/I10 add constructors for a raw Windows/Linux window handle to the same
   type, keeping one presentation path. Notarization stays deferred to I12
   (D11).
+- **I8**: the Windows `.scr` exists. `attractor-windows-saver` is a lib plus a
+  binary; the lib holds the platform-neutral pieces (`args`, `settings`,
+  `selection`, `input`, `text`, `self_test`) so they are unit-tested on every
+  OS, and `windows::*` is the Win32 shell behind `#[cfg(windows)]`. The binary
+  is the future `StrangeAttractor.scr`: Windows invokes it with `/s`, `/c`,
+  `/c:HWND` or `/p HWND`, an empty command line opens the settings, and
+  `--self-test` (with `--noop`, `--width`, `--height`) renders a frame without
+  a desktop. `attractor-gpu` gained `SurfaceTarget::from_window_handle`, which
+  wraps the `HWND` through `wgpu::rwh`, and `GpuError::InvalidWindowHandle`;
+  presentation is the same swap-chain path as macOS.
+- **I8 shell**: one borderless topmost `WS_POPUP` window per monitor from
+  `EnumDisplayMonitors`, one `Player` and one swap chain per window, and a
+  single 16 ms `WM_TIMER` that ticks every display with its measured `dt`.
+  The process is per-monitor DPI aware, so monitor rectangles and surfaces are
+  physical pixels; the overlay scale is the window DPI over 96. A key,
+  mouse button, wheel notch or pointer motion ends the session; pointer motion
+  is ignored for 250 ms after the start, which drops the `WM_MOUSEMOVE` left
+  over from the click that launched the saver. `/p` creates a `WS_CHILD` window
+  inside the control panel's preview control, refuses to exit on input,
+  resizes with `WM_SIZE` and quits when the parent window disappears.
+  `WM_DISPLAYCHANGE` ends the session instead of presenting into stale
+  surfaces. The cursor is hidden for the session and restored on exit. The
+  binary carries `#![cfg_attr(windows, windows_subsystem = "windows")]`, so
+  Windows does not give the saver a console window; the self-test report still
+  travels through the inherited pipe, which is why `cargo run … --self-test`
+  shows it in CI.
+- **I8 ruling (raw Win32, no winit)**: the design sketch said "Win32/winit"; the
+  shell uses `windows-sys` directly. One borderless window per monitor, a
+  timer loop, `/p` inside a foreign `HWND` and `/s`'s `SetForegroundWindow` /
+  `ShowCursor` are all a few Win32 calls, while winit would add an event-loop
+  abstraction no other shell needs. The design doc's I8 section records the
+  ruling.
+- **I8 settings**: `%APPDATA%\StrangeAttractor\settings.json`, JSON with one
+  key (`attractor`) today. `/c` is a native window with a label, a combo box
+  (catalog order plus "Random each time") and OK/Cancel; it writes the file
+  atomically (temporary file plus rename) and shows a message box if the write
+  fails. Loads treat a missing file as defaults, log and default a corrupt
+  file, and fall back to random when the id is empty or not in the catalog, so
+  the saver never fails to start because of its settings. Unknown keys are
+  ignored for forward compatibility.
+- **I8 self-test**: seeded (42), 5 000 warm-up steps, 60 frames at 640x480,
+  reported with adapter, backend and lit pixels. On the M4 Pro the real
+  adapter reported `Apple M4 Pro`, `Metal`, 6 953 lit pixels; the noop backend
+  built the pipelines and reported 0 ink, as designed. With no adapter the
+  test prints a skip and exits 0 (the convention the GPU-backed tests follow);
+  CI therefore runs both the noop gate and the adapter gate, and the second
+  draws WARP pixels on `windows-latest`.
+- **I8 CI**: a new `windows` job runs `cargo fmt --check`, clippy for
+  `attractor-windows-saver` and `attractor-gpu` on the Windows target
+  (including the D3D12 surface code), the crate's tests, then both self-test
+  modes. The ubuntu `rust` job is unchanged. Locally the Win32 code was
+  verified with the same clippy command against `x86_64-pc-windows-gnu` and
+  the shell was exercised through `--self-test`; the first real Windows run is
+  the CI job.
+- **I8 deferred**: the settings window exposes only the attractor choice;
+  signing, an installer and the `.scr` packaging step belong to I12, and the
+  crate README documents the build-and-rename recipe and SmartScreen note. A
+  `.scr` whose window loses the foreground would miss input (no low-level
+  hook); Windows normally grants the saver foreground. Multi-monitor and
+  preview remain on the manual checklist until the Windows 11 pass.
 
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and

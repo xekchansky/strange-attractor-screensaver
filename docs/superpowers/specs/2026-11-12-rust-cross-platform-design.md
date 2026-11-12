@@ -494,6 +494,34 @@ the iteration is "done (manual: pending)".
 
 **Verify:** CI windows job builds and runs the self-test.
 
+**Ruling (Win32 instead of winit).** The architecture sketch says
+"Win32/winit". The shell uses `windows-sys` directly: a screen saver needs one
+topmost borderless window per monitor, a `WM_TIMER` frame loop and a child
+window inside another process's preview control, all of which raw Win32
+expresses in a few calls. winit would add an event-loop abstraction and a
+dependency that only this shell uses, while `/p` still needs the raw parent
+`HWND` and `/s` still needs `EnumDisplayMonitors`, `SetForegroundWindow` and
+`ShowCursor`. `SurfaceTarget` gained `from_window_handle`, so presentation
+still goes through the same wgpu path as macOS.
+
+**Ruling (settings surface).** The settings window is a small native dialog: a
+label, a combo box listing the catalog plus "random", and OK/Cancel. It writes
+`%APPDATA%\StrangeAttractor\settings.json` atomically (temporary file plus
+rename); the run mode reads the same file, treats a missing, corrupt or stale
+value as "random" and never fails to start because of it. This satisfies the
+non-goal of a store-quality settings UI while giving the Screen Saver page's
+Settings button something real to open.
+
+**Ruling (self-test).** `--self-test` renders through the real adapter when one
+exists and prints a skip with exit code 0 when it does not, matching how the
+GPU-backed tests treat a missing adapter. CI therefore runs two gates: the
+noop backend (`--self-test --noop`), which validates the pipelines on any
+runner, and the adapter run, which draws WARP pixels on `windows-latest`.
+Because Win32 code does not compile on the other runners, the Windows job also
+runs clippy for `attractor-windows-saver` and `attractor-gpu` and builds the
+`attractor-gpu` D3D12 path; the ubuntu `rust` job keeps covering the rest of
+the workspace.
+
 ### I9 — Web demo on GitHub Pages (M)
 
 **Deliverables:** `attractor-wasm` + `web/` static page: canvas, attractor

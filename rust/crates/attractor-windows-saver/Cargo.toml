@@ -1,6 +1,6 @@
 [package]
 name = "attractor-windows-saver"
-description = "Windows .scr shell with /s, /c and /p modes, added in I8."
+description = "Windows .scr shell with /s, /c and /p modes over the shared player."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,4 +8,29 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[lib]
+name = "attractor_windows_saver"
+path = "src/lib.rs"
+
+[[bin]]
+name = "attractor-windows-saver"
+path = "src/main.rs"
+
 [dependencies]
+attractor-core = { path = "../attractor-core" }
+attractor-gpu = { path = "../attractor-gpu" }
+attractor-player = { path = "../attractor-player" }
+env_logger = "0.11"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
