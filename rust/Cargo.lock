@@ -103,6 +103,7 @@ version = "0.0.0"
 dependencies = [
  "attractor-core",
  "attractor-gpu",
+ "attractor-player",
  "attractor-view",
  "env_logger",
  "log",
@@ -120,6 +121,12 @@ dependencies = [
 [[package]]
 name = "attractor-ffi"
 version = "0.0.0"
+dependencies = [
+ "attractor-core",
+ "attractor-gpu",
+ "attractor-player",
+ "log",
+]
 
 [[package]]
 name = "attractor-gpu"
@@ -139,6 +146,13 @@ dependencies = [
 [[package]]
 name = "attractor-player"
 version = "0.0.0"
+dependencies = [
+ "attractor-cli",
+ "attractor-core",
+ "attractor-gpu",
+ "attractor-view",
+ "png",
+]
 
 [[package]]
 name = "attractor-view"

@@ -8,4 +8,11 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
 [dependencies]
+attractor-core = { path = "../attractor-core" }
+attractor-gpu = { path = "../attractor-gpu" }
+attractor-player = { path = "../attractor-player" }
+log = "0.4"

@@ -10,8 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I6 — wgpu renderer and CLI capture** (2026-11-12)
-- Next iteration: **I7a — player and C ABI**
+- Last completed iteration: **I7a — player and C ABI** (2026-11-12)
+- Next iteration: **I7b — macOS host migration**
 
 ## Verification
 
@@ -50,7 +50,7 @@ shell.
 - [x] I4 — engine, selection and health monitor
 - [x] I5 — view layer, no GPU
 - [x] I6 — wgpu renderer and CLI capture
-- [ ] I7a — player and C ABI
+- [x] I7a — player and C ABI
 - [ ] I7b — macOS host migration
 - [ ] I8 — Windows `.scr`
 - [ ] I9 — web demo on GitHub Pages
@@ -312,15 +312,58 @@ enough.
     capture logs it and continues rendering the remaining trail; the Rust
     policy treats any non-evaluable run as degenerate, which is what
     `docs/capture_all.sh` wants (retry instead of publishing a partial image).
-- **I6 deferred (minor)**: `FrameRenderer` cannot resize (each CLI run creates
-  one; I7 adds `resize`); the overlay has layout tests but no pixel-level text
-  assertion; `FrameRenderer::with_sample_count(1)` is documented as supported
-  but `render` always attaches a resolve target, which wgpu rejects for a
-  single-sample target (no current caller passes 1; the wasm/WebGL2 path in I9
-  will need the conditional); `--frames` with `--record` is uncapped, so a
-  mistyped huge value can run for a very long time (the `--record-seconds`
-  path is capped at one hour); the fixture README omits `--width 320 --height
-  240 --screenshot`, which do not affect the pinned digest.
+- **I6 deferred (minor)**: the overlay has layout tests but no pixel-level
+  text assertion; `--frames` with `--record` is uncapped, so a mistyped huge
+  value can run for a very long time (the `--record-seconds` path is capped at
+  one hour); the fixture README omits `--width 320 --height 240
+  --screenshot`, which do not affect the pinned digest. The two renderer
+  gaps — no `resize` and the broken single-sample resolve target — are fixed
+  in I7a.
+- **I7a**: `attractor-player` now owns the runtime and `attractor-cli` is one
+  more shell over it. `Player::{new, warm_up, tick, restart, resize, render}`
+  supersedes the CLI's `SimulationSession`, which is deleted. The player keeps
+  the validated descriptor list for restarts and owns a `SplitMix64`, so the
+  same seed draws the same camera and replacement selections. `tick` returns
+  `TickEvent::{Advanced, Restarted, RestartDeferred}`; with
+  `PlayerOptions::heal_automatically` a health-monitor verdict replaces the
+  selection immediately when `RestartLimiter` allows it, and otherwise the
+  player keeps the frame and retries once the limiter window elapses. Captures
+  set healing off, so a degenerate run still exits 1 instead of silently
+  swapping the attractor. `Player::render(context)` creates the
+  `FrameRenderer` lazily, resizes it when the surface changed and returns
+  tightly packed RGBA8 rows.
+- **I7a renderer**: `FrameRenderer` gained `resize`, `overlay_scale` and an
+  `Attachment` bundle that recreates only the attachment textures and readback
+  buffer. `with_sample_count(1)` now renders straight into the resolve texture
+  without a resolve target, which closes the I6 deferred wgpu rejection and
+  prepares the WebGL2 path in I9. `Player::resize` only records the new size;
+  the renderer catches up on the next `render`, so the call needs no GPU
+  context.
+- **I7a C ABI**: `attractor-ffi` exports create/destroy/tick/render/resize/
+  restart/width/height/last_error over an opaque handle. `AttractorPlayerOptions`
+  carries the seed (zero means clock-based), size, overlay scale and a noop
+  backend flag for CI. Errors come back as status codes with a
+  NUL-terminated message from `attractor_player_last_error`; a null handle
+  maps to `ATTRACTOR_PLAYER_INVALID_ARGUMENT`. `include/attractor.h` is
+  hand-maintained (ruling in the design doc) and `tests/header.rs` fails when
+  the header and the `#[unsafe(no_mangle)]` exports drift apart.
+- **I7a verification**: the seeded CLI snapshot is unchanged bit for bit,
+  which proves the player extraction preserved the geometry. On an Apple M4
+  Pro the CLI capture produced 2400x1800, 872 368 lit pixels — the same number
+  as the I6 manual run. The parity test and the player resize path were
+  additionally exercised on Metal through temporary `cargo run` examples
+  (deleted afterwards): the player frame was byte-identical to the CLI frame
+  at 640x480, and a 320x240 frame resized to 160x120 still drew ink. The
+  committed GPU tests skip with a printed reason when no adapter is available,
+  because the agent sandbox cannot open Metal from the test harness; CI's
+  deterministic gate remains the snapshot plus the noop-player tests.
+- **I7a deferred**: rendering goes through an offscreen readback; drawing into
+  the host's `CAMetalLayer` drawable is I7b work, as is the Swift view.
+  `attractor_player_create` returns null on failure without an error handle,
+  because there is no player to carry a message yet; the reason goes to the
+  `log` crate. The parity test repeats the CLI's construction instead of
+  calling `prepare`, so it stays an independent check rather than a tautology;
+  if the CLI defaults change, the test must change with them.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell

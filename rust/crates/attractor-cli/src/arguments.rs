@@ -150,8 +150,8 @@ Bare `name=value` tokens are also treated as pinned parameters, e.g.
   attractor-cli --attractor rossler a=0.2 b=0.2 c=5.7
 
 Without options, a random attractor with random parameters is chosen.
-At least one of --screenshot or --record is required until the interactive
-player lands in I7.
+This binary captures files only; at least one of --screenshot or --record is
+required. The interactive surfaces are hosted by the platform shells.
 ";
 
     /// Parse command-line arguments, excluding the executable path.

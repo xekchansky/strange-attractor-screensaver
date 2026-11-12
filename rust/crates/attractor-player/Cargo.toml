@@ -9,3 +9,10 @@ authors.workspace = true
 publish = false
 
 [dependencies]
+attractor-core = { path = "../attractor-core" }
+attractor-gpu = { path = "../attractor-gpu" }
+attractor-view = { path = "../attractor-view" }
+
+[dev-dependencies]
+attractor-cli = { path = "../attractor-cli" }
+png = "0.18"

@@ -12,10 +12,10 @@ use attractor_core::{
     AttractorSelection, DebugConfig, DebugConfigError, RandomizerError, SimulationSettings,
     SplitMix64, randomizer,
 };
-use attractor_gpu::{FrameRenderer, GpuContext, GpuError, lit_pixels, write_png};
+use attractor_gpu::{GpuContext, GpuError, lit_pixels, write_png};
+use attractor_player::{Player, PlayerError, PlayerOptions};
 
 use crate::arguments::{CaptureRequest, CommandLineArguments};
-use crate::session::{SessionError, SimulationSession};
 
 /// The fixed simulated interval of one capture frame, matching the Swift
 /// `CaptureController`.
@@ -36,8 +36,8 @@ pub const MAXIMUM_PIXEL_DIMENSION: u32 = 8_192;
 /// A run resolved against the catalog and ready to simulate.
 #[derive(Debug)]
 pub struct PreparedRun {
-    /// The simulation session, not yet warmed up.
-    pub session: SimulationSession,
+    /// The player, not yet warmed up.
+    pub player: Player,
     /// What to capture.
     pub capture: CaptureRequest,
     /// Integration steps to fast-forward before the first frame.
@@ -120,7 +120,7 @@ pub enum RunError {
     /// Hyperparameter overrides are nonsensical.
     Settings(Vec<String>),
     /// A simulation step, health check or model build failed.
-    Session(SessionError),
+    Player(PlayerError),
     /// No `--screenshot` or `--record` was requested.
     CaptureMissing,
     /// The requested pixel size is too large.
@@ -189,7 +189,7 @@ impl fmt::Display for RunError {
             Self::DebugConfig(error) => write!(formatter, "failed to build simulation: {error}"),
             Self::Randomizer(error) => write!(formatter, "failed to build simulation: {error}"),
             Self::Settings(issues) => write!(formatter, "{}", issues.join("\n")),
-            Self::Session(error) => write!(formatter, "{error}"),
+            Self::Player(error) => write!(formatter, "{error}"),
             Self::CaptureMissing => write!(
                 formatter,
                 "no capture requested: pass --screenshot <path> or --record <dir>"
@@ -210,7 +210,7 @@ impl Error for RunError {
             Self::Catalog(error) => Some(error),
             Self::DebugConfig(error) => Some(error),
             Self::Randomizer(error) => Some(error),
-            Self::Session(error) => Some(error),
+            Self::Player(error) => Some(error),
             Self::Gpu(error) => Some(error),
             Self::Io(error) => Some(error),
             _ => None,
@@ -328,22 +328,10 @@ pub fn prepare(arguments: &CommandLineArguments) -> Result<PreparedRun, RunError
     let width = arguments.width.unwrap_or(DEFAULT_WIDTH);
     let height = arguments.height.unwrap_or(DEFAULT_HEIGHT);
     let capture_scale = arguments.capture_scale;
-    let prepared = PreparedRun {
-        session: SimulationSession::new(
-            effective_selection,
-            arguments.camera_azimuth_degrees.map(f64::to_radians),
-            arguments.camera_elevation_degrees.map(f64::to_radians),
-            &mut rng,
-        )
-        .map_err(RunError::Session)?,
-        capture,
-        warmup_steps: arguments.warmup_steps.unwrap_or(DEFAULT_WARMUP_STEPS),
-        width,
-        height,
-        capture_scale,
-        frames: arguments.frames,
-    };
-    let (pixel_width, pixel_height) = prepared.pixel_size();
+    let (pixel_width, pixel_height) = (
+        width.saturating_mul(capture_scale),
+        height.saturating_mul(capture_scale),
+    );
     if pixel_width == 0
         || pixel_height == 0
         || pixel_width > MAXIMUM_PIXEL_DIMENSION
@@ -354,30 +342,47 @@ pub fn prepare(arguments: &CommandLineArguments) -> Result<PreparedRun, RunError
             height: pixel_height,
         });
     }
-    Ok(prepared)
+
+    let mut player = Player::new(
+        effective_selection,
+        valid,
+        PlayerOptions {
+            camera_azimuth: arguments.camera_azimuth_degrees.map(f64::to_radians),
+            camera_elevation: arguments.camera_elevation_degrees.map(f64::to_radians),
+            heal_automatically: false,
+            ..PlayerOptions::default()
+        },
+        rng,
+    )
+    .map_err(RunError::Player)?;
+    player
+        .resize(pixel_width, pixel_height, capture_scale as f32)
+        .map_err(RunError::Player)?;
+
+    Ok(PreparedRun {
+        player,
+        capture,
+        warmup_steps: arguments.warmup_steps.unwrap_or(DEFAULT_WARMUP_STEPS),
+        width,
+        height,
+        capture_scale,
+        frames: arguments.frames,
+    })
 }
 
 /// Prepare, simulate and write the requested capture.
 pub fn run(arguments: &CommandLineArguments) -> Result<CaptureReport, RunError> {
     let mut prepared = prepare(arguments)?;
     prepared
-        .session
+        .player
         .warm_up(prepared.warmup_steps)
-        .map_err(RunError::Session)?;
+        .map_err(RunError::Player)?;
 
     let (pixel_width, pixel_height) = prepared.pixel_size();
-    let aspect = f64::from(pixel_width) / f64::from(pixel_height);
     let context = GpuContext::new().map_err(RunError::Gpu)?;
-    let mut renderer = FrameRenderer::new(
-        &context,
-        pixel_width,
-        pixel_height,
-        prepared.overlay_scale(),
-    )
-    .map_err(RunError::Gpu)?;
 
     let mut report = CaptureReport {
-        frames_simulated: prepared.session.frames_simulated(),
+        frames_simulated: prepared.player.frames_simulated(),
         frames_written: 0,
         width: pixel_width,
         height: pixel_height,
@@ -388,15 +393,8 @@ pub fn run(arguments: &CommandLineArguments) -> Result<CaptureReport, RunError> 
     match prepared.capture.clone() {
         CaptureRequest::Screenshot(path) => {
             let frames = prepared.frames.unwrap_or(DEFAULT_SETTLE_FRAMES);
-            advance(&mut prepared.session, frames)?;
-            render_into(
-                &context,
-                &mut renderer,
-                &prepared.session,
-                aspect,
-                &path,
-                &mut report,
-            )?;
+            advance(&mut prepared.player, frames)?;
+            render_into(&context, &mut prepared.player, &path, &mut report)?;
         }
         CaptureRequest::Record {
             output_directory,
@@ -409,25 +407,23 @@ pub fn run(arguments: &CommandLineArguments) -> Result<CaptureReport, RunError> 
                 .unwrap_or_else(|| ((seconds * 60.0) / frame_stride as f64).ceil() as usize)
                 .max(1);
             record_sequence(
-                &mut prepared.session,
+                &mut prepared.player,
                 frames_to_capture,
                 frame_stride,
-                |session, index| {
+                |player, index| {
                     let path = output_directory.join(format!("frame_{index:05}.png"));
-                    render_into(&context, &mut renderer, session, aspect, &path, &mut report)
+                    render_into(&context, player, &path, &mut report)
                 },
             )?;
         }
     }
-    report.frames_simulated = prepared.session.frames_simulated();
+    report.frames_simulated = prepared.player.frames_simulated();
     Ok(report)
 }
 
-fn advance(session: &mut SimulationSession, frames: usize) -> Result<(), RunError> {
+fn advance(player: &mut Player, frames: usize) -> Result<(), RunError> {
     for _ in 0..frames {
-        session
-            .advance_frame(FRAME_INTERVAL)
-            .map_err(RunError::Session)?;
+        player.tick(FRAME_INTERVAL).map_err(RunError::Player)?;
     }
     Ok(())
 }
@@ -438,20 +434,20 @@ fn advance(session: &mut SimulationSession, frames: usize) -> Result<(), RunErro
 /// The sequence mirrors the Swift `CaptureController`: after the settle phase,
 /// `frames_to_capture` frames are written every `frame_stride` simulated ticks.
 pub fn record_sequence(
-    session: &mut SimulationSession,
+    player: &mut Player,
     frames_to_capture: usize,
     frame_stride: usize,
-    mut capture: impl FnMut(&SimulationSession, usize) -> Result<(), RunError>,
+    mut capture: impl FnMut(&mut Player, usize) -> Result<(), RunError>,
 ) -> Result<(), RunError> {
-    advance(session, DEFAULT_SETTLE_FRAMES)?;
+    advance(player, DEFAULT_SETTLE_FRAMES)?;
     let total_frames = frames_to_capture.saturating_mul(frame_stride);
     for frame in 1..=total_frames {
-        advance(session, 1)?;
+        advance(player, 1)?;
         if frame % frame_stride != 0 {
             continue;
         }
         let index = frame / frame_stride;
-        capture(session, index)?;
+        capture(player, index)?;
         if index >= frames_to_capture {
             break;
         }
@@ -461,22 +457,11 @@ pub fn record_sequence(
 
 fn render_into(
     context: &GpuContext,
-    renderer: &mut FrameRenderer,
-    session: &SimulationSession,
-    aspect: f64,
+    player: &mut Player,
     path: &std::path::Path,
     report: &mut CaptureReport,
 ) -> Result<(), RunError> {
-    let overlay = session.overlay();
-    let view_projection = session.view_projection(aspect);
-    let pixels = renderer
-        .render(
-            context,
-            session.geometry(),
-            &view_projection,
-            Some(&overlay.text()),
-        )
-        .map_err(RunError::Gpu)?;
+    let pixels = player.render(context).map_err(RunError::Player)?;
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
