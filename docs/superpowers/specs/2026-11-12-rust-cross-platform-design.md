@@ -216,16 +216,24 @@ builds a 20 002-vertex ribbon (10 000 segments, two vertices per point, hue
 ramp per vertex) and draws it with one WGSL pipeline. The camera uses the
 saver's constants: elevation `pi/5`, distance `radius * 2.1`.
 
-**Status of the verification.** `cargo test` (8 tests: orbit finiteness,
-ribbon topology, head presence, color variation, camera math, WGSL
-validation through `naga`, and a full pipeline build through wgpu's `noop`
-backend), the wasm build, and `cargo check --target aarch64-linux-android`
-are green. The two visual checks — a Metal frame on macOS and the page in a
-browser — could not be executed in the agent's sandbox: it has no Metal
-device (`MTLCreateSystemDefaultDevice` returns `nil`) and it cannot start a
-browser process. They are manual steps; `rust/spike/README.md` has the exact
-commands. The ADR below is based on compiles, wgpu validation and the API
-contracts, not on observed pixels.
+**Status of the verification.** All checks are green: `cargo test` (14 tests:
+orbit finiteness, ribbon topology, head presence, color variation, camera
+math, sRGB clear-color encoding, the frame clock, WGSL validation through
+`naga`, and a full pipeline build through wgpu's `noop` backend), the wasm
+build, `cargo check --target aarch64-linux-android`, and both visual checks.
+The native frame rendered on an Apple M4 Pro (`Metal, IntegratedGpu`) with
+5.40% of the pixels lit; the wasm page rendered in Chrome, and two DevTools
+screenshots taken 2.5 s apart differed, so the camera animates. Two defects
+had to be fixed to get there: the "not blank" metric compared the linear
+clear color with an sRGB-encoded readback and counted every pixel as lit, and
+the web loop subtracted `Date.now()` (epoch milliseconds) from the rAF
+timestamp, which made the `f32` camera angle stick and froze the picture. The
+checks are repeatable by an agent through `rust/spike/web-check.sh`, listed
+in the git-ignored `.claude/settings.local.json` under
+`sandbox.excludedCommands`, because the macOS sandbox cannot start a browser
+or reach Metal. Headless `--virtual-time-budget` does not drive rAF (three
+frames, 17 ms observed), so animation is verified with a live DevTools
+session rather than two virtual-time screenshots.
 
 **ADR-1 — Web: WebGPU with an automatic WebGL2 fallback.**
 Build one wasm binary with both the `webgpu` and `webgl` wgpu features and

@@ -11,7 +11,7 @@ file, and commit atomically.
 
 - Branch: `rust-port`
 - Last completed iteration: **I0.5 — renderer and web spike** (2026-11-12,
-  done with manual visual checks pending)
+  visual checks verified)
 - Next iteration: **I1 — data model and catalog**
 
 ## Verification
@@ -31,9 +31,13 @@ and outside CI; its own checks are:
 ```bash
 cd spike
 cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
+cargo clippy --target wasm32-unknown-unknown --lib -- -D warnings
 cargo build --release --target wasm32-unknown-unknown --lib && ./build-wasm.sh
 cargo check --target aarch64-linux-android --lib
 ```
+
+`web.rs` is compiled only for wasm, so the host clippy pass does not see it;
+the second clippy line covers it.
 
 The wasm target and `wasm-bindgen-cli` (0.2.130, matching the crate) are
 prerequisites; `spike/README.md` has the full recipe.
@@ -41,7 +45,7 @@ prerequisites; `spike/README.md` has the full recipe.
 ## Iterations
 
 - [x] I0 — workspace skeleton and CI
-- [x] I0.5 — renderer and web spike, timeboxed (manual visual checks pending)
+- [x] I0.5 — renderer and web spike, timeboxed
 - [ ] I1 — data model and catalog
 - [ ] I2 — formula parser
 - [ ] I3 — numerical core
@@ -78,22 +82,39 @@ the golden fixtures stay reproducible after `Core/` is retired.
   automatic WebGL2 fallback; wgpu's GLES backend on Android instead of raw
   EGL; pin wgpu 30 (large API break from 24–26) and match
   `wasm-bindgen-cli` to the crate version.
-- **I0.5 manual: pending.** The sandbox an agent runs in has no Metal device
-  (`MTLCreateSystemDefaultDevice` returns `nil`) and cannot start a browser,
-  so the two visual checks were not observed by the agent. Everything that
-  can be checked without a GPU is green: 8 unit tests (including WGSL
-  validation with `naga` and a full pipeline build through wgpu's `noop`
-  backend), the wasm build with bindings, and `cargo check` for
-  `aarch64-linux-android`. The pending checks are:
+- **I0.5 manual: verified 2026-11-12.** The native frame rendered on an
+  Apple M4 Pro (`adapter: Apple M4 Pro (Metal, IntegratedGpu)`) and wrote a
+  1280x720 PNG with 5.40% of pixels lit. The wasm page rendered in Chrome;
+  two DevTools screenshots taken 2.5 s apart differed, so the camera
+  animates. Two defects surfaced and were fixed in this pass:
+  - `lit_pixels` compared the linear clear color against the sRGB-encoded
+    readback, so every background pixel counted as lit (the first run
+    reported 100%). It now encodes the clear color with the sRGB transfer
+    function; tests pin the stored bytes (33, 33, 48).
+  - the web loop subtracted `Date.now()` epoch milliseconds from the rAF
+    timestamp (`performance.now()`), producing a huge offset at which `f32`
+    seconds lose all resolution. The camera angle stuck and the page looked
+    frozen. `FrameClock` now takes its origin from the first frame timestamp.
+- **Sandbox configuration for the checks.** A macOS Seatbelt sandbox cannot
+  start a browser or reach Metal. The git-ignored
+  `.claude/settings.local.json` lists `cargo run *` and
+  `./rust/spike/web-check.sh *` under `sandbox.excludedCommands` and allows
+  the crates.io domains, so an agent can reproduce both checks. Pipes and
+  `&&` chains drop the exclusion: each part of a call must match an entry.
+  Headless `--virtual-time-budget` does not drive rAF (three frames, 17 ms
+  observed), so animation is verified with a live DevTools session:
 
   ```bash
-  cd rust/spike
-  cargo run --release -- spike.png        # writes a non-blank 1280x720 PNG
-  ./build-wasm.sh && python3 -m http.server 8080 --directory web
-  # then open http://localhost:8080/ in Chrome and Safari
+  ./rust/spike/web-check.sh --serve "http://localhost:8080/?v=1" \
+    --remote-debugging-port=9222   # then capture two frames over CDP
   ```
 
-  The result is recorded here when someone runs it; it does not block I1.
+  A single-frame screenshot still works and proves the page draws:
+
+  ```bash
+  ./rust/spike/web-check.sh http://localhost:8080/ shot.png \
+    --virtual-time-budget=4000
+  ```
 - The toolchain is plain stable Rust (edition 2024); no version is pinned
   yet. I0 and I0.5 were verified locally with rustc 1.99.1 (stable). For the
   spike, a local rustup home lives in `rust/.toolchain` (git-ignored) because
