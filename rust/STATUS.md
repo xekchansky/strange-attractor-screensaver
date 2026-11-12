@@ -11,6 +11,7 @@ file, and commit atomically.
 
 - Branch: `rust-port`
 - Last completed iteration: **I7a — player and C ABI** (2026-11-12)
+- Last completed change: **deferred cleanup after I7a** (2026-11-12)
 - Next iteration: **I7b — macOS host migration**
 
 ## Verification
@@ -34,11 +35,13 @@ cargo run -p attractor-cli -- --attractor lorenz --seed 42 \
 ```
 
 The pipeline tests build through wgpu's `noop` backend, so they run without a
-GPU; the two render tests (`headless_frame_is_not_blank`,
-`tests/text.rs`) skip with a printed reason when no adapter is available. The
-spike was deleted in I6, and with it the wasm32/android check recipes it
-carried; I9 and I11 add them back against `attractor-wasm` and the Android
-shell.
+GPU; the adapter-backed render tests (`headless_frame_is_not_blank`, the
+player render/parity tests, the FFI native render and `tests/text.rs`) skip
+with a printed reason when no adapter is available. Locally a bare
+`cargo test --workspace` runs them on Metal, because the project sandbox
+excludes `cargo test` (see the sandbox note at the end). The spike was
+deleted in I6, and with it the wasm32/android check recipes it carried; I9
+and I11 add them back against `attractor-wasm` and the Android shell.
 
 ## Iterations
 
@@ -120,8 +123,9 @@ enough.
   `abs`, `^` and arithmetic, so `exp`/`cos`/`tan`/`sqrt`/`ln`/`log` have only
   trivial self-referential unit coverage. Add synthetic formulas to the
   generator if cross-platform libm fidelity of those functions becomes a
-  requirement. Also untested domain edges: `ln(NaN)`, `sqrt(-0.0)`, a `-0.0`
-  divisor, and the dividend side of division precedence (`1 / q`).
+  requirement. The domain edges that used to be untested — `ln(NaN)`,
+  `sqrt(-0.0)`, a `-0.0` divisor and the dividend side of division precedence
+  (`1 / q`) — now have unit tests in `tests/formula_evaluation.rs`.
 - **I3**: the numerical core is ported in `ode_solver`, `splitmix64`,
   `random`, `randomizer`, `simulation_step_scheduler`, `trace_buffer` and
   `restart_limiter`; `AttractorSelection` (the plain data aggregate) also
@@ -239,9 +243,9 @@ enough.
     rather than a free function, matching `TraceRenderer`'s reuse rationale;
     `TrailGeometry` owns the three buffers and exposes read-only accessors.
 - **I5 deferred (minor)**: `Mat4::look_at` has no perspective projection; I6
-  adds it with the aspect ratio. `OverlayModel` spells non-finite values the
-  way C does (`nan`, `inf`) for parity, but no test covers a non-finite state
-  (those are transient before a health-monitor restart).
+  adds it with the aspect ratio (done). `OverlayModel` spells non-finite
+  values the way C does (`nan`, `inf`) for parity; a test now covers a
+  non-finite state in `tests/overlay.rs`.
 - **I6**: the GPU path and the CLI exist. `attractor-gpu` owns a headless
   `GpuContext` (native backends; `new_noop` for CI), the ribbon pipeline,
   a 4x multisampled sRGB target resolved into a single-sampled texture, frame
@@ -312,13 +316,14 @@ enough.
     capture logs it and continues rendering the remaining trail; the Rust
     policy treats any non-evaluable run as degenerate, which is what
     `docs/capture_all.sh` wants (retry instead of publishing a partial image).
-- **I6 deferred (minor)**: the overlay has layout tests but no pixel-level
-  text assertion; `--frames` with `--record` is uncapped, so a mistyped huge
-  value can run for a very long time (the `--record-seconds` path is capped at
-  one hour); the fixture README omits `--width 320 --height 240
-  --screenshot`, which do not affect the pinned digest. The two renderer
-  gaps — no `resize` and the broken single-sample resolve target — are fixed
-  in I7a.
+- **I6 deferred (minor, all closed)**: the overlay now has a pixel-level test
+  (`the_overlay_draws_glyphs_into_the_lower_left_corner`: a blank frame has no
+  ink, an overlay frame inks the lower half); `--frames` is capped at
+  `CommandLineArguments::MAXIMUM_FRAMES` (216 000, one hour at 60 fps), so a
+  mistyped value is a usage error like an oversized `--record-seconds`; the
+  fixture README now states the capture flags a manual CLI reproduction needs.
+  The two renderer gaps — no `resize` and the broken single-sample resolve
+  target — were fixed in I7a.
 - **I7a**: `attractor-player` now owns the runtime and `attractor-cli` is one
   more shell over it. `Player::{new, warm_up, tick, restart, resize, render}`
   supersedes the CLI's `SimulationSession`, which is deleted. The player keeps
@@ -354,9 +359,12 @@ enough.
   additionally exercised on Metal through temporary `cargo run` examples
   (deleted afterwards): the player frame was byte-identical to the CLI frame
   at 640x480, and a 320x240 frame resized to 160x120 still drew ink. The
-  committed GPU tests skip with a printed reason when no adapter is available,
-  because the agent sandbox cannot open Metal from the test harness; CI's
-  deterministic gate remains the snapshot plus the noop-player tests.
+  committed GPU tests skip with a printed reason when no adapter is available.
+  Locally they do run: `.claude/settings.local.json` takes bare `cargo test …`
+  out of the agent sandbox (see the sandbox note), and a full
+  `cargo test --workspace` exercised the GPU renders, the player/CLI parity
+  test and the native FFI render on Metal. CI has no GPU, so its deterministic
+  gate remains the snapshot plus the noop-player tests.
 - **I7a deferred**: rendering goes through an offscreen readback; drawing into
   the host's `CAMetalLayer` drawable is I7b work, as is the Swift view.
   `attractor_player_create` returns null on failure without an error handle,
@@ -364,10 +372,23 @@ enough.
   `log` crate. The parity test repeats the CLI's construction instead of
   calling `prepare`, so it stays an independent check rather than a tautology;
   if the CLI defaults change, the test must change with them.
+- **Deferred cleanup (2026-11-12)**: the GPU-dependent gap is gone — the
+  project sandbox config excludes `cargo test` and `cargo test …`, so the
+  suite runs bare and reaches Metal; `cargo test --workspace` is green with
+  the render, text, parity and FFI tests actually executing. The remaining
+  minor debts were closed in the same pass: formula domain edges, the
+  non-finite overlay spelling, the `--frames` cap, the fixture README run and
+  the overlay pixel test. Two unused accessors (`FrameRenderer::overlay_scale`
+  and `PreparedRun::overlay_scale`) were removed.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
-  use the default locations; nothing in the repository depends on this.
+  use the default locations; nothing in the repository depends on this. The
+  project's git-ignored `.claude/settings.local.json` also lists `cargo run *`,
+  `cargo test` and `cargo test *` in `sandbox.excludedCommands`, so a bare
+  command reaches Metal. The exclusion matches the command as written: a
+  `CARGO_HOME=…` prefix, a pipe or a chain around a GPU run keeps it inside
+  the sandbox, where `cargo test` still passes but skips the adapter tests.
   Likewise, `swift test` inside the agent sandbox needs `--disable-sandbox`,
   because SwiftPM cannot start its own nested sandbox there. When that flag is
   unavailable, the same fixture generators can be driven by compiling the

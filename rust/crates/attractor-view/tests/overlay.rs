@@ -53,6 +53,19 @@ fn the_state_line_formats_every_coordinate_with_three_decimals() {
 }
 
 #[test]
+fn non_finite_state_values_use_the_printf_spelling() {
+    // A briefly diverged state can reach the overlay before the health
+    // monitor restarts the run; the Swift label prints `%.3f`, where C spells
+    // NaN and the infinities in lowercase.
+    let selection = lorenz_selection();
+    let overlay = OverlayModel::new(
+        &selection,
+        State::new(f64::NAN, f64::INFINITY, f64::NEG_INFINITY),
+    );
+    assert_eq!(overlay.lines()[5], "(x, y, z) = (nan, inf, -inf)");
+}
+
+#[test]
 fn a_selection_without_parameters_leaves_the_parameter_line_empty() {
     let mut selection = lorenz_selection();
     selection.parameters.clear();

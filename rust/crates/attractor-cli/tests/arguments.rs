@@ -289,6 +289,18 @@ fn width_and_height_must_be_usable() {
 }
 
 #[test]
+fn frames_are_capped_at_one_hour_of_capture() {
+    assert_eq!(
+        parse(&["--frames", "216000"]).frames,
+        Some(CommandLineArguments::MAXIMUM_FRAMES)
+    );
+    assert_eq!(
+        parse_error(&["--frames", "216001"]),
+        CommandLineArgumentsError::InvalidParameter("--frames 216001".to_string())
+    );
+}
+
+#[test]
 fn help_is_recognised() {
     assert!(parse(&["-h"]).show_help);
     assert!(parse(&["--help"]).show_help);

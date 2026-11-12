@@ -17,6 +17,11 @@ The run uses `--attractor lorenz --seed 42 --cam-azimuth 0 --cam-elevation 0
 or one, so the buffers are bit-identical across libm implementations; with the
 default elevation the last `f32` bits depend on the platform's trig.
 
+The snapshot test builds that run in-process, so it needs no capture request.
+A manual CLI reproduction does, because the binary always writes a file; add
+e.g. `--width 320 --height 240 --screenshot out.png`. The output size and the
+PNG affect neither the geometry nor the pinned digest.
+
 Values are bit patterns rather than decimals on purpose: serde_json's default
 float parser is fast but not always correctly rounded, so a decimal round trip
 is not an exact contract.
