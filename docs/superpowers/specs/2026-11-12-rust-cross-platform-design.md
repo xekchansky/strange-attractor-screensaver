@@ -287,7 +287,13 @@ in I11 on a real device.
 `Parameter`, `SimulationHyperparameters`, `SimulationSettings`,
 `AttractorDescriptor`, `TraceColorMode`; serde decoding; `AttractorCatalog`
 with the same validation rules (range sanity, duplicate ids/parameters,
-formula syntax, unsupported functions, undeclared variables).
+formula syntax, unsupported functions, undeclared variables). The last two
+rules need the formula AST, its function table and the recursive-descent
+parser, so those land here too — syntax and references only. Evaluation and
+the golden fixtures stay in I2. The parser caps recursion depth
+(`MAX_PARSE_DEPTH`): a deliberate Rust-only safety limit, because Swift's
+parser overflows its stack on pathological nesting and no formula the Swift
+oracle accepts is rejected.
 
 **Tests:** port `ConfigurationDecodingTests` and
 `AttractorCatalogValidationTests`; assert all 12 catalog entries decode;
@@ -297,10 +303,11 @@ malformed JSON yields typed errors.
 
 ### I2 — Formula parser (M)
 
-**Goal:** parse and evaluate the catalog formulas identically.
+**Goal:** evaluate the catalog formulas identically.
 
-**Deliverables:** expression AST, recursive-descent parser, function table
-matching `Expression.supportedFunctions`, typed errors.
+**Deliverables:** evaluation over the AST built in I1, the function table
+matching `Expression.supportedFunctions` (semantics: domain errors, `ln`/`log`
+as the natural logarithm), typed errors.
 
 **Tests:** port `ExpressionTests`; golden fixtures for every catalog formula
 at 8 sample states, tolerance 1e-12; error-kind tests for unknown
