@@ -155,7 +155,8 @@ ship as their own release when their iteration is green (D9).
 macOS 13+ universal (`arm64` + `x86_64`); Windows 10/11 x64 (ARM64 later);
 Linux x86_64 with a glibc baseline on X11 and Wayland; Android
 `arm64-v8a` plus `x86_64` for the emulator; browsers — current
-Chrome/Edge/Safari/Firefox with the backend chosen in I0.5.
+Chrome/Edge/Safari/Firefox, WebGPU with an automatic WebGL2 fallback
+(ADR-1 in I0.5).
 
 **Manual verification.** Manual access exists but is infrequent: a friend's
 Windows 11 PC, Debian and Ubuntu machines, and an Android phone. Therefore
@@ -206,6 +207,69 @@ Android target compiles.
 **Done when:** a short ADR answers: (a) web target — WebGPU, WebGL2, or both;
 (b) Android renderer — wgpu GLES or raw EGL; (c) any dependency that will not
 build everywhere.
+
+#### I0.5 findings and ADR (2026-11-12)
+
+The spike lives in `rust/spike/` (excluded from the workspace, deleted once
+`attractor-gpu` has the real pipeline in I6). It integrates a Lorenz orbit,
+builds a 20 002-vertex ribbon (10 000 segments, two vertices per point, hue
+ramp per vertex) and draws it with one WGSL pipeline. The camera uses the
+saver's constants: elevation `pi/5`, distance `radius * 2.1`.
+
+**Status of the verification.** `cargo test` (8 tests: orbit finiteness,
+ribbon topology, head presence, color variation, camera math, WGSL
+validation through `naga`, and a full pipeline build through wgpu's `noop`
+backend), the wasm build, and `cargo check --target aarch64-linux-android`
+are green. The two visual checks — a Metal frame on macOS and the page in a
+browser — could not be executed in the agent's sandbox: it has no Metal
+device (`MTLCreateSystemDefaultDevice` returns `nil`) and it cannot start a
+browser process. They are manual steps; `rust/spike/README.md` has the exact
+commands. The ADR below is based on compiles, wgpu validation and the API
+contracts, not on observed pixels.
+
+**ADR-1 — Web: WebGPU with an automatic WebGL2 fallback.**
+Build one wasm binary with both the `webgpu` and `webgl` wgpu features and
+let `wgpu::util::new_instance_with_webgpu_detection` choose: WebGPU when the
+browser exposes a working `navigator.gpu` adapter, WebGL2 otherwise. Reasons:
+WebGL2 is the compatibility floor for browsers and GPUs without WebGPU, and
+the fallback costs no second renderer — it is the same WGSL pipeline compiled
+by naga to GLSL. WebGPU is preferred when present because it removes the
+WebGL2 limits and has lower driver overhead for future work (MSAA, bloom).
+Constraint accepted: the production renderer must stay inside the WebGL2
+subset — no compute passes, no storage buffers, one uniform buffer, vertex
+and index buffers only. The ribbon pipeline already fits. The fallback also
+means the shader must remain WGSL, not a WebGPU-only extension set.
+Consequence for I9: the Playwright test must assert which backend it got and
+run the WebGL2 path at least once (e.g. by disabling WebGPU).
+
+**ADR-2 — Android: wgpu's GLES backend, not raw EGL.**
+`cargo check --target aarch64-linux-android` succeeds with wgpu's default
+`gles` + `vulkan` features and pulls `ndk-sys`, but needs no NDK link step.
+The live wallpaper gives us an EGL surface from `WallpaperService`; the
+native window behind it (`ANativeWindow_fromSurface`) is exactly the handle
+wgpu's GLES backend can create an EGL surface from, so the player keeps one
+renderer for every platform. Raw EGL would mean a second shader/layout path
+duplicated on Android — the anti-goal. Fallback if surface creation from the
+wallpaper window turns out to be unsupported: render offscreen in wgpu and
+blit the texture to the EGL surface; the cost is one copy per frame, decided
+in I11 on a real device.
+
+**ADR-3 — Dependencies and versions.**
+- `wgpu` 30.0.1 builds for macOS (Metal), `wasm32-unknown-unknown`
+  (WebGPU + WebGL) and `aarch64-linux-android` (GLES + Vulkan). It is a large
+  API break from the 24–26 line (`SurfaceTarget::Canvas`, `queue.present`,
+  `CurrentSurfaceTexture`, `PipelineLayoutDescriptor::immediate_size`,
+  `Option<&BindGroupLayout>` entries); the workspace must pin the major
+  version and expect churn on upgrade.
+- `wasm-bindgen` must match the `wasm-bindgen-cli` version exactly
+  (0.2.130 here). I9 pins both (or uses `wasm-pack`) and runs `wasm-opt`;
+  the spike's release bundle is 4.2 MB before shrinking.
+- `bytemuck`, `pollster`, `png`, `env_logger`, `naga` build on all three
+  targets. `pollster` is native-only in practice (browser code awaits the
+  futures instead).
+- wgpu's `noop` backend with `backend_options.noop.enable = true` accepts the
+  full pipeline without a GPU. It is a good CI guard for descriptor mistakes
+  before I6 adds real headless rendering.
 
 ### I1 — Data model and catalog (S)
 
