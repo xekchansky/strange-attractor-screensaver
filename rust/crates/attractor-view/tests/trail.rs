@@ -229,3 +229,18 @@ fn the_default_budget_limits_the_sampled_points() {
     // Stride 2 keeps ceil(16385 / 2) = 8193 samples; the head is already last.
     assert_eq!(geometry.point_count(), 8_193);
 }
+
+#[test]
+fn the_builder_exposes_its_last_geometry() {
+    let trace = trace_from(&[
+        State::new(0.0, 0.0, 0.0),
+        State::new(1.0, 0.5, 0.0),
+        State::new(2.0, 0.0, -0.5),
+    ]);
+    let mut builder = TrailBuilder::new();
+    let built = builder
+        .build(&trace, 0.25, TraceColorMode::Age, CAMERA)
+        .clone();
+    assert_eq!(builder.geometry(), &built);
+    assert_eq!(builder.geometry().point_count(), 3);
+}

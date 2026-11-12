@@ -10,8 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I5 — view layer, no GPU** (2026-11-12)
-- Next iteration: **I6 — wgpu renderer and CLI capture**
+- Last completed iteration: **I6 — wgpu renderer and CLI capture** (2026-11-12)
+- Next iteration: **I7a — player and C ABI**
 
 ## Verification
 
@@ -24,22 +24,21 @@ cargo test --workspace
 ```
 
 CI runs the same three commands in the `rust` job of
-`.github/workflows/ci.yml`. The spike is deliberately outside the workspace
-and outside CI; its own checks are:
+`.github/workflows/ci.yml`.
+
+The headless capture needs a real GPU adapter and therefore a GUI session:
 
 ```bash
-cd spike
-cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
-cargo clippy --target wasm32-unknown-unknown --lib -- -D warnings
-cargo build --release --target wasm32-unknown-unknown --lib && ./build-wasm.sh
-cargo check --target aarch64-linux-android --lib
+cargo run -p attractor-cli -- --attractor lorenz --seed 42 \
+  --screenshot out.png --frames 120
 ```
 
-`web.rs` is compiled only for wasm, so the host clippy pass does not see it;
-the second clippy line covers it.
-
-The wasm target and `wasm-bindgen-cli` (0.2.130, matching the crate) are
-prerequisites; `spike/README.md` has the full recipe.
+The pipeline tests build through wgpu's `noop` backend, so they run without a
+GPU; the two render tests (`headless_frame_is_not_blank`,
+`tests/text.rs`) skip with a printed reason when no adapter is available. The
+spike was deleted in I6, and with it the wasm32/android check recipes it
+carried; I9 and I11 add them back against `attractor-wasm` and the Android
+shell.
 
 ## Iterations
 
@@ -50,7 +49,7 @@ prerequisites; `spike/README.md` has the full recipe.
 - [x] I3 — numerical core
 - [x] I4 — engine, selection and health monitor
 - [x] I5 — view layer, no GPU
-- [ ] I6 — wgpu renderer and CLI capture
+- [x] I6 — wgpu renderer and CLI capture
 - [ ] I7a — player and C ABI
 - [ ] I7b — macOS host migration
 - [ ] I8 — Windows `.scr`
@@ -243,6 +242,85 @@ enough.
   adds it with the aspect ratio. `OverlayModel` spells non-finite values the
   way C does (`nan`, `inf`) for parity, but no test covers a non-finite state
   (those are transient before a health-monitor restart).
+- **I6**: the GPU path and the CLI exist. `attractor-gpu` owns a headless
+  `GpuContext` (native backends; `new_noop` for CI), the ribbon pipeline,
+  a 4x multisampled sRGB target resolved into a single-sampled texture, frame
+  readback, PNG writing and `lit_pixels`; `attractor-cli` owns flag parsing,
+  `SimulationSession` (engine + camera + health monitor + ribbon) and the
+  capture loop. Dependencies are wgpu 30, glyphon 0.12 (cosmic-text 0.19),
+  bytemuck, pollster, png, env_logger. The spike was deleted as the design
+  required.
+- **I6 projection fidelity**: `Mat4::perspective` uses clip-space depth in
+  `[0, 1]` (wgpu convention, right-handed camera looking down `-z`).
+  `CameraController::view_projection(aspect)` applies SceneKit's default
+  60-degree field of view along the larger frame dimension, so landscape
+  frames get it horizontally and portrait frames vertically. Near/far planes
+  are scaled to the current orbit distance (0.01x and 100x) because the Swift
+  camera auto-adjusts its z-range; clipping planes do not change projected x/y
+  for geometry inside the frustum, so this is visually equivalent.
+- **I6 ribbon and text**: the vertex format is `vec3 position + vec3 linear
+  color`; the strip is drawn directly from the vertex buffer because
+  `TrailGeometry::indices` is `0, 1, 2, …` in strip order. The target is
+  `Rgba8UnormSrgb` with a black clear, so linear colors are encoded on write
+  like SceneKit's sRGB surface. The overlay is glyphon with a monospace face
+  at 13 pt / 16 px line height, 16 pt margins, white, bottom-left; font size
+  and margin multiply by `--capture-scale`, matching a Retina snapshot of the
+  13 pt Swift label. Text lives behind the default-on `text` feature so the
+  wasm build (DOM overlay) can disable it in I9; a missing font degrades to a
+  logged warning, not a failed capture.
+- **I6 CLI**: flag parity with the Swift demo plus `--seed`, `--frames`,
+  `--width` and `--height`. Defaults: 60 000 warm-up steps, 90 settle frames
+  before a capture, 1200x900 logical points, `--capture-scale 2`,
+  `--record` at 4 s and stride 2. The settle phase is shared by both capture
+  modes, exactly as in the Swift `CaptureController`: without it the first
+  recorded seconds show the camera zooming into place. `--frames` is the
+  screenshot settle count or,
+  with `--record`, the number of frames to record; it conflicts with
+  `--record-seconds`. Exit codes follow the Swift demo: 2 for usage errors
+  (unknown flag/attractor/parameter, bad value, bad settings, missing capture,
+  oversized capture), 1 for catalog/model/integration/health/GPU/IO failures.
+  A run without `--screenshot`/`--record` exits 2 with usage until the
+  interactive player lands in I7.
+- **I6 deterministic snapshot**: `crates/attractor-cli/tests/fixtures/cli_lorenz_snapshot.json`
+  pins a seeded end-to-end run (seed 42, 5 000 warm-up steps, 60 frames) as
+  exact `f32` bits: vertex counts, ribbon radius, selected vertices, an FNV-1a
+  digest of every position and color, plus the sampled parameters and initial
+  state. Camera azimuth and elevation are pinned to zero and `--cam-speed` /
+  `--trail-color-speed` to zero, so the projection uses exact `sin(0)`/`cos(0)`
+  values and the snapshot stays bit-identical across libm implementations.
+  Floats are stored as bit patterns because serde_json's default float parser
+  is fast but not always correctly rounded; decimal round-trips are not a
+  valid exact contract. Regenerate with
+  `ATTRACTOR_DUMP_FIXTURES=1 cargo test -p attractor-cli --test headless_snapshot`.
+- **I6 rulings**:
+  - The real-adapter render tests skip (with a printed reason) when no GPU
+    adapter exists. CI's `rust` job runs on `ubuntu-latest` without a GPU, so
+    the deterministic gate there is the geometry snapshot plus the noop
+    pipeline build; the visual gate is the manual `cargo run` from the design's
+    verification command (verified on an Apple M4 Pro: 2400x1800, 872 368 lit
+    pixels, 120 frames).
+  - The design's secondary "loose perceptual diff against a committed
+    reference image" is deferred until CI has a GPU runner; committing a
+    multi-megabyte GPU-specific PNG now would add weight without a test that
+    can run. The design's I6 section notes this.
+  - The headless loop rebuilds the ribbon every frame, whereas the Swift scene
+    rebuilds every second tick. The throttle exists to relieve live SceneKit
+    redraw pressure; every captured frame in the Swift path (even tick or
+    stride-aligned) already has a fresh ribbon, so captures match and the
+    headless path stays simpler.
+  - A failed integration step during warm-up is fatal (exit 1). The Swift
+    capture logs it and continues rendering the remaining trail; the Rust
+    policy treats any non-evaluable run as degenerate, which is what
+    `docs/capture_all.sh` wants (retry instead of publishing a partial image).
+- **I6 deferred (minor)**: `FrameRenderer` cannot resize (each CLI run creates
+  one; I7 adds `resize`); the overlay has layout tests but no pixel-level text
+  assertion; `FrameRenderer::with_sample_count(1)` is documented as supported
+  but `render` always attaches a resolve target, which wgpu rejects for a
+  single-sample target (no current caller passes 1; the wasm/WebGL2 path in I9
+  will need the conditional); `--frames` with `--record` is uncapped, so a
+  mistyped huge value can run for a very long time (the `--record-seconds`
+  path is capped at one hour); the fixture README omits `--width 320 --height
+  240 --screenshot`, which do not affect the pinned digest.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
@@ -280,30 +358,21 @@ enough.
     seconds lose all resolution. The camera angle stuck and the page looked
     frozen. `FrameClock` now takes its origin from the first frame timestamp.
 - **Sandbox configuration for the checks.** A macOS Seatbelt sandbox cannot
-  start a browser or reach Metal. The git-ignored
-  `.claude/settings.local.json` lists `cargo run *` and
-  `./rust/spike/web-check.sh *` under `sandbox.excludedCommands` and allows
-  the crates.io domains, so an agent can reproduce both checks. Pipes and
-  `&&` chains drop the exclusion: each part of a call must match an entry.
-  Headless `--virtual-time-budget` does not drive rAF (three frames, 17 ms
-  observed), so animation is verified with a live DevTools session:
-
-  ```bash
-  ./rust/spike/web-check.sh --serve "http://localhost:8080/?v=1" \
-    --remote-debugging-port=9222   # then capture two frames over CDP
-  ```
-
-  A single-frame screenshot still works and proves the page draws:
-
-  ```bash
-  ./rust/spike/web-check.sh http://localhost:8080/ shot.png \
-    --virtual-time-budget=4000
-  ```
-- The toolchain is plain stable Rust (edition 2024); no version is pinned
-  yet. I0 and I0.5 were verified locally with rustc 1.99.1 (stable). For the
-  spike, a local rustup home lives in `rust/.toolchain` (git-ignored) because
-  the Homebrew rustc ships only the host standard library. Pin the toolchain
-  together with the wgpu version when I6 fixes the dependency set.
-- wgpu 30 restructured its public API. Local examples in this repository
-  (`spike/src/gpu.rs`, `spike/src/web.rs`) are the reference until I6 replaces
-  the spike, because the 24–26 documentation snippets do not compile.
+  reach Metal. The git-ignored `.claude/settings.local.json` lists
+  `cargo run *` under `sandbox.excludedCommands` and allows the crates.io
+  domains, so an agent can reproduce the headless capture. Pipes, `&&` chains
+  and a leading `time`/`export` drop the exclusion: the whole call must be a
+  bare `cargo run …`. The same sandbox denies creating a `.vscode` directory
+  inside the repository, so a crate whose `.crate` archive contains one (for
+  example `bit-vec`) fails to unpack into `rust/.toolchain/cargo`. Unpack it
+  manually, skipping that entry, and write the `{"v":1}` `.cargo-ok` marker
+  afterwards; CI does not hit this.
+- The toolchain is plain stable Rust (edition 2024); no toolchain version is
+  pinned yet. I0–I6 were verified locally with rustc 1.99.1 (stable). A local
+  rustup home lives in `rust/.toolchain` (git-ignored) because the Homebrew
+  rustc ships only the host standard library. The dependency set is pinned:
+  wgpu 30 and glyphon 0.12 (I6).
+- wgpu 30 restructured its public API, and the 24–26 documentation snippets do
+  not compile. The working reference in this repository is now
+  `crates/attractor-gpu/src/{ribbon,frame}.rs`; the I0.5 spike that used to
+  serve this role was deleted in I6.

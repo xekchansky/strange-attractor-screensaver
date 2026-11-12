@@ -8,4 +8,19 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[features]
+default = ["text"]
+text = ["dep:glyphon"]
+
 [dependencies]
+attractor-view = { path = "../attractor-view" }
+bytemuck = { version = "1", features = ["derive"] }
+glyphon = { version = "0.12", optional = true }
+log = "0.4"
+png = "0.18"
+pollster = "1"
+wgpu = { version = "30", features = ["noop"] }
+
+[dev-dependencies]
+attractor-core = { path = "../attractor-core" }
+naga = { version = "30", features = ["wgsl-in"] }

@@ -29,6 +29,7 @@ fn orbit_constants_match_the_swift_camera() {
     assert_eq!(CameraController::SMOOTHING, 0.06);
     assert_eq!(CameraController::FRAMING_STRIDE, 6);
     assert_eq!(CameraController::DEFAULT_ELEVATION, PI / 5.0);
+    assert_eq!(CameraController::FIELD_OF_VIEW, PI / 3.0);
 }
 
 #[test]
@@ -162,4 +163,58 @@ fn the_view_matrix_looks_from_the_camera_position_at_the_center() {
 fn the_camera_position_before_the_first_update_is_the_origin() {
     let camera = CameraController::new(0.5, PI / 5.0);
     assert_eq!(camera.position(), Vector3::ZERO);
+}
+
+/// A camera settled on the trajectory centre at azimuth 0, elevation 0.
+///
+/// With `elevation = 0` the position lies on the +x axis and the side vector
+/// is exactly `-z`, which turns field-of-view assertions into plain numbers.
+fn settled_camera() -> CameraController {
+    let trace = trace_from(&[State::new(0.0, 0.0, 0.0)]);
+    let mut camera = CameraController::new(0.0, 0.0);
+    for _ in 0..64 {
+        camera.update(0.0, 0.0, &trace);
+    }
+    camera
+}
+
+#[test]
+fn the_view_projection_puts_the_orbit_centre_in_the_middle() {
+    let camera = settled_camera();
+    let matrix = camera.view_projection(4.0 / 3.0);
+    let clip = matrix.project(camera.center());
+    assert!(clip[3] > 0.0, "the centre must be in front of the camera");
+    assert!((clip[0] / clip[3]).abs() < 1e-5);
+    assert!((clip[1] / clip[3]).abs() < 1e-5);
+    let depth = clip[2] / clip[3];
+    assert!(depth > 0.0 && depth < 1.0, "depth {depth}");
+}
+
+#[test]
+fn the_horizontal_field_of_view_is_sixty_degrees() {
+    let camera = settled_camera();
+    let matrix = camera.view_projection(4.0 / 3.0);
+    // SceneKit measures its default 60-degree FOV along the larger dimension.
+    let half_width = camera.distance() * (PI / 6.0).tan();
+    let edge = camera.center() + Vector3::new(0.0, 0.0, -half_width);
+    let clip = matrix.project(edge);
+    let x = clip[0] / clip[3];
+    assert!(
+        (x.abs() - 1.0).abs() < 1e-5,
+        "horizontal edge maps to {x}, not +/-1"
+    );
+}
+
+#[test]
+fn a_portrait_frame_puts_sixty_degrees_on_the_vertical_axis() {
+    let camera = settled_camera();
+    let matrix = camera.view_projection(0.5);
+    let half_height = camera.distance() * (PI / 6.0).tan();
+    let edge = camera.center() + Vector3::new(0.0, half_height, 0.0);
+    let clip = matrix.project(edge);
+    let y = clip[1] / clip[3];
+    assert!(
+        (y.abs() - 1.0).abs() < 1e-5,
+        "vertical edge maps to {y}, not +/-1"
+    );
 }
