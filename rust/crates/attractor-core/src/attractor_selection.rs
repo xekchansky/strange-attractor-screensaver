@@ -2,7 +2,8 @@
 
 use std::collections::HashMap;
 
-use crate::{AttractorDescriptor, SimulationSettings, State};
+use crate::attractor_model::AttractorModelError;
+use crate::{AttractorDescriptor, AttractorModel, SimulationSettings, State};
 
 /// A complete, concrete set of choices for one simulation run: the attractor
 /// descriptor together with sampled parameter values and concrete
@@ -38,5 +39,13 @@ impl AttractorSelection {
             settings,
             initial_state,
         }
+    }
+
+    /// Turn the selection into an evaluable attractor model.
+    ///
+    /// Fails when a formula cannot be parsed or a declared parameter is absent
+    /// from [`Self::parameters`].
+    pub fn build_model(&self) -> Result<AttractorModel, AttractorModelError> {
+        AttractorModel::new(self.descriptor.clone(), self.parameters.clone())
     }
 }

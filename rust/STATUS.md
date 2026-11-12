@@ -10,8 +10,9 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I3 — numerical core** (2026-11-12)
-- Next iteration: **I4 — engine, selection and health monitor**
+- Last completed iteration: **I4 — engine, selection and health monitor**
+  (2026-11-12)
+- Next iteration: **I5 — view layer, no GPU**
 
 ## Verification
 
@@ -48,7 +49,7 @@ prerequisites; `spike/README.md` has the full recipe.
 - [x] I1 — data model and catalog
 - [x] I2 — formula evaluation and golden fixtures
 - [x] I3 — numerical core
-- [ ] I4 — engine, selection and health monitor
+- [x] I4 — engine, selection and health monitor
 - [ ] I5 — view layer, no GPU
 - [ ] I6 — wgpu renderer and CLI capture
 - [ ] I7a — player and C ABI
@@ -157,6 +158,48 @@ enough.
 - **I3 oracle caveat**: Swift documents that its standard-library random
   algorithms may change between compiler versions. The fixtures pin Swift
   6.4.2 behaviour; re-run the generator if the oracle toolchain changes.
+- **I4**: the engine, model, debug configuration and health monitor are ported
+  in `attractor_model`, `attractor_engine`, `debug_config` and
+  `simulation_health_monitor`; `AttractorSelection::build_model` completes the
+  aggregate from I3. `tests/attractor_engine.rs`, `tests/attractor_model.rs`,
+  `tests/debug_config.rs` and `tests/simulation_health_monitor.rs` port the
+  four Swift suites one-to-one (16 health-monitor tests, including the Aizawa
+  laminar phases, the reported Chua ring and the non-integer-period cycle).
+  Shared test descriptors live in `tests/support/mod.rs`.
+- **I4 rulings (API shape)**:
+  - Swift has two error types (`AttractorModelError` and `FormulaError`);
+    Rust merges the parse failure into
+    `AttractorModelError::Formula(FormulaError)` and implements
+    `std::error::Error::source` for it, so `?` works in one place and callers
+    still get both variants.
+  - Swift default arguments (`parameters: [:]`, `settings: nil`) become
+    `DebugConfig::selection` (midpoints everywhere) and
+    `DebugConfig::selection_with` (explicit parameters and/or settings).
+  - `SimulationHealthThresholds` keeps its public fields but sanitizes a copy
+    in `SimulationHealthMonitor::new`; `check_count()` replaces Swift's
+    `private(set)` property that `@testable` tests read. Step counts are
+    `usize`, so a negative threshold is unrepresentable — the Swift
+    sanitization test's negative inputs become zeros/`NaN`/an oversized window.
+  - `AttractorEngine` exposes `state()` and `trace()` accessors instead of
+    Swift's `private(set)` stored properties.
+- **I4 fixture**: `tests/fixtures/engine_traces.json` records, for seeds
+  0…15, the Swift randomizer selection and a 200-step RK4 `AttractorEngine`
+  trace with a trail capacity of 128 (so the ring wraps). The Rust
+  `tests/engine_fixtures.rs` re-selects from the seed, compares the selection
+  bit-for-bit, then replays the trajectory within `1e-9` relative and checks
+  the final trace against the newest 128 fixture states. This is the
+  end-to-end determinism gate from the design's numerical contract.
+  `NumericalFixtureDumpTests.dumpEngineTraces` writes the file; it was
+  generated with the same standalone `swiftc` recipe as the I3 fixtures
+  because SwiftPM's nested sandbox is unavailable here. The committed
+  generator parses (`swiftc -parse`) and has the same body as the program that
+  produced the JSON.
+- **I4 performance note**: `AttractorModel::rate` clones the parameter map per
+  evaluation, mirroring Swift, which builds the variable dictionary the same
+  way. RK4 evaluates the field four times per step; the catalog test
+  (12 attractors × 4 starts × 8 000 steps) still finishes in about four
+  seconds in a debug build. Optimize only if profiling in I6 shows the formula
+  layer as a bottleneck.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
