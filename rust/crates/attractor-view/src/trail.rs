@@ -131,6 +131,14 @@ impl TrailBuilder {
         self.budget
     }
 
+    /// The geometry produced by the most recent [`Self::build`].
+    ///
+    /// Empty before the first build. Exposed so a renderer can hold the
+    /// builder across frames and read the buffers without rebuilding.
+    pub fn geometry(&self) -> &TrailGeometry {
+        &self.geometry
+    }
+
     /// Build a ribbon from `trace`, colored by `mode`.
     ///
     /// `color_offset` is a value in `[0, 1)` shifting the color ramp; advance

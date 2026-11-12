@@ -385,6 +385,17 @@ the non-zero exit on a degenerate run that `docs/capture_all.sh` relies on.
 geometry-buffer snapshot test (primary, deterministic); loose perceptual diff
 against a committed reference image (secondary, GPU-variance tolerant).
 
+**Amendment (I6):** the Rust CI job runs on `ubuntu-latest`, which has no GPU
+adapter, so the headless render runs as a manual gate and the real-adapter
+tests skip with a printed reason there. The deterministic CI gate is the
+geometry-buffer snapshot plus the pipeline build on wgpu's `noop` backend. The
+committed reference image and its perceptual diff are deferred until CI has a
+GPU runner; committing one now would add weight without a test that can run.
+The I6 capture command is `--screenshot`/`--record` only: the CLI has no window
+until the player (I7a) and the shells (I7b, I8, I10) provide surfaces, so a run
+without a capture flag exits 2 with usage. The spike is deleted in this
+iteration.
+
 **Verify:** `cargo run -p attractor-cli -- --attractor lorenz --seed 42 --screenshot out.png --frames 120`; CI artifact inspected manually once.
 
 ### I7a — Player and C ABI (M)
