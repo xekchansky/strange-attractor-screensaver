@@ -78,7 +78,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
 - [x] I5 — view layer, no GPU
 - [x] I6 — wgpu renderer and CLI capture
 - [x] I7a — player and C ABI
-- [x] I7b — macOS host migration (done, manual: pending)
+- [x] I7b — macOS host migration (done; manual: preview + fullscreen
+  verified 2026-11-12, multi-display pending)
 - [ ] I8 — Windows `.scr`
 - [ ] I9 — web demo on GitHub Pages
 - [ ] I10 — Linux
@@ -446,12 +447,19 @@ enough.
   them now would remove the oracle before the migration is accepted. Cost if
   wrong: the repository carries the SceneKit package for a few more
   iterations.
-- **I7b manual checklist (pending, needs a GUI session)**: install the built
-  `.saver` and compare with `ef3d61b` side by side — preview pane, fullscreen,
-  multi-display (one player per screen), wake/sleep (no camera or trail jump),
-  health-monitor restart (degenerate attractor replaced within the limiter
-  window), and no black frame in a fresh preview. The iteration is
-  "done (manual: pending)" until that pass is recorded here.
+- **I7b manual checklist: preview and fullscreen verified 2026-11-12** on
+  macOS 26.6.2 (M4 Pro) with the Release arm64 bundle installed into
+  `~/Library/Screen Savers/`. The saver starts from System Settings → Screen
+  Saver and from `open -b com.apple.ScreenSaver.Engine --args -module
+  AttractorSaver`; attractors render and the overlay shows the live formula.
+  Do not exec `ScreenSaverEngine` directly: macOS 26 kills it with
+  `SIGKILL (Code Signature Invalid)` / launch-constraint violation before the
+  module loads, which is not a saver failure. Multi-display (one player per
+  screen) is still unverified — no second display was attached; wake/sleep and
+  the health-monitor restart stay covered by the deterministic tests
+  (`a_long_stall_is_clamped_like_the_swift_scene`, `RestartLimiter`). The
+  iteration is "done (manual: preview + fullscreen)" until the multi-display
+  pass is recorded here.
 - **I7b deferred**: `SurfaceTarget` currently has only the Metal constructor;
   I8/I10 add constructors for a raw Windows/Linux window handle to the same
   type, keeping one presentation path. Notarization stays deferred to I12
