@@ -10,9 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I0.5 — renderer and web spike** (2026-11-12,
-  visual checks verified)
-- Next iteration: **I1 — data model and catalog**
+- Last completed iteration: **I1 — data model and catalog** (2026-11-12)
+- Next iteration: **I2 — formula evaluation and golden fixtures**
 
 ## Verification
 
@@ -46,7 +45,7 @@ prerequisites; `spike/README.md` has the full recipe.
 
 - [x] I0 — workspace skeleton and CI
 - [x] I0.5 — renderer and web spike, timeboxed
-- [ ] I1 — data model and catalog
+- [x] I1 — data model and catalog
 - [ ] I2 — formula parser
 - [ ] I3 — numerical core
 - [ ] I4 — engine, selection and health monitor
@@ -70,6 +69,31 @@ the golden fixtures stay reproducible after `Core/` is retired.
 - I0 created the Cargo workspace with eight empty crates and no external
   dependencies. Every crate has one smoke test asserting its package name,
   which proves the member list and manifests are wired correctly.
+- **I1**: `attractor-core` now mirrors the Swift data model (`MinMax<Double>`
+  → `MinMax<f64>`, `MinMax<Int>` → `MinMax<i64>`, so a negative `trailLength`
+  decodes and `validate` drops only that descriptor instead of failing the
+  whole catalog), decodes the catalog with serde (`include_str!` of the Swift
+  resource, so the path in `catalog.rs` points outside the crate) and ports
+  both validation suites: `tests/catalog_decoding.rs` and
+  `tests/catalog_validation.rs`. Range messages and issue ordering follow the
+  Swift code; formula errors use Rust's human-readable `Display` text rather
+  than Swift's enum-case names.
+- **I1 parser depth cap**: `formula::MAX_PARSE_DEPTH` (256) rejects
+  pathological nesting that would overflow the stack. This is a Rust-only
+  safety limit and a deliberate deviation from Swift, whose parser has no cap
+  and aborts on the same input; no formula the Swift oracle accepts is
+  rejected. The error variant `FormulaError::TooDeep` carries it.
+- **I1 ruling**: catalog validation must reject formula syntax errors,
+  unsupported functions and undeclared variables, which needs the AST and
+  parser that the design lists under I2. I1 therefore ships
+  `formula::Expression`, its function table, `referenced_variables()` /
+  `referenced_functions()` and the recursive-descent parser (syntax only).
+  I2 keeps evaluation, domain errors and the golden fixtures; the design
+  doc's I1/I2 sections say so.
+- **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
+  builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
+  `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
+  use the default locations; nothing in the repository depends on this.
 - The `rust` CI job runs on `ubuntu-latest`. It is independent of the Swift
   jobs, which still run on `macos-26` unchanged.
 - The workflow's `push` trigger now includes `rust-port`; without it the Rust
