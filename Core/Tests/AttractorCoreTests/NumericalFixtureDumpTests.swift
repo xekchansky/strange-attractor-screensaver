@@ -18,8 +18,13 @@ struct NumericalFixtureDumpTests {
     private static let trajectorySteps = 1000
     /// Integration steps recorded for the extra Euler trajectory.
     private static let eulerSteps = 500
-    /// Number of seeds recorded for the randomizer fixture.
+    /// Number of seeds recorded for the randomizer and engine fixtures.
     private static let selectionSeeds = 0..<16
+    /// Integration steps recorded for each seeded engine trajectory.
+    private static let engineSteps = 200
+    /// Trail capacity used for the engine fixture. Deliberately smaller than
+    /// the recorded horizon so the Rust test also exercises the ring buffer.
+    private static let engineTrailCapacity = 128
 
     @Test("Writes golden trajectories for Lorenz, Chua and Aizawa")
     func dumpTrajectories() throws {
@@ -99,6 +104,58 @@ struct NumericalFixtureDumpTests {
                 "entries": entries,
             ],
             to: "randomizer_selections.json"
+        )
+    }
+
+    @Test("Writes seeded engine traces")
+    func dumpEngineTraces() throws {
+        let catalog = try AttractorCatalog.bundled()
+        var entries: [[String: Any]] = []
+
+        for seed in Self.selectionSeeds {
+            var rng = SplitMix64(seed: UInt64(seed))
+            let selection = try Randomizer.select(from: catalog, using: &rng)
+            let model = try selection.buildModel()
+            var engine = AttractorEngine(
+                model: model,
+                initialState: selection.initialState,
+                method: .rungeKutta4,
+                stepSize: selection.settings.stepSize,
+                trailCapacity: Self.engineTrailCapacity
+            )
+
+            var states = [Self.stateDocument(engine.state)]
+            for _ in 0..<Self.engineSteps {
+                try engine.advance()
+                states.append(Self.stateDocument(engine.state))
+            }
+
+            let settings = selection.settings
+            entries.append([
+                "seed": seed,
+                "attractor": selection.descriptor.id,
+                "parameters": selection.parameters.mapValues { Self.exact($0) },
+                "settings": [
+                    "stepSize": Self.exact(settings.stepSize),
+                    "simulationSpeed": Self.exact(settings.simulationSpeed),
+                    "cameraRotationSpeed": Self.exact(settings.cameraRotationSpeed),
+                    "trailColorSpeed": Self.exact(settings.trailColorSpeed),
+                    "trailLength": settings.trailLength,
+                    "colorMode": settings.colorMode.rawValue,
+                ],
+                "initialState": Self.stateDocument(selection.initialState),
+                "trailCapacity": Self.engineTrailCapacity,
+                "steps": Self.engineSteps,
+                "states": states,
+            ])
+        }
+
+        try Self.write(
+            [
+                "generator": "Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift",
+                "entries": entries,
+            ],
+            to: "engine_traces.json"
         )
     }
 
