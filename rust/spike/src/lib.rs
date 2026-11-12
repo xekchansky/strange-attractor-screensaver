@@ -44,10 +44,60 @@ pub fn camera_matrix(width: u32, height: u32, seconds: f32, scene_radius: f32) -
     math::mul(projection, view)
 }
 
+/// Converts animation-frame timestamps into elapsed seconds.
+///
+/// The first timestamp becomes the origin, so callers do not need a second
+/// clock. This matters: `requestAnimationFrame` passes `performance.now()`
+/// milliseconds, and subtracting `Date.now()` (epoch milliseconds) from them
+/// yields an offset so large that `f32` seconds lose all resolution and the
+/// camera appears frozen.
+#[derive(Debug, Default)]
+pub struct FrameClock {
+    origin: Option<f64>,
+}
+
+impl FrameClock {
+    /// Returns seconds since the first frame, starting at zero.
+    pub fn seconds(&mut self, frame_time_ms: f64) -> f32 {
+        let origin = *self.origin.get_or_insert(frame_time_ms);
+        ((frame_time_ms - origin) / 1000.0) as f32
+    }
+}
+
 /// Builds the spike's vertex buffer and returns it with the scene radius.
 pub fn build_scene() -> (Vec<scene::Vertex>, f32) {
     let points = scene::lorenz_points(scene::SEGMENTS + 1);
     let radius = scene::bounding_radius(&points);
     let vertices = scene::build_ribbon(&points, radius * 0.004);
     (vertices, radius)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn first_frame_starts_at_zero() {
+        let mut clock = FrameClock::default();
+        assert_eq!(clock.seconds(1234.5), 0.0);
+    }
+
+    #[test]
+    fn elapsed_time_follows_the_frame_timestamps() {
+        let mut clock = FrameClock::default();
+        clock.seconds(1000.0);
+        assert!((clock.seconds(1500.0) - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn epoch_scale_timestamps_still_advance() {
+        // The bug this guards against: `Date.now()` (epoch milliseconds) and
+        // the rAF timestamp (`performance.now()`) are different clocks.
+        // Mixing them produced a huge negative offset that f32 could not
+        // resolve, so the camera never moved.
+        let mut clock = FrameClock::default();
+        clock.seconds(1_700_000_000_000.0);
+        let delta = clock.seconds(1_700_000_000_016.0);
+        assert!((delta - 0.016).abs() < 1e-6);
+    }
 }

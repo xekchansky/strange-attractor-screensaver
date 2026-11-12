@@ -8,6 +8,9 @@ use wasm_bindgen::prelude::*;
 
 use crate::{build_scene, camera_matrix, gpu::Renderer};
 
+/// The animation-frame callback that drives the render loop.
+type FrameCallback = Closure<dyn FnMut(f64)>;
+
 struct WebState {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -136,12 +139,12 @@ pub async fn run() -> Result<(), JsValue> {
         scene_radius,
     }));
 
-    let slot: Rc<RefCell<Option<Closure<dyn FnMut(f64)>>>> = Rc::new(RefCell::new(None));
+    let slot: Rc<RefCell<Option<FrameCallback>>> = Rc::new(RefCell::new(None));
     let slot_for_closure = slot.clone();
     let state_for_closure = state.clone();
-    let start = js_sys::Date::now();
+    let mut clock = crate::FrameClock::default();
     *slot.borrow_mut() = Some(Closure::new(move |time: f64| {
-        let seconds = ((time - start) / 1000.0) as f32;
+        let seconds = clock.seconds(time);
         state_for_closure.borrow_mut().render(seconds);
         if let Some(closure) = slot_for_closure.borrow().as_ref() {
             request_animation_frame(closure);
@@ -154,7 +157,7 @@ pub async fn run() -> Result<(), JsValue> {
     Ok(())
 }
 
-fn request_animation_frame(closure: &Closure<dyn FnMut(f64)>) {
+fn request_animation_frame(closure: &FrameCallback) {
     web_sys::window()
         .expect("no window")
         .request_animation_frame(closure.as_ref().unchecked_ref())

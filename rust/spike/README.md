@@ -41,6 +41,25 @@ Then open <http://localhost:8080/>. The page asks wgpu for a WebGPU adapter
 and silently falls back to WebGL2 through `new_instance_with_webgpu_detection`.
 Open the console to see which adapter was chosen.
 
+For a headless check (an agent has no browser session), `web-check.sh` wraps
+Chrome with a throwaway profile:
+
+```bash
+./web-check.sh http://localhost:8080/ shot.png --virtual-time-budget=4000
+```
+
+`--virtual-time-budget` does not advance `requestAnimationFrame` (only a few
+frames run, the last around 17 ms), so this proves the page draws but not
+that it animates. To check the animation, keep Chrome alive and capture two
+DevTools screenshots a few seconds apart; they must differ:
+
+```bash
+./web-check.sh --serve http://localhost:8080/ --remote-debugging-port=9222
+```
+
+The script is listed in the git-ignored `.claude/settings.local.json` under
+`sandbox.excludedCommands`, because the macOS sandbox cannot start a browser.
+
 ## Android
 
 ```bash

@@ -171,13 +171,24 @@ pub fn write_png(path: &Path, width: u32, height: u32, pixels: &[u8]) -> std::io
     Ok(())
 }
 
+/// Encodes one linear channel the way an `Rgba8UnormSrgb` target stores it.
+fn srgb_byte(linear: f64) -> u8 {
+    let encoded = if linear <= 0.003_130_8 {
+        12.92 * linear
+    } else {
+        1.055 * linear.powf(1.0 / 2.4) - 0.055
+    };
+    (encoded * 255.0).round().clamp(0.0, 255.0) as u8
+}
+
+/// The clear color as it appears in the sRGB-encoded readback.
+pub fn clear_rgb8() -> [u8; 3] {
+    [srgb_byte(CLEAR.r), srgb_byte(CLEAR.g), srgb_byte(CLEAR.b)]
+}
+
 /// Counts pixels that differ from the clear color, as a cheap "not blank" check.
 pub fn lit_pixels(pixels: &[u8]) -> usize {
-    let clear = [
-        (CLEAR.r * 255.0).round() as u8,
-        (CLEAR.g * 255.0).round() as u8,
-        (CLEAR.b * 255.0).round() as u8,
-    ];
+    let clear = clear_rgb8();
     pixels
         .as_chunks::<4>()
         .0
@@ -188,4 +199,34 @@ pub fn lit_pixels(pixels: &[u8]) -> usize {
                 || p[2].abs_diff(clear[2]) > 4
         })
         .count()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn srgb_encoding_matches_known_values() {
+        assert_eq!(srgb_byte(0.0), 0);
+        assert_eq!(srgb_byte(1.0), 255);
+        assert_eq!(srgb_byte(0.015), 33);
+        assert_eq!(srgb_byte(0.030), 48);
+    }
+
+    #[test]
+    fn background_of_a_fresh_frame_is_not_lit() {
+        let [r, g, b] = clear_rgb8();
+        let pixels: Vec<u8> = std::iter::repeat_n([r, g, b, 255], 4).flatten().collect();
+        assert_eq!(lit_pixels(&pixels), 0);
+    }
+
+    #[test]
+    fn a_pixel_that_differs_from_the_background_is_lit() {
+        let [r, g, b] = clear_rgb8();
+        let mut pixels: Vec<u8> = std::iter::repeat_n([r, g, b, 255], 4).flatten().collect();
+        pixels[0] = 255;
+        pixels[1] = 0;
+        pixels[2] = 0;
+        assert_eq!(lit_pixels(&pixels), 1);
+    }
 }
