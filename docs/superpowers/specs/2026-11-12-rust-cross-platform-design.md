@@ -469,9 +469,13 @@ build shows no regression; documented in `rust/STATUS.md`.
 - The Xcode target builds the Rust static library in a pre-build phase for
   every `ARCHS` entry and links it; the universal Release prerequisite
   (`x86_64-apple-darwin` Rust std) is stated in `rust/STATUS.md`.
-- The manual checklist (preview pane, fullscreen, multi-display, wake/sleep,
-  health-monitor restart) remains open until a GUI pass; the iteration is
-  recorded as "done (manual: pending)".
+- The manual pass on 2026-11-12 verified the preview pane (System Settings →
+  Screen Saver) and fullscreen (`open -b com.apple.ScreenSaver.Engine --args
+  -module AttractorSaver`): attractors render and the overlay shows the live
+  formula. Multi-display remains unverified (no second display attached);
+  wake/sleep and the health-monitor restart are covered by deterministic Rust
+  tests. Launching the engine binary directly is rejected by macOS 26 as a
+  code-signing launch-constraint violation, not by the saver.
 
 ### I8 — Windows `.scr` (M)
 
