@@ -1,0 +1,37 @@
+[package]
+name = "wgpu-spike"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "wgpu-spike"
+path = "src/main.rs"
+
+[dependencies]
+bytemuck = { version = "1", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4"
+png = "0.18"
+pollster = "1"
+wgpu = { version = "30", features = ["noop"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Element",
+    "EventTarget",
+    "HtmlCanvasElement",
+    "Window",
+] }
+wgpu = { version = "30", features = ["webgl"] }
+
+[dev-dependencies]
+naga = { version = "30", features = ["wgsl-in"] }

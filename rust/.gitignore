@@ -1,1 +1,9 @@
 /target
+
+# Local toolchain used by the spike (rustup homes, see spike/README.md).
+/.toolchain
+
+# Throwaway spike artifacts.
+/spike/target
+/spike/web/pkg
+/spike/*.png
