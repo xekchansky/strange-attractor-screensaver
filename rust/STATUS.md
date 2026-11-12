@@ -422,6 +422,15 @@ enough.
   and presented 120 frames through the C ABI on Metal without an error. This
   covers surface creation, swap-chain configuration, 4x MSAA resolve into the
   drawable and presentation; it is not a substitute for the visual checklist.
+- **I7b portability**: `wgpu::SurfaceTargetUnsafe::CoreAnimationLayer` exists
+  only on Apple targets, so the Metal constructor, its configuration helper
+  and the `SurfaceSource` variant are gated on `macos`/`ios`. `SurfaceTarget`
+  itself, `acquire`/`resize`/`recreate` and
+  `attractor_player_attach_layer` keep their signatures on every platform; the
+  layer entry point returns `ATTRACTOR_PLAYER_ERROR` off Apple, and
+  `tests/c_api.rs` pins that with a non-Apple-only test. Verified locally with
+  `cargo clippy --workspace --all-targets --target x86_64-unknown-linux-gnu
+  -- -D warnings` after installing that Rust std.
 - **I7b wake-up parity**: `Player::tick` now clamps a finite interval to the
   scheduler's `maximum_frame_interval` before it reaches the camera and the
   colour gradient, exactly as the Swift `SimulationScene` did. A 60 s sleep

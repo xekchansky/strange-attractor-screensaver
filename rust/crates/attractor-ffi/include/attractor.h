@@ -68,7 +68,8 @@ int32_t attractor_player_render(AttractorPlayer *player, uint8_t *pixels,
 /* Attach a native presentation layer to the player.
  * On macOS the argument is a CAMetalLayer * owned by the host view; the layer
  * must outlive the player. After attaching, attractor_player_draw presents
- * frames into the layer instead of reading them back. */
+ * frames into the layer instead of reading them back. Other platforms have no
+ * constructor yet and return ATTRACTOR_PLAYER_ERROR. */
 int32_t attractor_player_attach_layer(AttractorPlayer *player, void *layer);
 
 /* Draw the current frame into the attached layer and present it.

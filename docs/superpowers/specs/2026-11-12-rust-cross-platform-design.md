@@ -463,6 +463,10 @@ build shows no regression; documented in `rust/STATUS.md`.
   acquire/draw/present; `attractor-ffi` exposes
   `attractor_player_attach_layer` and `attractor_player_draw`. The Swift host
   passes the layer pointer and the player keeps it alive by contract.
+  `SurfaceTarget` itself is portable: only `CoreAnimationLayer`, the Metal
+  constructor and its configuration helper are Apple-gated, and
+  `attractor_player_attach_layer` reports an error on other platforms, so the
+  workspace builds and the C ABI stays stable everywhere.
 - `Player::tick` clamps a finite frame interval to the scheduler bound before
   the camera and the colour gradient see it, matching the Swift scene after a
   sleep/wake jump.
