@@ -77,3 +77,38 @@ jobs:
       - name: Run tests
         working-directory: rust
         run: cargo test --workspace
+
+  windows:
+    name: Windows saver
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --check
+
+      # The Win32 shell and the D3D12 surface code only exist on Windows, so
+      # clippy has to see the Windows target's own sources.
+      - name: Run clippy
+        working-directory: rust
+        run: cargo clippy -p attractor-windows-saver -p attractor-gpu --all-targets -- -D warnings
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test -p attractor-windows-saver
+
+      # The noop backend proves the pipelines build even when the runner has
+      # no usable adapter; the adapter run then draws real pixels through WARP.
+      - name: Validate the pipelines
+        working-directory: rust
+        run: cargo run -p attractor-windows-saver -- --self-test --noop
+
+      - name: Render a frame
+        working-directory: rust
+        run: cargo run -p attractor-windows-saver -- --self-test

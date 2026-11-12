@@ -170,6 +170,16 @@ version = "0.0.0"
 [[package]]
 name = "attractor-windows-saver"
 version = "0.0.0"
+dependencies = [
+ "attractor-core",
+ "attractor-gpu",
+ "attractor-player",
+ "env_logger",
+ "log",
+ "serde",
+ "serde_json",
+ "windows-sys",
+]
 
 [[package]]
 name = "autocfg"
