@@ -1,0 +1,11 @@
+[package]
+name = "attractor-core"
+description = "Data model, catalog, formula parser, ODE solver, RNG, scheduler, trace buffer, health monitor and engine."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]

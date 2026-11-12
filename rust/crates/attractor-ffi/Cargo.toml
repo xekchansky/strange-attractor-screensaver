@@ -1,0 +1,11 @@
+[package]
+name = "attractor-ffi"
+description = "C ABI used by the macOS screensaver host and the Android JNI bridge."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
