@@ -86,7 +86,7 @@ fn fixture_path() -> PathBuf {
 fn the_seeded_lorenz_geometry_matches_the_snapshot() {
     let mut prepared = prepare(&arguments()).expect("the run prepares");
     prepared
-        .session
+        .player
         .warm_up(prepared.warmup_steps)
         .expect("the warm-up stays healthy");
     assert_eq!(prepared.warmup_steps, WARMUP_STEPS);
@@ -95,34 +95,34 @@ fn the_seeded_lorenz_geometry_matches_the_snapshot() {
     assert!(matches!(prepared.capture, CaptureRequest::Screenshot(_)));
     for _ in 0..FRAMES {
         prepared
-            .session
-            .advance_frame(FRAME_INTERVAL)
+            .player
+            .tick(FRAME_INTERVAL)
             .expect("the frame advances");
     }
 
-    let geometry = prepared.session.geometry();
+    let geometry = prepared.player.geometry();
     let first = geometry.positions().first().copied().expect("non-empty");
     let last = geometry.positions().last().copied().expect("non-empty");
     let first_color = geometry.colors().first().copied().expect("non-empty");
     let last_color = geometry.colors().last().copied().expect("non-empty");
     let actual = serde_json::json!({
-        "attractor": prepared.session.selection().descriptor.id,
+        "attractor": prepared.player.selection().descriptor.id,
         "seed": 42,
         "warmup_steps": WARMUP_STEPS,
         "frames": FRAMES,
         // Bits, not decimals: serde_json's default float parser is fast but
         // not always correctly rounded, and this fixture is meant to be exact.
         "parameters_bits": prepared
-            .session
+            .player
             .selection()
             .parameters
             .iter()
             .map(|(name, value)| (name.clone(), serde_json::json!(value.to_bits())))
             .collect::<serde_json::Map<String, serde_json::Value>>(),
         "initial_state_bits": [
-            prepared.session.selection().initial_state.x.to_bits(),
-            prepared.session.selection().initial_state.y.to_bits(),
-            prepared.session.selection().initial_state.z.to_bits(),
+            prepared.player.selection().initial_state.x.to_bits(),
+            prepared.player.selection().initial_state.y.to_bits(),
+            prepared.player.selection().initial_state.z.to_bits(),
         ],
         "point_count": geometry.point_count(),
         "vertex_count": geometry.vertex_count(),

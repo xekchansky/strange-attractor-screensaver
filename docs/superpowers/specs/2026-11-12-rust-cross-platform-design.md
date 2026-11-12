@@ -403,15 +403,29 @@ iteration.
 **Goal:** one reusable runtime behind a stable C interface.
 
 **Deliverables:** `attractor-player` (`tick`, `render`, `resize`, `restart`)
-and `attractor-ffi` (C ABI + generated header). The player is
-**one instance per surface**: every display gets its own player, its own
-random selection and its own camera, matching the current macOS host (one
-`ScreensaverView` per screen). Windows `/s` follows the same convention.
+and `attractor-ffi` (C ABI + header checked against the exported symbols).
+The player is **one instance per surface**: every display gets its own player,
+its own random selection and its own camera, matching the current macOS host
+(one `ScreensaverView` per screen). Windows `/s` follows the same convention.
+The CLI capture runs through the same player, so it is one more shell rather
+than a second runtime.
 
 **Tests:** offscreen player frame equals the CLI frame for the same seed and
 frame count; FFI smoke test through the C ABI.
 
 **Verify:** `cargo test -p attractor-player -p attractor-ffi`.
+
+**Ruling (header generation).** The design originally asked for a generated
+header. `cbindgen` would add a dependency and needs care with Rust 2024's
+`#[unsafe(no_mangle)]`, so `include/attractor.h` is maintained by hand and
+`tests/header.rs` fails when its declarations and the exported symbols drift
+apart. The check compares names, not signatures; every shell is built from
+this tree, so a signature mismatch fails to link at once.
+
+**Ruling (render path).** I7a renders offscreen and reads the frame back as
+RGBA8, which is what the CLI and the parity test consume. Drawing straight
+into the host's `CAMetalLayer` drawable arrives with the surface wiring in
+I7b; the player already owns the size and overlay scale those calls need.
 
 ### I7b — macOS host migration (M)
 

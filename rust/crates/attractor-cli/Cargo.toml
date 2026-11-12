@@ -11,9 +11,10 @@ publish = false
 [dependencies]
 attractor-core = { path = "../attractor-core" }
 attractor-gpu = { path = "../attractor-gpu" }
-attractor-view = { path = "../attractor-view" }
+attractor-player = { path = "../attractor-player" }
 env_logger = "0.11"
 log = "0.4"
 
 [dev-dependencies]
+attractor-view = { path = "../attractor-view" }
 serde_json = "1"
