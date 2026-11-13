@@ -25,9 +25,9 @@ use super::{
     module_instance, register_window_class, run_message_loop,
 };
 use crate::args::WindowHandle;
-use crate::selection;
-use crate::settings::Settings;
 use crate::text::wide;
+use attractor_shell::Settings;
+use attractor_shell::selection;
 
 /// Command id of the OK button.
 const OK_ID: usize = 1;

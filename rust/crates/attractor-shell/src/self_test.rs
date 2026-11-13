@@ -1,10 +1,11 @@
 //! One offscreen frame, for CI and for a quick install check.
 //!
-//! Windows CI cannot compare pixels, but it can prove that the same player,
-//! pipelines and catalog the `.scr` uses render ink on the runner. The frame
-//! is drawn through the real GPU backend when one is available (D3D12 through
-//! WARP on the Windows runner) and through wgpu's `noop` backend when
-//! `--noop` is passed, which validates the pipeline on a machine without a GPU.
+//! A runner without a desktop cannot compare pixels, but it can prove that the
+//! same player, pipelines and catalog the shell uses render ink. The frame is
+//! drawn through the real GPU backend when one is available (Metal on macOS,
+//! D3D12/WARP on Windows, Vulkan/llvmpipe on CI Linux) and through wgpu's
+//! `noop` backend when `--noop` is passed, which validates the pipeline on a
+//! machine without a GPU.
 
 use std::error::Error;
 use std::fmt;
@@ -64,7 +65,7 @@ impl Default for SelfTestRequest {
 pub struct SelfTestReport {
     /// Adapter name as wgpu reports it.
     pub adapter: String,
-    /// wgpu backend name (`Metal`, `Dx12`, …).
+    /// wgpu backend name (`Metal`, `Dx12`, `Vulkan`, …).
     pub backend: String,
     /// Frame width in pixels.
     pub width: u32,
@@ -131,8 +132,8 @@ impl Error for SelfTestError {
 /// Render a frame through the shared player and report what came out.
 ///
 /// The run is seeded, so a failure is reproducible. The frame is rendered
-/// offscreen through [`Player::render`], the same geometry the `.scr` presents
-/// to a window.
+/// offscreen through [`Player::render`], the same geometry a shell presents to
+/// a window.
 pub fn run_self_test(request: SelfTestRequest) -> Result<SelfTestOutcome, SelfTestError> {
     if request.width == 0 || request.height == 0 {
         return Err(SelfTestError::Gpu(GpuError::InvalidFrameSize {

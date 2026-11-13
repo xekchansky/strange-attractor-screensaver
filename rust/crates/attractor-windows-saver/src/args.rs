@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-use crate::self_test::{
+use attractor_shell::self_test::{
     DEFAULT_HEIGHT, DEFAULT_WIDTH, MAXIMUM_SIZE, SelfTestBackend, SelfTestRequest,
 };
 

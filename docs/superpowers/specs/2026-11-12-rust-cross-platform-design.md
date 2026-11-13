@@ -77,7 +77,10 @@ rust/
     attractor-ffi     C ABI used by the macOS `.saver` and Android JNI
     attractor-cli     cross-platform demo, `--screenshot`, `--record`
     attractor-wasm    wasm-bindgen glue for the GitHub Pages demo
-    attractor-windows-saver  `.scr` shell (Win32/winit, /s /c /p)
+    attractor-shell   platform-neutral shell pieces: settings, selection,
+                      input policy, offscreen self-test
+    attractor-linux-saver    xscreensaver hack + fullscreen runner
+    attractor-windows-saver  `.scr` shell (raw Win32, /s /c /p)
   STATUS.md           iteration checklist + current state
 data/                 (I12) canonical attractors.json
 web/                  static demo site
@@ -593,6 +596,41 @@ fullscreen runner, `.desktop` file, install notes for xscreensaver and
 **Tests:** ubuntu CI build; headless screenshot under llvmpipe; hack-argument
 tests. Manual checks on Debian/Ubuntu (X11 and Wayland) are scheduled with the
 friend at the milestone.
+
+**Ruling (shared shell pieces).** The Windows shell already carried the
+settings file, the attractor selection, the input policy and the offscreen
+self-test, all of which are platform-neutral. I10 moves them into
+`attractor-shell` and makes both shells depend on it, instead of copying the
+logic into the Linux crate. The settings path resolver splits the XDG rule
+(absolute `XDG_CONFIG_HOME` wins, otherwise `~/.config`) into a pure function
+so it is tested on every OS, while the environment lookup stays
+platform-specific.
+
+**Ruling (raw Xlib for the hack, winit for the runner).** xscreensaver hands a
+hack a foreign window through `-window-id` and expects the process to notice
+when that window is destroyed or unmapped; winit has no embedding API, so the
+xscreensaver mode uses raw Xlib through the runtime-loaded `x11-dl` crate (no
+system headers, no link-time dependency). The fullscreen runner, which must
+work on Wayland as well, uses winit: it owns the event loop, creates one
+borderless fullscreen window per monitor and reports raw handles. Both
+backends hand `raw-window-handle` values to the new
+`SurfaceTarget::from_raw_handles`, so presentation stays one wgpu code path.
+Cost if wrong: two window stacks in one shell; the alternative leaves Wayland
+without a runner or duplicates the surface wiring.
+
+**Ruling (`-root` uses an own window).** Drawing straight into the X root
+window is not reliable through Vulkan (its visual and swap-chain support vary
+by driver), so `-root` creates an override-redirect window covering the screen
+and presents there. The visible result matches xscreensaver's expectation, the
+window belongs to the saver process, and it disappears with it. `-window-id`
+still uses xscreensaver's window, including its visual id.
+
+**Ruling (software renderer in CI).** The `linux` job installs Xvfb and Mesa's
+Vulkan driver and fails when `--self-test` reports a skip: on a runner without
+a GPU a skip would hide a broken `lavapipe`. It then runs the xscreensaver
+`-root` mode and the fullscreen runner for 30 frames each under Xvfb, which
+exercises window creation, surface creation and presentation, and captures a
+PNG through the shared CLI. Native Wayland stays a manual check.
 
 ### I11 — Android live wallpaper (M/L)
 

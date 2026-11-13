@@ -1,10 +1,11 @@
-//! The settings file the `/c` window writes.
+//! The settings file every shell reads.
 //!
-//! Windows has no registry-free convention for a screen saver, so the file
-//! lives next to the user's application data: `%APPDATA%\StrangeAttractor\
-//! settings.json`. Only the attractor choice is stored today; the format is
-//! plain JSON with unknown keys ignored, so a later build may add fields
-//! without breaking an older one.
+//! Windows keeps it under `%APPDATA%\StrangeAttractor\settings.json`; Linux
+//! follows the XDG base directory spec and keeps it under
+//! `$XDG_CONFIG_HOME/strange-attractor/settings.json` (usually
+//! `~/.config/strange-attractor/settings.json`). Only the attractor choice is
+//! stored today; the format is plain JSON with unknown keys ignored, so a
+//! later build may add fields without breaking an older one.
 
 use std::error::Error;
 use std::fmt;
@@ -15,8 +16,12 @@ use std::path::{Path, PathBuf};
 use attractor_core::AttractorDescriptor;
 use serde::{Deserialize, Serialize};
 
-/// Directory under `%APPDATA%` that holds the settings file.
+/// Directory under the platform's configuration root that holds the file.
+#[cfg(target_os = "windows")]
 pub const DIRECTORY_NAME: &str = "StrangeAttractor";
+/// Directory under the platform's configuration root that holds the file.
+#[cfg(not(target_os = "windows"))]
+pub const DIRECTORY_NAME: &str = "strange-attractor";
 /// Name of the settings file inside [`DIRECTORY_NAME`].
 pub const FILE_NAME: &str = "settings.json";
 
@@ -31,19 +36,48 @@ pub struct Settings {
 }
 
 impl Settings {
-    /// Path of the settings file under `appdata`.
+    /// Path of the settings file under `config_root`.
     ///
-    /// `None` means the environment did not provide an application-data
-    /// directory, so the saver runs with defaults and `/c` reports the
-    /// problem.
-    pub fn path_in(appdata: Option<&Path>) -> Option<PathBuf> {
-        appdata.map(|root| root.join(DIRECTORY_NAME).join(FILE_NAME))
+    /// `None` means the environment did not provide a configuration
+    /// directory, so the saver runs with defaults and a settings window, if
+    /// the platform has one, reports the problem.
+    pub fn path_in(config_root: Option<&Path>) -> Option<PathBuf> {
+        config_root.map(|root| root.join(DIRECTORY_NAME).join(FILE_NAME))
     }
 
     /// Path of the settings file for the current user.
     pub fn environment_path() -> Option<PathBuf> {
-        let appdata = std::env::var_os("APPDATA").map(PathBuf::from);
-        Self::path_in(appdata.as_deref())
+        Self::path_in(Self::environment_config_root().as_deref())
+    }
+
+    /// The platform's configuration root from the environment.
+    fn environment_config_root() -> Option<PathBuf> {
+        #[cfg(target_os = "windows")]
+        {
+            std::env::var_os("APPDATA").map(PathBuf::from)
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let xdg = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            Self::config_root(xdg.as_deref(), home.as_deref())
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+        {
+            None
+        }
+    }
+
+    /// Resolve the configuration root the way the XDG spec does.
+    ///
+    /// `XDG_CONFIG_HOME` wins only when it is an absolute path; otherwise the
+    /// fallback is `~/.config`. Splitting the environment lookup from the
+    /// rule keeps the rule testable on every development OS.
+    pub fn config_root(xdg_config_home: Option<&Path>, home: Option<&Path>) -> Option<PathBuf> {
+        if let Some(root) = xdg_config_home.filter(|root| root.is_absolute()) {
+            return Some(root.to_path_buf());
+        }
+        home.map(|home| home.join(".config"))
     }
 
     /// Read the file, returning defaults when it does not exist yet.
@@ -129,7 +163,7 @@ mod tests {
     fn temporary_directory() -> PathBuf {
         static COUNTER: AtomicU64 = AtomicU64::new(0);
         let unique = format!(
-            "attractor-windows-settings-{}-{}",
+            "attractor-settings-{}-{}",
             std::process::id(),
             COUNTER.fetch_add(1, Ordering::Relaxed)
         );
@@ -147,11 +181,37 @@ mod tests {
     }
 
     #[test]
-    fn the_path_lives_under_the_application_data_directory() {
-        let path = Settings::path_in(Some(Path::new("C:\\Users\\me\\AppData\\Roaming")))
-            .expect("the path is derived");
+    fn the_path_lives_under_the_configuration_directory() {
+        let path = Settings::path_in(Some(Path::new("config-root"))).expect("the path is derived");
         assert!(path.ends_with(Path::new(DIRECTORY_NAME).join(FILE_NAME)));
         assert_eq!(Settings::path_in(None), None);
+    }
+
+    #[test]
+    fn an_absolute_xdg_config_home_wins() {
+        let root = Settings::config_root(
+            Some(Path::new("/home/me/.config-custom")),
+            Some(Path::new("/home/me")),
+        );
+        assert_eq!(root, Some(PathBuf::from("/home/me/.config-custom")));
+    }
+
+    #[test]
+    fn a_relative_xdg_config_home_is_ignored() {
+        let root = Settings::config_root(
+            Some(Path::new("relative/config")),
+            Some(Path::new("/home/me")),
+        );
+        assert_eq!(root, Some(PathBuf::from("/home/me/.config")));
+    }
+
+    #[test]
+    fn the_home_directory_is_the_fallback() {
+        assert_eq!(
+            Settings::config_root(None, Some(Path::new("/home/me"))),
+            Some(PathBuf::from("/home/me/.config"))
+        );
+        assert_eq!(Settings::config_root(None, None), None);
     }
 
     #[test]

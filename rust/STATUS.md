@@ -10,13 +10,14 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I9 — web demo on GitHub Pages** (2026-11-13;
-  CI green, Pages source switched to "GitHub Actions" by the owner, the
-  deployment and the manual real-browser pass pending)
-- Last completed change: **I9 — web demo on GitHub Pages** (2026-11-13)
-- Next iteration: **I10 — Linux**
+- Last completed iteration: **I10 — Linux** (2026-11-14; local checks green,
+  CI run pending, the Debian/Ubuntu X11 and Wayland pass pending)
+- Last completed change: **I10 — Linux** (2026-11-14)
+- Next iteration: **I11 — Android live wallpaper**
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
   scheduled with the reviewer after I8 (design §6).
+- Linux manual checklist: `shells/linux/README.md`, scheduled with the
+  reviewer after I10 (design §6).
 - Pre-migration visual reference: **`ef3d61b`**, the last commit whose
   `.saver` still rendered through SceneKit. The Rust host must match it
   side by side (manual checklist below).
@@ -73,6 +74,23 @@ cargo run -p attractor-windows-saver -- --self-test
 cargo run -p attractor-windows-saver -- --self-test --noop
 ```
 
+The Linux shell is cross-checked from the macOS host against the Linux
+target's standard library (the X11 and winit code only compiles there; the
+noop self-test runs on every OS):
+
+```bash
+cd rust
+cargo clippy -p attractor-linux-saver -p attractor-gpu \
+  --target x86_64-unknown-linux-gnu --all-targets -- -D warnings
+cargo run -p attractor-linux-saver -- --self-test --noop
+```
+
+The CI `linux` job installs Xvfb and Mesa's Vulkan driver, requires the
+adapter self-test to draw ink (a skip is a failure there), runs the
+xscreensaver `-root` mode and the fullscreen runner for 30 frames each under
+Xvfb, and captures a PNG through `attractor-cli`. Native Wayland has no CI
+runner and stays on the manual checklist.
+
 The web demo builds its wasm bundle and runs the browser suite:
 
 ```bash
@@ -122,7 +140,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   README)
 - [x] I9 — web demo on GitHub Pages (done; manual: Pages enablement and the
   Chrome/Safari/Firefox pass pending)
-- [ ] I10 — Linux
+- [x] I10 — Linux (done; CI run pending, manual: Debian/Ubuntu X11 and
+  Wayland checklist in `shells/linux/README.md`)
 - [ ] I11 — Android live wallpaper
 - [ ] I12 — distribution, docs and cleanup
 
@@ -671,6 +690,58 @@ enough.
   automatic backend, and `rust`, `windows`, `Core tests`, `Render and Demo
   build` and `Catalog validation` are unchanged. The first WebGL2 rendering
   of the page therefore happens on a runner without a GPU.
+- **I10**: the Linux shell exists. `attractor-linux-saver` is the xscreensaver
+  hack (`-root`, `-window-id N`) and the fullscreen runner (`--fullscreen`,
+  plus the no-argument default); `shells/linux/` carries the `.desktop` file,
+  the xscreensaver entry, the `swayidle`/`hypridle` recipes, the settings
+  location and the manual checklist. The platform-neutral pieces the Windows
+  shell already owned — settings, attractor selection, input policy and the
+  offscreen self-test — moved into the new `attractor-shell` crate, which both
+  shells depend on; the Windows crate re-exports the same public names, so its
+  behaviour and tests are unchanged.
+- **I10 surface**: `attractor-gpu` gained
+  `SurfaceTarget::from_raw_handles` (Linux only), and `SurfaceSource` a
+  `RawHandle` variant that carries `raw-window-handle` values into wgpu. The
+  xscreensaver mode passes the Xlib window and `Display*` it got from `x11-dl`
+  and uses the window's own visual id; the runner passes what winit reports
+  (Xlib/Xcb on X11, Wayland on Wayland). Presentation still goes through the
+  single wgpu swap-chain path.
+- **I10 backends**: the xscreensaver hack uses raw Xlib through `x11-dl`,
+  loaded at runtime, because xscreensaver hands the hack a foreign window and
+  expects the process to leave when that window is destroyed or unmapped;
+  winit has no embedding API. The fullscreen runner uses winit 0.30, which
+  covers both X11 and Wayland and gives the plugin access to monitors and
+  input. Both share `session::Display`, the per-surface player wrapper, and
+  the `attractor-shell` input policy (pointer motion is ignored for 250 ms
+  after the first frame).
+- **I10 rulings**: `-root` does not draw into the X root window — Vulkan
+  presentation into the root is unreliable — so the shell creates an
+  override-redirect window covering the screen; the visible result matches
+  xscreensaver and the window disappears with the process. The settings file
+  follows XDG: an absolute `XDG_CONFIG_HOME` wins, otherwise `~/.config`, and
+  the file lives in `strange-attractor/settings.json` (Windows keeps
+  `%APPDATA%\StrangeAttractor\settings.json`); the rule is a pure function
+  tested on every OS. Linux has no settings dialog in this iteration; the JSON
+  is documented and hand-edited.
+- **I10 verification (local)**: fmt, workspace clippy and `cargo test
+  --workspace` are green on macOS (Metal); the Windows cross-clippy is green
+  after the shared-crate move; Linux-target clippy for
+  `attractor-linux-saver` and `attractor-gpu` is green; the noop self-test
+  validates the pipelines and the Metal self-test reports `Apple M4 Pro` and
+  6 953 lit pixels — the same number as the Windows crate's self-test, which
+  is expected because both run the same seeded player. The `attractor-gpu`
+  Linux unit test (zero-size rejection before the handles are touched) runs in
+  the ubuntu `rust` job. The CI `linux` job is the first run of the X11 and
+  winit presentation paths; the job fails rather than skipping when no
+  adapter is found. Native Wayland and xscreensaver's `-window-id` preview
+  remain on the manual checklist.
+- **I10 deferred**: no settings UI on Linux (hand-edited JSON); the
+  `.desktop` file is not installed system-wide by the build; packaging
+  (tarball/AUR/deb) belongs to I12; `-window-id` is covered by the manual
+  checklist rather than by CI because it needs a second X client to own the
+  window. The runner creates one fullscreen window per monitor; a Wayland
+  compositor that rejects several fullscreen surfaces falls back to whatever
+  winit maps, and the manual pass records how each compositor behaves.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell

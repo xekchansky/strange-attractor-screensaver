@@ -1,7 +1,7 @@
 //! When a running screen saver gives the screen back.
 //!
-//! Windows starts the saver right after the user's input has been idle, so the
-//! first mouse-move message can be a leftover from the click that started it
+//! A screen saver starts right after the user's input has been idle, so the
+//! first pointer-move event can be a leftover from the click that started it
 //! (the cursor is already over the new window). Keys, buttons and the wheel
 //! always end the session; pointer motion is ignored for a short grace period
 //! so the saver does not disappear the moment it appears.
