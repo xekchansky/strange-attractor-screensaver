@@ -10,10 +10,12 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I11 — Android live wallpaper** (2026-11-14;
-  CI green, run 43514690865, the emulator/phone pass pending)
-- Last completed change: **I11 — Android** (2026-11-14)
-- Next iteration: **I12 — distribution, docs and cleanup**
+- Last completed iteration: **I12 — distribution, docs and cleanup**
+  (2026-11-14)
+- Last completed change: **I12 — distribution, docs and cleanup**
+  (2026-11-14)
+- Next iteration: none — the plan is complete. Open follow-ups are listed in
+  the per-iteration notes below and in design §9.
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
   scheduled with the reviewer after I8 (design §6).
 - Linux manual checklist: `shells/linux/README.md`, scheduled with the
@@ -21,8 +23,11 @@ file, and commit atomically.
 - Android manual checklist: `shells/android/README.md`, scheduled with the
   reviewer after I11 (design §6).
 - Pre-migration visual reference: **`ef3d61b`**, the last commit whose
-  `.saver` still rendered through SceneKit. The Rust host must match it
-  side by side (manual checklist below).
+  `.saver` still rendered through SceneKit. The Rust host side-by-side pass is
+  done for macOS (I7b); the catalog screenshots and hero GIF were re-captured
+  from `attractor-cli` in I12 and are the new documentation baseline.
+- Swift oracle: the annotated tag **`swift-oracle`**, which carries the last
+  `Core/`, `Render/`, `Demo/` tree and the fixture generators.
 
 ## Verification
 
@@ -129,12 +134,16 @@ rendezvous, `bootstrap_check_in … Permission denied (1100)`), so a local
 Playwright run there fails before the page loads; CI's `web` job is the
 browser gate. The static server alone does work in the sandbox.
 
-The Swift oracle checks (in the agent sandbox SwiftPM needs
-`--disable-sandbox`; a normal shell does not):
+The Swift tree is archived at the tag `swift-oracle`; it is not built or
+tested any more. `Host/` is the only Swift code, and the `macos` CI job builds
+it into the universal `.saver` on every push. To regenerate a golden fixture,
+check the tag out into a worktree (the recipe is in each fixture README).
+
+The release workflow is a dry run until a `v*` tag is pushed:
 
 ```bash
-cd Core && swift test --disable-sandbox
-cd Demo && swift build --disable-sandbox
+# Manual dispatch from the Actions tab, or:
+gh workflow run release.yml --ref main
 ```
 
 The pipeline tests build through wgpu's `noop` backend, so they run without a
@@ -167,19 +176,19 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   X11 and Wayland checklist in `shells/linux/README.md`)
 - [x] I11 — Android live wallpaper (done; CI green, run 43514690865; manual:
   emulator/phone checklist in `shells/android/README.md`)
-- [ ] I12 — distribution, docs and cleanup
+- [x] I12 — distribution, docs and cleanup (done; release dry run pending)
 
 ## Swift oracle
 
-Pinned at **`dfbadb8`**, the last commit that touched `Core/Sources`. The
-golden fixtures were generated from that tree on 2026-11-12. The generators
-(`Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`, added in the
-I2 commit, and `NumericalFixtureDumpTests.swift`, added in the I3 commit) sit
-on top of `dfbadb8`; to reproduce the fixtures, check out `dfbadb8`, copy the
-generators in, and run the commands in
-`rust/crates/attractor-core/tests/fixtures/README.md`. After I12 retires
-`Core/`, the oracle tag will contain the generators, so the checkout alone is
-enough.
+The Swift tree is archived as the annotated git tag **`swift-oracle`**,
+created on the last
+commit that still carried `Core/`, `Render/` and `Demo/` (2026-11-14). The
+golden fixtures were generated from that tree on 2026-11-12 (the sources date
+back to `dfbadb8`, the last commit that touched `Core/Sources`), and the
+generators (`FormulaFixtureDumpTests`, `NumericalFixtureDumpTests`,
+`ViewFixtureDumpTests`) are part of the tag. To reproduce a fixture, add a
+worktree for the tag and run the commands in the matching fixture README; a
+plain `git checkout` of the tag is enough.
 
 ## Notes and risks
 
@@ -936,3 +945,41 @@ enough.
   not compile. The working reference in this repository is now
   `crates/attractor-gpu/src/{ribbon,frame}.rs`; the I0.5 spike that used to
   serve this role was deleted in I6.
+- **I12**: the repository is Rust-first and distribution-ready. The catalog
+  moved to `data/attractors.json` (embedded with `include_str!` by
+  `attractor-core`, watched by the Pages path filter); the Swift tree was
+  archived as the annotated tag `swift-oracle` and `Core/`, `Render/` and
+  `Demo/` were deleted, leaving `Host/` as the only Swift code. `AGENTS.md`
+  and both READMEs describe the Rust layout, the OS install table and the
+  browser demo; the CI Swift jobs were replaced by a `macos` job that builds
+  the universal `.saver`, and `.github/workflows/release.yml` builds the
+  macOS, Windows, Linux and Android artifacts with one `SHA256SUMS` file.
+  `scripts/package_release.sh` accepts `ARCHS`, `scripts/package_linux.sh` is
+  new, and the workspace and Android versions are 1.0.0.
+- **I12 rulings**: the catalog is canonical at `data/`; the Swift oracle lives
+  only in the tag; Windows ships unsigned with the SmartScreen note; Linux
+  ships a tarball; Android ships the debug-signed APK (release signing needs a
+  keystore that cannot live in the repo, and F-Droid is not attempted);
+  notarization (D11) stays deferred — no Developer account — so the macOS
+  bundle remains ad-hoc signed with the `xattr` note. The design doc's I12
+  section records all of them.
+- **I12 documentation baseline**: the twelve catalog screenshots and the hero
+  GIF were re-captured from `attractor-cli` on the M4 Pro with `SEED=42`; the
+  pinned views in `docs/capture_all.sh` reproduce the old Swift images (Chua's
+  dashed trail and Rössler's ring included), which is the visual-parity check
+  for the Rust renderer. Aizawa's view pins its canonical parameters because
+  random sampling collapses at many seeds; the script advances the seed on a
+  retry instead of replaying a deterministic failure.
+- **I12 verification (local)**: `cargo fmt --check`, workspace clippy and
+  `cargo test --workspace` are green after the move; the captures above ran on
+  Metal through the sandbox-excluded `cargo run`; the macOS bundle still needs
+  the CI job's first run (it also needs `xcodegen`, which the runner installs).
+  The release dry run is a `workflow_dispatch` of `release.yml` once the
+  workflow is on a branch GitHub can dispatch from; a `v*` tag is the real
+  publish.
+- **I12 deferred**: the release dry run, the clean-VM install checklist per OS
+  and the real browser check remain manual; the release workflow publishes a
+  `v*` tag but no tag has been pushed yet. A follow-up release needs the
+  Android keystore before store distribution. The GitHub topics are repository
+  metadata, applied by hand (`gh repo edit --add-topic …`) and not reproducible
+  from the tree.

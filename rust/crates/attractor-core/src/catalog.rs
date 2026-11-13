@@ -2,9 +2,8 @@
 //!
 //! The catalog is the single source describing every available attractor: the
 //! randomizer and the debug tooling select from it at startup, and adding an
-//! attractor never requires touching code — only extending the JSON resource.
-//! Until the Swift package is retired the file stays at its original path and
-//! is embedded with [`include_str!`].
+//! attractor never requires touching code — only extending the JSON resource,
+//! which is embedded with [`include_str!`].
 
 use std::collections::HashSet;
 use std::error::Error;
@@ -15,10 +14,9 @@ use crate::formula::Expression;
 
 /// The bundled catalog, embedded at compile time.
 ///
-/// The path points at the Swift package's resource on purpose: it is the single
-/// source of truth during the migration (design decision D6).
-pub const BUNDLED_JSON: &str =
-    include_str!("../../../../Core/Sources/AttractorCore/Resources/attractors.json");
+/// `data/attractors.json` at the repository root is the single source of truth
+/// for every platform, including the web demo and the Android wallpaper.
+pub const BUNDLED_JSON: &str = include_str!("../../../../data/attractors.json");
 
 /// Error produced while loading the catalog.
 #[derive(Debug)]

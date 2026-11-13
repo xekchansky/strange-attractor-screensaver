@@ -5,11 +5,6 @@
 .claude/
 .serena/project.local.yml
 
-# Swift Package Manager build products.
-.build/
-.staging/
-.swiftpm/
-
 # Xcode build products and per-user state.
 DerivedData/
 build/

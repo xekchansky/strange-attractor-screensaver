@@ -9,52 +9,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# The pinned swift-testing revision needs Swift tools 6.2, which the macOS 15
-# runner image does not have (it ships Swift 6.1).
 jobs:
-  core:
-    name: Core tests
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Show toolchain
-        run: swift --version
-
-      - name: Run unit tests
-        working-directory: Core
-        run: swift test
-
-      - name: Build core
-        working-directory: Core
-        run: swift build
-
-  packages:
-    name: Render and Demo build
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Build render layer
-        working-directory: Render
-        run: swift build
-
-      - name: Build demo app
-        working-directory: Demo
-        run: swift build
-
-  catalog:
-    name: Catalog validation
-    runs-on: macos-26
-    steps:
-      - uses: actions/checkout@v5
-
-      # Bundled-attractor tests share the Core suite, but calling this out keeps
-      # a broken attractors.json visible as its own red check.
-      - name: Validate bundled catalog
-        working-directory: Core
-        run: swift test --filter AttractorCatalogValidationTests
-
   rust:
     name: Rust workspace
     runs-on: ubuntu-latest
@@ -77,6 +32,25 @@ jobs:
       - name: Run tests
         working-directory: rust
         run: cargo test --workspace
+
+  # `Host/` is the only Swift code left; it is a thin view over the Rust FFI,
+  # so building the bundle is what keeps the migration honest on every push.
+  macos:
+    name: macOS saver
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Build the universal .saver
+        run: ARCHS="arm64 x86_64" ./scripts/package_release.sh "$RUNNER_TEMP/dist"
 
   linux:
     name: Linux saver

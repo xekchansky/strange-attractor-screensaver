@@ -1,5 +1,7 @@
 # Сборка и тесты ядра в этой среде (CLI-only, CommandLineTools без Xcode)
 
+> **С 2026-11-14 Swift-реализация выведена из рабочего дерева.** Канонический Rust-порт живёт в `rust/`, актуальные команды и правила — в корневом `AGENTS.md` и `rust/STATUS.md`; Swift-код сохранён git-тегом `swift-oracle`. Заметка ниже описывает Swift-эпоху.
+
 Актуально для `Core/` (SPM-пакет `AttractorCore`). См. `mem:development_guide`.
 
 ## Swift Testing вместо XCTest (одобренное отклонение)

@@ -2,7 +2,8 @@
 //!
 //! Everything here is deterministic and free of platform APIs: the wgpu
 //! renderer in `attractor-gpu` only uploads the buffers this crate produces.
-//! The Swift oracle (`CameraController` and `TraceRenderer` in `Render/`) is
+//! The Swift oracle (`CameraController` and `TraceRenderer`, archived at the
+//! git tag `swift-oracle`) is
 //! reproduced bit for bit, including its `f32` storage rounding; the golden
 //! fixture in `tests/fixtures/view_fixtures.json` pins both.
 

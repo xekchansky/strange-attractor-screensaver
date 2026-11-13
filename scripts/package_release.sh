@@ -8,24 +8,32 @@
 #   AttractorSaver.saver.zip       the file uploaded to the release
 #   AttractorSaver.saver.zip.sha256
 #
-# Requires Xcode and xcodegen. The bundle is intentionally not notarized;
-# see README.md for the Gatekeeper note shown to users.
+# Set ARCHS to cross-build a universal bundle, for example
+# `ARCHS="arm64 x86_64" ./scripts/package_release.sh`. The default is the
+# host architecture, so a local check does not need the second Rust standard
+# library.
+#
+# Requires Xcode and xcodegen. The bundle is intentionally not notarized
+# (decision D11, revisited in I12); see README.md for the Gatekeeper note
+# shown to users.
 set -euo pipefail
 
 ROOT=${0:A:h:h}
 OUT=${1:-"$ROOT/dist"}
+ARCHS=${ARCHS:-$(uname -m)}
 mkdir -p "$OUT"
 
 echo "==> Generating the Xcode project"
 cd "$ROOT/Host"
 xcodegen generate
 
-echo "==> Building Release"
+echo "==> Building Release for ARCHS=$ARCHS"
 xcodebuild \
   -project AttractorHost.xcodeproj \
   -scheme AttractorSaver \
   -configuration Release \
   -derivedDataPath "$OUT/derivedData" \
+  ARCHS="$ARCHS" \
   build
 
 BUILT="$OUT/derivedData/Build/Products/Release/AttractorSaver.saver"

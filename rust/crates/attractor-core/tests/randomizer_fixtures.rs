@@ -4,8 +4,8 @@
 //! for sixteen seeds against the bundled catalog. Because the Rust port
 //! reproduces the Swift standard library's integer and float range drawing, a
 //! seed must select bit-identical values, not merely values in the same range.
-//! The generator lives in
-//! `Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`; see
+//! The generator lives in the archived oracle tag `swift-oracle`
+//! (`Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`); see
 //! `tests/fixtures/README.md` for the command that reproduces it.
 
 use std::collections::{HashMap, HashSet};

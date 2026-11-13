@@ -6,8 +6,8 @@
 //! long runs are checked by invariants (finite, bounded, moving) instead of
 //! point-by-point equality.
 //!
-//! The generator lives in
-//! `Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`; see
+//! The generator lives in the archived oracle tag `swift-oracle`
+//! (`Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`); see
 //! `tests/fixtures/README.md` for the command that reproduces it.
 
 use std::collections::HashMap;

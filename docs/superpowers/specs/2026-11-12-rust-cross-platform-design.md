@@ -57,12 +57,12 @@ overlay. Today that lives in Swift + SceneKit and only runs on macOS.
 | D3 | **One player library** shared by all shells; shells stay thin | Prevents the drift that two renderers would guarantee. |
 | D4 | **macOS migrates to the Rust engine**; Swift is reduced to an AppKit view + `CAMetalLayer` host, and to a test oracle during migration | Keeps the `.saver` plugin shape (Cocoa view) while removing the duplicated engine. |
 | D5 | Work happens on the **`rust-port`** branch; `main` stays shippable | The Swift saver keeps working until the Rust host is manually validated. |
-| D6 | The catalog stays at `Core/Sources/AttractorCore/Resources/attractors.json` during migration, read by Rust with `include_str!` | Single source of truth until the Swift package is retired; moved to `data/attractors.json` in I12. |
+| D6 | The catalog stays at `Core/Sources/AttractorCore/Resources/attractors.json` during migration, read by Rust with `include_str!` | Single source of truth until the Swift package is retired; moved to `data/attractors.json` in I12 (done). |
 | D7 | Web demo is a static site on **GitHub Pages**, built from the same Rust engine via WebAssembly | Cheapest honest "try it now" path; no server. |
 | D8 | Text overlay is rendered by the engine (native) and as a DOM overlay in the browser | Avoids four native text stacks; DOM text is accessible and crisp on the web. |
 | D9 | Platforms ship **as they become ready**: macOS + web first, then Windows, Linux, Android as separate releases | Each iteration yields a verifiable artifact; no release blocked on the slowest platform. |
 | D10 | Keep only the classic `.saver` host; drop the `.appex`/container-app variant | One macOS surface to migrate; the container path is not needed for distribution. |
-| D11 | Notarization is **deferred to I12**; releases stay ad-hoc signed with the documented `xattr` note | No paid Apple Developer account/CI secrets are committed to now; the decision is re-opened before the first release. |
+| D11 | Notarization is **deferred to I12**; releases stay ad-hoc signed with the documented `xattr` note | No paid Apple Developer account/CI secrets are committed to now; the decision is re-opened before the first release. I12 re-opened it and kept the decision: no Developer account is available, so the first release ships ad-hoc signed with the `xattr` note, and notarization is revisited when an account exists. |
 
 ## 4. Architecture
 
@@ -82,7 +82,7 @@ rust/
     attractor-linux-saver    xscreensaver hack + fullscreen runner
     attractor-windows-saver  `.scr` shell (raw Win32, /s /c /p)
   STATUS.md           iteration checklist + current state
-data/                 (I12) canonical attractors.json
+data/                 canonical attractors.json (every platform)
 web/                  static demo site
 shells/macos/         Swift AppKit view hosting the player (existing Host/)
 shells/linux/         xscreensaver hack + fullscreen runner + .desktop
@@ -456,9 +456,10 @@ build shows no regression; documented in `rust/STATUS.md`.
   its container app and `AppSources/` are deleted, leaving the classic
   `.saver` (D10).
 - "SceneKit renderer removed" means removed from the host path. `Render/` and
-  `Demo/` remain until I12: the iteration's verification requires `Demo` to
-  build, and the pre-migration Swift build is the visual reference pinned in
-  `rust/STATUS.md`.
+  `Demo/` remained until I12: the iteration's verification required `Demo` to
+  build, and the pre-migration Swift build was the visual reference pinned in
+  `rust/STATUS.md`. I12 archived them at the tag `swift-oracle` and removed
+  them from the working tree.
 - Surface rendering lives in `attractor-gpu`: `SurfaceTarget` wraps a swap
   chain created from `SurfaceTargetUnsafe::CoreAnimationLayer`, and
   `FrameRenderer::for_surface`/`render_to_view` draw the same ribbon and text
@@ -664,6 +665,40 @@ decision (D11) re-opened before the first macOS release.
 **Verify:** release dry run; checksums; install checklist per OS on a clean
 VM; `cargo test --workspace` and the remaining Swift host build both green.
 
+**Ruling (oracle archive).** The Swift tree is archived as the annotated tag
+`swift-oracle`, created on the last commit that carries `Core/`, `Render/`,
+`Demo/` and the fixture generators. The fixture READMEs and `rust/STATUS.md`
+name the tag; regenerating a fixture means checking it out into a temporary
+worktree. Cost if wrong: one extra ref to keep; history is otherwise
+unchanged.
+
+**Ruling (release artifacts).** One `release.yml` workflow builds all four
+artifacts and publishes them on a `v*` tag; a `workflow_dispatch` run is the
+dry run (it builds and packages everything, writes `SHA256SUMS`, and stops
+before `gh release create`). Windows ships an unsigned `.scr` with the
+SmartScreen note instead of buying a certificate. Linux ships a tarball
+(binary, CLI, `.desktop`, README) before any distribution package. Android
+ships the debug-signed APK, because release signing needs a keystore that
+cannot live in the repository; F-Droid packaging is not attempted. Cost if
+wrong: the Windows `.scr` shows a SmartScreen warning, and the Android APK is
+installable but not store-distributable until a keystore is configured.
+
+**Ruling (catalog and retirement).** `data/attractors.json` is the canonical
+catalog for every platform, embedded with `include_str!`. `Core/`, `Render/`
+and `Demo/` are deleted in the same iteration, so `Host/` is the only Swift
+code. CI drops the three Swift jobs and gains a macOS job that builds the
+universal `.saver`, which keeps the Swift view and the FFI link working on
+every push. Cost
+if wrong: the archived tag is the only way back to the Swift implementation;
+the fixtures are immutable by design, so regeneration needs that tag.
+
+**Ruling (documentation baseline).** The catalog screenshots and the hero GIF
+are re-captured from `attractor-cli` with a fixed seed (`docs/capture_all.sh`,
+`SEED=42`), so the images are reproducible. A retry advances the seed,
+because a fixed seed would replay the same degenerate run; Aizawa's view pins
+its canonical parameters for the same reason. Cost if wrong: an unpinned
+attractor's picture changes when the catalog's ranges change.
+
 ## 8. Protocol for a fresh session
 
 1. `git checkout rust-port` and read `rust/STATUS.md`.
@@ -682,7 +717,8 @@ VM; `cargo test --workspace` and the remaining Swift host build both green.
   `TraceRenderer.ribbonRadius` at implementation time.
 - Text renderer crate choice on native (`glyphon` assumed) and its font.
 - Settings storage format per platform.
-- Windows signing: whether to buy a certificate in I12 or ship unsigned with
-  a SmartScreen note.
-- Linux packaging breadth (tarball first vs AUR/deb immediately).
-- Android minSdk and whether to target F-Droid in I12.
+- Windows signing: decided in I12 — ship unsigned with the SmartScreen note.
+- Linux packaging breadth: decided in I12 — tarball first; AUR/deb are
+  follow-ups.
+- Android minSdk and F-Droid: decided in I11 (minSdk 26) and I12 (a
+  debug-signed APK, no F-Droid packaging yet).
