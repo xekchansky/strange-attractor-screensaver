@@ -564,6 +564,14 @@ asserts the canvas is non-blank and the console is clean.
   `webgl2`, because a headless CI runner may have no working WebGPU adapter.
   Requiring WebGPU on CI would fail for an environmental reason, not a
   product one.
+- **Ruling (browser device limits).** The browser bootstrap requests the
+  device with `adapter.limits()` instead of `DeviceDescriptor::default()`. The
+  desktop defaults ask for `max_compute_workgroups_per_dimension: 65535`, and a
+  WebGL2 adapter reports zero for every compute limit because the API has no
+  compute stage, so the default descriptor failed the device request on the
+  first real browser run. Asking for exactly what the adapter offers is valid
+  on every backend and keeps the surface sizes the adapter reports, which
+  `Limits::downlevel_webgl2_defaults()` would have capped at 2048.
 - **Ruling (wasm-opt and Pages).** `web/build.sh` runs `wasm-opt -Oz` when
   the binary exists and keeps the unoptimized bundle (with a warning) if the
   pass fails, since an installed binaryen may not know every feature the
