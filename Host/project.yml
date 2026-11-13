@@ -28,8 +28,8 @@ targets:
         CFBundleExecutable: $(EXECUTABLE_NAME)
         CFBundleName: AttractorSaver
         CFBundleDisplayName: AttractorSaver
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "2.0.0"
+        CFBundleVersion: "2"
         NSPrincipalClass: $(PRODUCT_MODULE_NAME).ScreensaverView
     dependencies:
       # The native artifacts reported by
