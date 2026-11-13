@@ -1,8 +1,9 @@
 //! Golden fixtures produced by the Swift oracle.
 //!
 //! `tests/fixtures/formula_evaluation.json` holds every catalog formula
-//! evaluated at eight sample states. The generator lives in
-//! `Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`; see
+//! evaluated at eight sample states. The generator lives in the archived
+//! oracle tag `swift-oracle`
+//! (`Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`); see
 //! `tests/fixtures/README.md` for the command that reproduces it.
 
 use std::collections::{HashMap, HashSet};

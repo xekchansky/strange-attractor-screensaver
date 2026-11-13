@@ -10,7 +10,7 @@ on:
       - "rust/**"
       - "web/**"
       # The Rust catalog embeds this file with include_str!.
-      - "Core/Sources/AttractorCore/Resources/attractors.json"
+      - "data/attractors.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 

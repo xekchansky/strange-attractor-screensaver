@@ -6,7 +6,8 @@
 //! within the trajectory tolerance; together with the randomizer fixtures this
 //! is the gate that proves I2+I3 are exact.
 //!
-//! The generator lives in `Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`;
+//! The generator lives in the archived oracle tag `swift-oracle`
+//! (`Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`);
 //! see `tests/fixtures/README.md` for the command that reproduces it.
 
 use std::collections::HashMap;

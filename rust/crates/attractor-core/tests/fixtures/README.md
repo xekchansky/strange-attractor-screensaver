@@ -15,7 +15,8 @@ files by hand.
 ## Provenance
 
 - Generated from the Swift sources at commit `dfbadb8` (the last commit that
-  touched `Core/Sources`) on 2026-11-12.
+  touched `Core/Sources`) on 2026-11-12. The Swift tree is archived at the git
+  tag `swift-oracle`; it is no longer part of the working tree.
 - Formula generator: `Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`.
 - Numerical generators: `Core/Tests/AttractorCoreTests/NumericalFixtureDumpTests.swift`.
   Both suites are disabled unless `ATTRACTOR_DUMP_FIXTURES=1`.
@@ -45,10 +46,12 @@ moving) instead of point-by-point equality.
 
 ## Regenerating
 
-From the repository root:
+The generators live only in the archived oracle. Check it out first; the Rust
+tests never need a Swift toolchain.
 
 ```bash
-cd Core
+git worktree add "$TMPDIR/swift-oracle" swift-oracle
+cd "$TMPDIR/swift-oracle/Core"
 ATTRACTOR_DUMP_FIXTURES=1 swift test --filter FormulaFixtureDumpTests
 ATTRACTOR_DUMP_FIXTURES=1 swift test --filter NumericalFixtureDumpTests
 ```
@@ -57,15 +60,10 @@ ATTRACTOR_DUMP_FIXTURES=1 swift test --filter NumericalFixtureDumpTests
 `randomizer_selections.json` and `engine_traces.json`; the three tests can
 also be filtered individually (`--filter dumpEngineTraces`, and so on).
 
-```bash
-```
-
 The generators resolve their output paths from `#filePath`, so the working
-directory does not matter. Inside a restricted sandbox (the coding agent's
+directory does not matter, but the files land inside the checked-out worktree;
+copy them into the working tree afterwards. Inside a restricted sandbox (the coding agent's
 environment) SwiftPM cannot start its own sandbox; add `--disable-sandbox`
 there, or drive the same `Core/Sources` functions from a standalone `swiftc`
 program. A normal `swift test` without the environment variable skips the
 suites and writes nothing.
-
-After I12 retires `Core/`, regenerate from the archived oracle tag instead;
-the Rust tests never need a live Swift toolchain.

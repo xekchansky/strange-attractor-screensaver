@@ -19,16 +19,19 @@ Do not edit the file by hand.
 ## Provenance
 
 - Generated on 2026-11-12 from the Swift sources on the `rust-port` branch
-  (the camera and renderer are unchanged from the pre-port `main`).
+  (the camera and renderer are unchanged from the pre-port `main`). The Swift
+  tree is archived at the git tag `swift-oracle`; it is no longer part of the
+  working tree.
 - Generator: `Render/Tests/AttractorRenderTests/ViewFixtureDumpTests.swift`,
   a Swift Testing suite disabled unless `ATTRACTOR_DUMP_FIXTURES=1`.
 
 ## Regenerating
 
-From the repository root:
+The generator exists only in the archived oracle.
 
 ```bash
-cd Render
+git worktree add "$TMPDIR/swift-oracle" swift-oracle
+cd "$TMPDIR/swift-oracle/Render"
 ATTRACTOR_DUMP_FIXTURES=1 swift test --filter ViewFixtureDumpTests
 ```
 
