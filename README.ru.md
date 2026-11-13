@@ -31,10 +31,10 @@
 
 | Платформа | Загрузка | Перед первым запуском |
 | --- | --- | --- |
-| **macOS** 13+ | [`AttractorSaver.saver.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Снять карантин: `xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver` (см. [macOS](#macos)). |
-| **Windows** 10+ | [`StrangeAttractor.scr.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Распаковать, правый клик по `StrangeAttractor.scr` → **Установить**. SmartScreen может спросить — выберите **Подробнее → Выполнить в любом случае** (см. [Windows](#windows)). |
-| **Linux** (x86_64) | [`strange-attractor-linux-x86_64.tar.gz`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Распаковать и прочитать `README.md` внутри; в архиве заставка, CLI для захвата и `.desktop`-файл (см. [Linux](#linux)). |
-| **Android** 8+ | [`strange-attractor-android.apk`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Разрешить установку из браузера, затем выбрать **Strange Attractor** в *Настройки → Дисплей → Живые обои* (см. [Android](#android)). |
+| **macOS** 13+ | [`AttractorSaver.saver.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Снять карантин: `xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver` (см. [macOS](#macos)). |
+| **Windows** 10+ | [`StrangeAttractor.scr.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Распаковать, правый клик по `StrangeAttractor.scr` → **Установить**. SmartScreen может спросить — выберите **Подробнее → Выполнить в любом случае** (см. [Windows](#windows)). |
+| **Linux** (x86_64) | [`strange-attractor-linux-x86_64.tar.gz`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Распаковать и прочитать `README.md` внутри; в архиве заставка, CLI для захвата и `.desktop`-файл (см. [Linux](#linux)). |
+| **Android** 8+ | [`strange-attractor-android.apk`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Разрешить установку из браузера, затем выбрать **Strange Attractor** в *Настройки → Дисплей → Живые обои* (см. [Android](#android)). |
 | **Браузер** | [Живое демо](https://xekchansky.github.io/strange-attractor-screensaver/) | Ничего устанавливать не нужно. |
 
 Все архивы покрыты одним файлом `SHA256SUMS` в том же релизе:
