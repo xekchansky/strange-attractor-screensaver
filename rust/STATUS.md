@@ -11,7 +11,7 @@ file, and commit atomically.
 
 - Branch: `rust-port`
 - Last completed iteration: **I12 — distribution, docs and cleanup**
-  (2026-11-14)
+  (2026-11-14; CI green, run 43520803196, the release dry run pending)
 - Last completed change: **I12 — distribution, docs and cleanup**
   (2026-11-14)
 - Next iteration: none — the plan is complete. Open follow-ups are listed in
@@ -176,7 +176,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   X11 and Wayland checklist in `shells/linux/README.md`)
 - [x] I11 — Android live wallpaper (done; CI green, run 43514690865; manual:
   emulator/phone checklist in `shells/android/README.md`)
-- [x] I12 — distribution, docs and cleanup (done; release dry run pending)
+- [x] I12 — distribution, docs and cleanup (done; CI green, run 43520803196;
+  release dry run pending)
 
 ## Swift oracle
 
@@ -970,16 +971,24 @@ plain `git checkout` of the tag is enough.
   for the Rust renderer. Aizawa's view pins its canonical parameters because
   random sampling collapses at many seeds; the script advances the seed on a
   retry instead of replaying a deterministic failure.
-- **I12 verification (local)**: `cargo fmt --check`, workspace clippy and
-  `cargo test --workspace` are green after the move; the captures above ran on
-  Metal through the sandbox-excluded `cargo run`; the macOS bundle still needs
-  the CI job's first run (it also needs `xcodegen`, which the runner installs).
-  The release dry run is a `workflow_dispatch` of `release.yml` once the
-  workflow is on a branch GitHub can dispatch from; a `v*` tag is the real
-  publish.
+- **I12 verification (local)**: `cargo fmt --check`, workspace clippy,
+  `cargo test --workspace` and the Linux/Windows/Android/wasm cross-clippy
+  passes are green after the move; the captures above ran on Metal through the
+  sandbox-excluded `cargo run`; `scripts/package_release.sh` built the arm64
+  `.saver` locally (5.6 MB zip, signature verified), and the `macos` CI job
+  built the universal bundle in the run below. A `workflow_dispatch` of
+  `release.yml` is still the dry run for all four artifacts; a `v*` tag is the
+  real publish.
+- **I12 CI green (43520803196, `edab171`)**: all six jobs passed — `rust`,
+  `macos` (the new universal `.saver` build), `linux`, `windows`, `web` and
+  `android`. The macOS job is the first CI build of the bundle after the Swift
+  tree was removed, so it also proves the FFI link path and the pre-build
+  Rust script survive the cleanup.
 - **I12 deferred**: the release dry run, the clean-VM install checklist per OS
   and the real browser check remain manual; the release workflow publishes a
-  `v*` tag but no tag has been pushed yet. A follow-up release needs the
-  Android keystore before store distribution. The GitHub topics are repository
-  metadata, applied by hand (`gh repo edit --add-topic …`) and not reproducible
-  from the tree.
+  `v*` tag but no tag has been pushed yet, and `workflow_dispatch` only
+  appears once the workflow is on the default branch. A follow-up release
+  needs the Android keystore before store distribution. The GitHub topics are
+  repository metadata, applied by hand (`gh repo edit --add-topic …`) and not
+  reproducible from the tree; the agent sandbox cannot read `~/.config/gh`, so
+  that step was not run from here.
