@@ -28,10 +28,10 @@ before the first launch.
 
 | Platform | Download | Before the first launch |
 | --- | --- | --- |
-| **macOS** 13+ | [`AttractorSaver.saver.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Clear the quarantine flag: `xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver` (see [macOS](#macos)). |
-| **Windows** 10+ | [`StrangeAttractor.scr.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Unzip, right-click `StrangeAttractor.scr` → **Install**. SmartScreen may ask; choose **More info → Run anyway** (see [Windows](#windows)). |
-| **Linux** (x86_64) | [`strange-attractor-linux-x86_64.tar.gz`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Unpack and read the bundled `README.md`; the archive holds the saver, the capture CLI and the `.desktop` entry (see [Linux](#linux)). |
-| **Android** 8+ | [`strange-attractor-android.apk`](https://github.com/xekchansky/strange-attractor-screensaver/releases/latest) | Allow installing from the browser, then choose **Strange Attractor** in *Settings → Display → Live wallpaper* (see [Android](#android)). |
+| **macOS** 13+ | [`AttractorSaver.saver.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Clear the quarantine flag: `xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver` (see [macOS](#macos)). |
+| **Windows** 10+ | [`StrangeAttractor.scr.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Unzip, right-click `StrangeAttractor.scr` → **Install**. SmartScreen may ask; choose **More info → Run anyway** (see [Windows](#windows)). |
+| **Linux** (x86_64) | [`strange-attractor-linux-x86_64.tar.gz`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Unpack and read the bundled `README.md`; the archive holds the saver, the capture CLI and the `.desktop` entry (see [Linux](#linux)). |
+| **Android** 8+ | [`strange-attractor-android.apk`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Allow installing from the browser, then choose **Strange Attractor** in *Settings → Display → Live wallpaper* (see [Android](#android)). |
 | **Browser** | [Live demo](https://xekchansky.github.io/strange-attractor-screensaver/) | Nothing to install. |
 
 All archives are covered by one `SHA256SUMS` file in the same release:
