@@ -87,6 +87,9 @@ seedInput.value = seed;
 const selected = query.get("attractor") || "";
 fitCanvas();
 
+// `stage` and `error` are diagnostics: a browser test that times out waiting
+// for frames reads them to tell "the bundle loaded", "the GPU refused the
+// canvas" and "a frame raised" apart.
 const state = {
   frames: 0,
   backend: "starting",
@@ -94,12 +97,15 @@ const state = {
   attractorId: selected,
   attractorName: "",
   seed,
+  stage: "module",
+  error: "",
 };
 window.__attractorDemo = state;
 
 let demo;
 try {
   await init();
+  state.stage = "wasm-ready";
 
   const catalog = JSON.parse(catalog_json());
   fillPicker(catalog, selected);
@@ -108,8 +114,12 @@ try {
     fillPicker(catalog, attractorPicker.value, searchInput.value);
   });
 
+  state.stage = "starting";
   demo = await start(stage, location.search, BigInt(seed));
+  state.stage = "running";
 } catch (error) {
+  state.stage = "failed";
+  state.error = String(error);
   console.error(error);
   showStatus(`Cannot start the demo: ${error}`);
   throw error;
@@ -152,6 +162,8 @@ function frame(timestamp) {
     demo.tick(dt);
     demo.render();
   } catch (error) {
+    state.stage = "failed";
+    state.error = String(error);
     console.error(error);
     showStatus(`The demo stopped: ${error}`);
     return;
