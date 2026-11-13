@@ -330,8 +330,15 @@ impl SurfaceTarget {
             })
             .await
             .map_err(GpuError::NoAdapter)?;
+        // Ask for what the adapter reports rather than the desktop defaults.
+        // A WebGL2 adapter has no compute support and reports zero compute
+        // limits, while the default limits request 65535 compute workgroups,
+        // so the default descriptor fails the device request outright.
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
+            .request_device(&wgpu::DeviceDescriptor {
+                required_limits: adapter.limits(),
+                ..Default::default()
+            })
             .await
             .map_err(GpuError::NoDevice)?;
         let config = surface_configuration(&surface, &adapter, width, height)?;

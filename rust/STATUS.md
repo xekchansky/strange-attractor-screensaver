@@ -657,6 +657,15 @@ enough.
   carries that state, a `webgl2`/`webgpu` probe of the page and the collected
   console errors. The successful automatic-backend test also prints the
   backend it picked, because that fact exists only in a green run.
+- **I9 WebGL2 device fix (CI 43501835180, `63d1cc0`)**: the instrumented run
+  named the cause — the page reached `starting` and `start()` returned
+  `cannot create a GPU device: Limit 'max_compute_workgroups_per_dimension'
+  value 65535 is better than allowed 0`. WebGL2 has no compute support, so the
+  GL adapter reports zero compute limits while `DeviceDescriptor::default()`
+  asks for the desktop defaults; the browser now requests `adapter.limits()`
+  instead. `--use-angle=swiftshader` does provide WebGL2 in the headless
+  runner (the probe reported `WebGL 2.0 (OpenGL ES 3.0 Chromium)`), so the
+  test was exercising the fallback, not a missing platform feature.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
