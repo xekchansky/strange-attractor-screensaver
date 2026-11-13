@@ -11,8 +11,7 @@ file, and commit atomically.
 
 - Branch: `rust-port`
 - Last completed iteration: **I11 — Android live wallpaper** (2026-11-14;
-  `gradlew assembleDebug lint` green locally, CI run pending, the
-  emulator/phone pass pending)
+  CI green, run 43514690865, the emulator/phone pass pending)
 - Last completed change: **I11 — Android** (2026-11-14)
 - Next iteration: **I12 — distribution, docs and cleanup**
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
@@ -166,8 +165,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   Chrome/Safari/Firefox pass pending)
 - [x] I10 — Linux (done; CI green, run 43507189418; manual: Debian/Ubuntu
   X11 and Wayland checklist in `shells/linux/README.md`)
-- [x] I11 — Android live wallpaper (done; local `assembleDebug` + lint green,
-  CI run pending; manual: emulator/phone checklist in `shells/android/README.md`)
+- [x] I11 — Android live wallpaper (done; CI green, run 43514690865; manual:
+  emulator/phone checklist in `shells/android/README.md`)
 - [ ] I12 — distribution, docs and cleanup
 
 ## Swift oracle
@@ -842,6 +841,35 @@ enough.
   NDK is not installed in the agent sandbox; CI installs it, builds the
   libraries first and uploads a complete APK. The emulator/phone pass is the
   remaining gate.
+- **I11 CI green (43514690865, `d3a51d5`)**: all eight jobs passed. The
+  `android` job installed NDK 27.2, built `libattractor_ffi.so` for
+  `arm64-v8a` and `x86_64`, linted the Android target, ran
+  `assembleDebug lint` and uploaded a 23 MB APK; the artifact contains both
+  libraries, and `llvm-nm -D` on the arm64 one lists exactly the six
+  `Java_com_xekchansky_strangeattractor_NativeBridge_*` symbols. The first
+  run of the job failed inside `android-actions/setup-android@v3`, which
+  installs the legacy `tools` package that the current SDK repository no
+  longer publishes; the job now uses the SDK the ubuntu image ships and
+  calls its `sdkmanager` directly.
+- **I11 review (`48845e3`)**: an independent read-only review found no
+  Critical defects. One Important — the NDK path depended on
+  `ANDROID_SDK_ROOT` rather than the guaranteed `ANDROID_HOME` — was fixed
+  in `05b0a36`. Six Minor findings are deferred; none blocks use:
+  1. a panic inside the player would unwind through `extern "system"`;
+     `panic = "abort"` for the cdylib profile or `catch_unwind` would make
+     it well defined;
+  2. `STATUS_ERROR`/`STATUS_UNHEALTHY` log a warning every frame, so a
+     persistently failing swap chain becomes 60 Hz log spam;
+  3. if the 2 s join in `stopRendering` times out, a prompt visibility
+     change can start a second player on the same window (each thread holds
+     its own window reference, so this is visual corruption, not a refcount
+     bug);
+  4. `CREATE_ERROR` is process-global, so two engines (preview and main
+     surface) share the create error text;
+  5. a failed catalog fetch leaves the picker with only "Random" and no
+     message;
+  6. the "handle must be live" contract is only a SAFETY comment; Kotlin
+     honours it, but a debug-only generation counter would harden it.
 - **I11 deferred**: release signing, versioning and Play/F-Droid packaging
   belong to I12; the picker does not push a new choice into a running engine;
   there is no on-device self-test mode (the shared player's self-test is
