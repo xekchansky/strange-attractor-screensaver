@@ -10,10 +10,10 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I8 — Windows `.scr`** (2026-11-13, manual:
-  pending)
-- Last completed change: **I8 — Windows `.scr`** (2026-11-13)
-- Next iteration: **I9 — web demo on GitHub Pages**
+- Last completed iteration: **I9 — web demo on GitHub Pages** (2026-11-13,
+  manual: Pages enablement and the real-browser pass pending)
+- Last completed change: **I9 — web demo on GitHub Pages** (2026-11-13)
+- Next iteration: **I10 — Linux**
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
   scheduled with the reviewer after I8 (design §6).
 - Pre-migration visual reference: **`ef3d61b`**, the last commit whose
@@ -72,6 +72,21 @@ cargo run -p attractor-windows-saver -- --self-test
 cargo run -p attractor-windows-saver -- --self-test --noop
 ```
 
+The web demo builds its wasm bundle and runs the browser suite:
+
+```bash
+bash web/build.sh
+cd web
+npm ci
+npx playwright install chromium
+npm test
+```
+
+The agent sandbox cannot start Chromium (Seatbelt denies the Mach-port
+rendezvous, `bootstrap_check_in … Permission denied (1100)`), so a local
+Playwright run there fails before the page loads; CI's `web` job is the
+browser gate. The static server alone does work in the sandbox.
+
 The Swift oracle checks (in the agent sandbox SwiftPM needs
 `--disable-sandbox`; a normal shell does not):
 
@@ -104,7 +119,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   verified 2026-11-12, multi-display pending)
 - [x] I8 — Windows `.scr` (done; manual: pending, checklist in the crate
   README)
-- [ ] I9 — web demo on GitHub Pages
+- [x] I9 — web demo on GitHub Pages (done; manual: Pages enablement and the
+  Chrome/Safari/Firefox pass pending)
 - [ ] I10 — Linux
 - [ ] I11 — Android live wallpaper
 - [ ] I12 — distribution, docs and cleanup
@@ -558,6 +574,78 @@ enough.
   hook); Windows normally grants the saver foreground. Multi-monitor and
   preview remain on the manual checklist until the Windows 11 pass.
 
+- **I9**: the web demo exists. `attractor-wasm` is the browser shell over
+  `attractor-player`; `web/` is the static page (full-screen canvas, catalog
+  picker with a search box, seed field, URL-backed state), with a Playwright
+  suite and a GitHub Pages workflow. The native half of the crate —
+  `options`, `selection`, `catalog_view` — is plain Rust with unit tests, so
+  the URL contract and the seeded selection are covered without a browser;
+  the wasm-only `web` module owns the canvas surface, the player and the page
+  API.
+- **I9 surface**: `attractor-gpu` gained `SurfaceTarget::create_web`, which
+  creates the instance, the canvas surface, the adapter, the device and the
+  configured swap chain in that order and returns the pair. The adapter is
+  requested with `compatible_surface`, because the WebGL2 backend binds the
+  adapter to the canvas context (the order the I0.5 spike verified in Chrome).
+  `GpuContext` is assembled through the crate-private `from_parts`; `pollster`
+  is now a non-wasm dependency and wgpu's `webgl` feature is wasm-only, so the
+  desktop build is unchanged. `GpuContext::backend_label` and
+  `supports_multisampling` expose the two facts the page needs.
+- **I9 features**: `attractor-player` gained a `text` feature that forwards to
+  `attractor-gpu/text`; the wasm crate depends on the player with
+  `default-features = false`, so glyphon/cosmic-text are not in the bundle and
+  the overlay is DOM text (D8). WebGL2 cannot resolve multisampled targets, so
+  the demo passes `sample_count = 1` when the backend is GL.
+- **I9 URL contract**: `?attractor=<id>&seed=<u64>&backend=webgl2`. Parsing
+  is tolerant: a malformed seed or backend and unknown keys are ignored, and
+  a missing or unknown attractor means "random". On first load the page
+  invents a seed and writes it into the address bar, so any frame can be
+  shared. A named attractor samples its parameters, hyperparameters and
+  initial state from the declared ranges with the seed — the randomizer, not
+  the midpoint debug configuration, because several attractors are degenerate
+  exactly at their midpoints.
+- **I9 build**: `web/build.sh` builds `attractor-wasm` for
+  `wasm32-unknown-unknown` and runs `wasm-bindgen --target web` into
+  git-ignored `web/pkg`; `wasm-opt -Oz` runs when the binary is present. The
+  CI `web` job installs the wasm target, wasm-bindgen 0.2.130 (matching the
+  crate) and binaryen, lints the wasm target with clippy, builds the bundle
+  and runs Playwright.
+- **I9 browser tests**: Playwright waits for frames, asserts a non-blank
+  canvas (an element screenshot decoded with pngjs), asserts two screenshots
+  700 ms apart differ (the camera animates), checks the overlay text and
+  asserts a clean console (no `console.error`, no page errors). One test
+  forces `?backend=webgl2` and asserts the reported backend — the ADR-1
+  requirement; the default-URL test accepts `webgpu` or `webgl2`, because a
+  headless runner without a working WebGPU adapter legitimately falls back.
+- **I9 review pass**: the pixel assertions hide the control panel and the DOM
+  overlay (`visibility: hidden`) before taking the canvas screenshot, because
+  an element screenshot is a clip of the composited page and the translucent
+  toolbar alone would satisfy the brightness threshold. The Pages path filter
+  now includes the embedded catalog
+  (`Core/Sources/AttractorCore/Resources/attractors.json`), the `web` CI job
+  asks its toolchain for `clippy`, and a failing `wasm-opt` pass logs a
+  warning instead of failing the build (the bundle is valid without it).
+- **I9 deferred (minor, from review)**: the `github` reporter writes no HTML
+  report and `test-results/` is empty without a trace configured, so a red
+  browser test uploads an empty artifact; and an unknown `?attractor=` id
+  leaves the picker blank while Rust correctly runs a random attractor. Both
+  are worth a follow-up, neither affects the green path.
+- **I9 Pages**: `.github/workflows/pages.yml` builds the bundle and publishes
+  only `index.html`, `styles.css`, `app.js` and `pkg/`. The workflow stays
+  dormant until GitHub Pages is switched to "GitHub Actions" in the repository
+  settings (manual: pending). It triggers on `main` (a `workflow_dispatch`
+  from `rust-port` can publish earlier), so it never turns the working
+  branch's CI red before the setting exists; the URL goes live when the
+  branch merges.
+- **I9 local verification**: fmt, clippy for the workspace and for the wasm
+  target, `cargo test --workspace` (run bare, so the Metal-backed tests
+  executed), the release wasm build, the wasm-bindgen bundle, a Node
+  `WebAssembly.compile` check of the exported functions (`start`,
+  `catalog_json`, the `demo_*` accessors) and a static-server fetch of every
+  asset. The Playwright suite could not run inside the agent sandbox:
+  Chromium aborts with `bootstrap_check_in … Permission denied (1100)` because
+  Seatbelt denies the Mach-port rendezvous. CI is the first real browser run;
+  the manual Chrome/Safari/Firefox checklist remains with the reviewer.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell

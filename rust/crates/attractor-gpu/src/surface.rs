@@ -30,12 +30,13 @@ pub fn choose_surface_format(formats: &[wgpu::TextureFormat]) -> Option<wgpu::Te
         .or_else(|| formats.first().copied())
 }
 
-/// The native handle a surface was created from.
+/// The handle a surface was created from.
 ///
-/// The host guarantees that the handle outlives the target; it is only used
-/// again when wgpu reports the surface lost. Platforms without a constructor
-/// contribute no variants, which keeps the rest of the type portable.
-#[derive(Clone, Copy)]
+/// The host guarantees that the native handle outlives the target; it is only
+/// used again when wgpu reports the surface lost. Platforms without a
+/// constructor contribute no variants, which keeps the rest of the type
+/// portable.
+#[derive(Clone)]
 enum SurfaceSource {
     /// The `CAMetalLayer` the surface was created from.
     #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -48,11 +49,19 @@ enum SurfaceSource {
         /// Module instance the window belongs to; may be null.
         hinstance: *mut std::ffi::c_void,
     },
+    /// The `<canvas>` the browser surface was created from.
+    #[cfg(target_arch = "wasm32")]
+    Canvas(web_sys::HtmlCanvasElement),
 }
 
 impl SurfaceSource {
-    /// The wgpu target for this handle.
-    fn into_unsafe(self) -> wgpu::SurfaceTargetUnsafe {
+    /// The wgpu target for this native handle.
+    ///
+    /// Taking the source by value keeps the match exhaustive on targets that
+    /// contribute no variants (a reference is always inhabited, an empty enum
+    /// is not).
+    #[cfg(not(target_arch = "wasm32"))]
+    fn unsafe_target(self) -> wgpu::SurfaceTargetUnsafe {
         match self {
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             Self::CoreAnimationLayer(layer) => wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer),
@@ -60,6 +69,38 @@ impl SurfaceSource {
             Self::Win32Window { hwnd, hinstance } => win32_target(hwnd, hinstance),
         }
     }
+}
+
+/// Create the swap chain for `source`.
+///
+/// A browser canvas is owned by the surface, so the safe wgpu constructor
+/// applies; native layers and windows are borrowed handles and go through the
+/// unsafe constructor under the contract stated on each public constructor.
+// A target without a surface constructor contributes no `SurfaceSource`
+// variants, which makes this body unreachable there by construction.
+#[cfg_attr(
+    not(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "windows",
+        target_arch = "wasm32"
+    )),
+    allow(unreachable_code)
+)]
+fn create_surface(
+    instance: &wgpu::Instance,
+    source: &SurfaceSource,
+) -> Result<wgpu::Surface<'static>, GpuError> {
+    #[cfg(target_arch = "wasm32")]
+    let surface = match source {
+        SurfaceSource::Canvas(canvas) => {
+            instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))
+        }
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    // SAFETY: the public constructors require the handle to outlive the target.
+    let surface = unsafe { instance.create_surface_unsafe(source.clone().unsafe_target()) };
+    surface.map_err(GpuError::Surface)
 }
 
 /// Wrap a Win32 window handle in wgpu's raw-handle target.
@@ -111,17 +152,12 @@ impl SurfaceTarget {
         if width == 0 || height == 0 {
             return Err(GpuError::InvalidFrameSize { width, height });
         }
-        // SAFETY: the caller guarantees the layer outlives the surface.
-        let surface = unsafe {
-            context
-                .instance()
-                .create_surface_unsafe(SurfaceSource::CoreAnimationLayer(layer).into_unsafe())
-        }
-        .map_err(GpuError::Surface)?;
+        let source = SurfaceSource::CoreAnimationLayer(layer);
+        let surface = create_surface(context.instance(), &source)?;
         let config = surface_configuration(&surface, context.adapter(), width, height)?;
         surface.configure(context.device(), &config);
         Ok(Self {
-            source: SurfaceSource::CoreAnimationLayer(layer),
+            source,
             surface,
             config,
         })
@@ -152,13 +188,7 @@ impl SurfaceTarget {
             return Err(GpuError::InvalidFrameSize { width, height });
         }
         let source = SurfaceSource::Win32Window { hwnd, hinstance };
-        // SAFETY: the caller guarantees the window outlives the surface.
-        let surface = unsafe {
-            context
-                .instance()
-                .create_surface_unsafe(source.into_unsafe())
-        }
-        .map_err(GpuError::Surface)?;
+        let surface = create_surface(context.instance(), &source)?;
         let config = surface_configuration(&surface, context.adapter(), width, height)?;
         surface.configure(context.device(), &config);
         Ok(Self {
@@ -245,14 +275,7 @@ impl SurfaceTarget {
 
     /// Rebuild the wgpu surface when the swap chain reports it lost.
     fn recreate(&mut self, context: &GpuContext) -> Result<Option<wgpu::SurfaceTexture>, GpuError> {
-        // SAFETY: the host keeps the native handle alive for the target's
-        // lifetime.
-        let surface = unsafe {
-            context
-                .instance()
-                .create_surface_unsafe(self.source.into_unsafe())
-        }
-        .map_err(GpuError::Surface)?;
+        let surface = create_surface(context.instance(), &self.source)?;
         surface.configure(context.device(), &self.config);
         self.surface = surface;
         match self.surface.get_current_texture() {
@@ -270,6 +293,61 @@ impl SurfaceTarget {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+impl SurfaceTarget {
+    /// Create the browser GPU context and the canvas surface together.
+    ///
+    /// The adapter is requested with the surface attached: the WebGL2 backend
+    /// binds the adapter to the canvas context, so creating the surface after
+    /// the adapter is not equivalent. Unless `force_webgl2` is set, the
+    /// instance prefers WebGPU and falls back to WebGL2 when the browser does
+    /// not expose a working `navigator.gpu` adapter. The canvas is owned by
+    /// the surface, so unlike the native constructors this one is safe.
+    pub async fn create_web(
+        canvas: web_sys::HtmlCanvasElement,
+        width: u32,
+        height: u32,
+        force_webgl2: bool,
+    ) -> Result<(GpuContext, Self), GpuError> {
+        if width == 0 || height == 0 {
+            return Err(GpuError::InvalidFrameSize { width, height });
+        }
+        let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
+        let instance = if force_webgl2 {
+            descriptor.backends = wgpu::Backends::GL;
+            wgpu::Instance::new(descriptor)
+        } else {
+            wgpu::util::new_instance_with_webgpu_detection(descriptor).await
+        };
+        let source = SurfaceSource::Canvas(canvas);
+        let surface = create_surface(&instance, &source)?;
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                force_fallback_adapter: false,
+                compatible_surface: Some(&surface),
+                apply_limit_buckets: false,
+            })
+            .await
+            .map_err(GpuError::NoAdapter)?;
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor::default())
+            .await
+            .map_err(GpuError::NoDevice)?;
+        let config = surface_configuration(&surface, &adapter, width, height)?;
+        surface.configure(&device, &config);
+        let context = GpuContext::from_parts(instance, adapter, device, queue);
+        Ok((
+            context,
+            Self {
+                source,
+                surface,
+                config,
+            },
+        ))
+    }
+}
+
 impl std::fmt::Debug for SurfaceTarget {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -280,7 +358,12 @@ impl std::fmt::Debug for SurfaceTarget {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "windows",
+    target_arch = "wasm32"
+))]
 fn surface_configuration(
     surface: &wgpu::Surface<'_>,
     adapter: &wgpu::Adapter,

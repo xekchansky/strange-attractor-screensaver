@@ -8,9 +8,13 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[features]
+default = ["text"]
+text = ["attractor-gpu/text"]
+
 [dependencies]
 attractor-core = { path = "../attractor-core" }
-attractor-gpu = { path = "../attractor-gpu" }
+attractor-gpu = { path = "../attractor-gpu", default-features = false }
 attractor-view = { path = "../attractor-view" }
 
 [dev-dependencies]

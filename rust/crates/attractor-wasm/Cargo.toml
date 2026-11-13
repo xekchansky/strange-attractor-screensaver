@@ -1,6 +1,6 @@
 [package]
 name = "attractor-wasm"
-description = "WebAssembly glue for the GitHub Pages demo, added in I9."
+description = "WebAssembly glue for the GitHub Pages demo."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,4 +8,18 @@ repository.workspace = true
 authors.workspace = true
 publish = false
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
+attractor-core = { path = "../attractor-core" }
+attractor-gpu = { path = "../attractor-gpu", default-features = false }
+attractor-player = { path = "../attractor-player", default-features = false }
+serde_json = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+# The CLI that processes the bundle must match this crate exactly (ADR-3).
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }

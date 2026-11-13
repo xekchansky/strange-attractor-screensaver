@@ -17,6 +17,13 @@ xcuserdata/
 *.xcuserstate
 *.xcscmblueprint
 
+# Web demo build products and browser test output.
+web/pkg/
+web/node_modules/
+web/test-results/
+web/playwright-report/
+web/.playwright/
+
 # Release artifacts and diagnostics produced while capturing docs.
 dist/
 *.zip
@@ -26,3 +33,4 @@ default.profraw
 
 # macOS Finder noise.
 .DS_Store
+
