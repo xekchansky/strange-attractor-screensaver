@@ -10,14 +10,17 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I10 — Linux** (2026-11-14; CI green, run
-  43507189418, the Debian/Ubuntu X11 and Wayland pass pending)
-- Last completed change: **I10 — Linux** (2026-11-14)
-- Next iteration: **I11 — Android live wallpaper**
+- Last completed iteration: **I11 — Android live wallpaper** (2026-11-14;
+  `gradlew assembleDebug lint` green locally, CI run pending, the
+  emulator/phone pass pending)
+- Last completed change: **I11 — Android** (2026-11-14)
+- Next iteration: **I12 — distribution, docs and cleanup**
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
   scheduled with the reviewer after I8 (design §6).
 - Linux manual checklist: `shells/linux/README.md`, scheduled with the
   reviewer after I10 (design §6).
+- Android manual checklist: `shells/android/README.md`, scheduled with the
+  reviewer after I11 (design §6).
 - Pre-migration visual reference: **`ef3d61b`**, the last commit whose
   `.saver` still rendered through SceneKit. The Rust host must match it
   side by side (manual checklist below).
@@ -91,6 +94,27 @@ xscreensaver `-root` mode and the fullscreen runner for 30 frames each under
 Xvfb, and captures a PNG through `attractor-cli`. Native Wayland has no CI
 runner and stays on the manual checklist.
 
+The Android shell is cross-checked from the macOS host against the Android
+target's standard library, and its APK builds with the SDK and JDK 17:
+
+```bash
+cd rust
+cargo clippy -p attractor-ffi -p attractor-gpu \
+  --target aarch64-linux-android --all-targets -- -D warnings
+
+cd shells/android
+rustup target add aarch64-linux-android x86_64-linux-android
+cargo install --locked cargo-ndk        # once; needs the NDK
+./build-native.sh                       # jniLibs for the APK
+./gradlew assembleDebug lint
+```
+
+The JNI names are compared with the Kotlin declarations on the host by
+`cargo test -p attractor-ffi`, so a typo fails the ordinary workspace run
+instead of waiting for a device. The native library cannot be built without
+the NDK; CI installs one and builds the libraries before Gradle, so the APK
+artifact there is complete.
+
 The web demo builds its wasm bundle and runs the browser suite:
 
 ```bash
@@ -142,7 +166,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   Chrome/Safari/Firefox pass pending)
 - [x] I10 — Linux (done; CI green, run 43507189418; manual: Debian/Ubuntu
   X11 and Wayland checklist in `shells/linux/README.md`)
-- [ ] I11 — Android live wallpaper
+- [x] I11 — Android live wallpaper (done; local `assembleDebug` + lint green,
+  CI run pending; manual: emulator/phone checklist in `shells/android/README.md`)
 - [ ] I12 — distribution, docs and cleanup
 
 ## Swift oracle
@@ -783,6 +808,46 @@ enough.
   (`SelfTestBackend`, `SelfTestError`, `SelfTestReport`, the `input`
   module); every crate is `publish = false` and nothing referenced the old
   paths, so this is drift rather than breakage.
+- **I11**: the Android live wallpaper exists under `rust/shells/android/`
+  (Kotlin `WallpaperService`, picker activity, preferences, Gradle project)
+  and its JNI bridge lives in `attractor-ffi`. The engine gives every visible
+  surface one rendering thread; the thread calls `NativeBridge.create` with
+  the `Surface`, draws at 60 Hz, applies size changes and destroys the player
+  before the surface goes away. The bridge owns six entry points (`create`,
+  `render`, `resize`, `destroy`, `lastError`, `catalog`); `tests/android_bridge.rs`
+  reads the Kotlin file and the Rust module and fails when the two name lists
+  drift, and the platform-neutral half (`android_support`: catalog JSON, the
+  id→settings rule, the frame interval, the seed rule) has host unit tests.
+- **I11 surface**: `attractor-gpu` gained `SurfaceTarget::create_android`,
+  which creates the instance, surface, adapter, device and swap chain in one
+  call — like the browser bootstrap, because the GLES backend binds the
+  adapter to the window. The Kotlin side passes `ANativeWindow_fromSurface`,
+  so there is no EGL code in the shell (ADR-2). The device asks for
+  `adapter.limits()` (a GLES adapter reports smaller limits than the desktop
+  defaults), and a GL backend renders single-sample, because GLES cannot
+  resolve multisampled targets on every driver.
+- **I11 rulings**: the JNI bridge stays in `attractor-ffi`, which the design
+  already names as its home, rather than in a new crate. The settings are
+  `SharedPreferences` with the same `attractor` key and the same
+  "empty means random" rule as the desktop files; an unknown id falls back to
+  a random attractor. A change applies when the wallpaper engine restarts
+  (re-apply or lock/unlock), which avoids adding a broadcast path into a
+  running engine this iteration. minSdk is 26, targetSdk and
+  compileSdk are 35, and the build produces `arm64-v8a` and `x86_64`.
+- **I11 verification (local)**: fmt, workspace clippy and `cargo test
+  --workspace` are green on macOS; `cargo clippy -p attractor-ffi
+  -p attractor-gpu --target aarch64-linux-android --all-targets` is green;
+  `gradle assembleDebug lint` built an 805 KB debug APK and lint reported
+  "No issues found." The APK in that local run has no `jniLibs`, because the
+  NDK is not installed in the agent sandbox; CI installs it, builds the
+  libraries first and uploads a complete APK. The emulator/phone pass is the
+  remaining gate.
+- **I11 deferred**: release signing, versioning and Play/F-Droid packaging
+  belong to I12; the picker does not push a new choice into a running engine;
+  there is no on-device self-test mode (the shared player's self-test is
+  exercised by the desktop shells, and Android is covered by the build and
+  the manual pass). The wallpaper targets the live-wallpaper idiom, so the
+  formula overlay is drawn by the engine exactly as on the desktops.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell

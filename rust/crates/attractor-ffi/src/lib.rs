@@ -27,6 +27,12 @@ use attractor_core::{RandomizerError, SplitMix64, randomizer};
 use attractor_gpu::{GpuContext, GpuError, SurfaceTarget};
 use attractor_player::{Player, PlayerError, PlayerOptions, RestartOutcome, TickEvent};
 
+pub mod android_support;
+
+/// The JNI entry points the Android wallpaper calls.
+#[cfg(target_os = "android")]
+mod android;
+
 /// The call succeeded.
 pub const ATTRACTOR_PLAYER_OK: i32 = 0;
 /// A degenerate run was replaced with a fresh selection.

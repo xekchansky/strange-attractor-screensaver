@@ -634,11 +634,21 @@ PNG through the shared CLI. Native Wayland stays a manual check.
 
 ### I11 — Android live wallpaper (M/L)
 
-**Deliverables:** Kotlin `WallpaperService` + EGL surface, JNI bridge to the
-player, attractor picker activity, preferences, `.apk`.
+**Deliverables:** Kotlin `WallpaperService` (surface lifecycle and a 60 Hz
+rendering thread), JNI bridge to the player in `attractor-ffi`, attractor
+picker activity, preferences, `.apk`. The wallpaper hands the player an
+`ANativeWindow` through `ANativeWindow_fromSurface`; wgpu's GLES or Vulkan
+backend creates the swap chain from it (ADR-2), so the Kotlin side owns no
+EGL code.
 
-**Tests:** Rust bridge tests; `gradle assembleDebug` + lint in CI; manual
-check on the emulator and, at the milestone, on the friend's phone.
+**Tests:** Rust bridge tests (catalog JSON, the id→settings rule, the frame
+interval, JNI/Kotlin name drift); the NDK build, `gradlew assembleDebug` and
+lint in CI; manual check on the emulator and, at the milestone, on the
+friend's phone.
+
+**Decisions:** minSdk 26 (the GLES 3.0 floor), targetSdk/compileSdk 35, ABIs
+`arm64-v8a` and `x86_64`. The choice lives in `SharedPreferences` under the
+same `attractor` key as the desktop settings files.
 
 ### I12 — Distribution, docs and cleanup (M)
 
