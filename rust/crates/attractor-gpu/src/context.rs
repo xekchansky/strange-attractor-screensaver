@@ -117,8 +117,9 @@ impl GpuContext {
 
     /// Whether the backend can resolve a multisampled render target.
     ///
-    /// WebGL2 has no multisampled textures, so the browser fallback draws the
-    /// same pipelines with a sample count of one.
+    /// WebGL2 has no multisampled textures and GLES does not resolve them on
+    /// every driver, so the GL-backed shells draw the same pipelines with a
+    /// sample count of one.
     pub fn supports_multisampling(&self) -> bool {
         self.info.backend != wgpu::Backend::Gl
     }

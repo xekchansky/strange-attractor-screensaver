@@ -252,3 +252,64 @@ jobs:
             web/playwright-report/
             web/test-results/
           retention-days: 7
+
+  android:
+    name: Android wallpaper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the Android SDK
+        uses: android-actions/setup-android@v3
+
+      # The NDK is what cross-links the Rust player into the shared library the
+      # wallpaper loads; platform and build-tools match `app/build.gradle.kts`.
+      - name: Install the NDK and the build tools
+        run: |
+          sdkmanager --install \
+            "ndk;27.2.12479018" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+          components: clippy
+
+      - name: Install cargo-ndk
+        run: cargo install --locked cargo-ndk
+
+      # The JNI bridge and the Android surface only compile for this target.
+      - name: Lint the Android target
+        working-directory: rust
+        run: >-
+          cargo clippy -p attractor-ffi -p attractor-gpu
+          --target aarch64-linux-android --all-targets -- -D warnings
+
+      - name: Build the native libraries
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/27.2.12479018"
+          ./rust/shells/android/build-native.sh
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      - name: Build and lint the APK
+        working-directory: rust/shells/android
+        run: ./gradlew assembleDebug lint
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: rust/shells/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7

@@ -5,7 +5,7 @@
 //! wraps either handle in a swap chain, so the frame is presented straight to
 //! the screen instead of being read back. The Apple and Windows constructors
 //! share one type, so every shell presents through the same code; I10 adds the
-//! X11 and Wayland handles.
+//! X11 and Wayland handles, I11 the Android wallpaper window.
 
 use crate::context::{GpuContext, GpuError};
 
@@ -57,6 +57,9 @@ enum SurfaceSource {
         /// The display the window belongs to; the Vulkan backend needs it.
         display: Option<wgpu::rwh::RawDisplayHandle>,
     },
+    /// The `ANativeWindow` behind the wallpaper's `Surface`.
+    #[cfg(target_os = "android")]
+    AndroidWindow(*mut std::ffi::c_void),
     /// The `<canvas>` the browser surface was created from.
     #[cfg(target_arch = "wasm32")]
     Canvas(web_sys::HtmlCanvasElement),
@@ -80,6 +83,8 @@ impl SurfaceSource {
                 raw_window_handle: window,
                 raw_display_handle: display,
             },
+            #[cfg(target_os = "android")]
+            Self::AndroidWindow(window) => android_target(window),
         }
     }
 }
@@ -97,6 +102,7 @@ impl SurfaceSource {
         target_os = "ios",
         target_os = "windows",
         target_os = "linux",
+        target_os = "android",
         target_arch = "wasm32"
     )),
     allow(unreachable_code)
@@ -135,6 +141,24 @@ fn win32_target(
     wgpu::SurfaceTargetUnsafe::RawHandle {
         raw_display_handle: Some(RawDisplayHandle::Windows(WindowsDisplayHandle::new())),
         raw_window_handle: RawWindowHandle::Win32(window),
+    }
+}
+
+/// Wrap an Android native window in wgpu's raw-handle target.
+///
+/// The window comes from `ANativeWindow_fromSurface`; the constructor checks
+/// it is not null before calling.
+#[cfg(target_os = "android")]
+fn android_target(window: *mut std::ffi::c_void) -> wgpu::SurfaceTargetUnsafe {
+    use wgpu::rwh::{
+        AndroidDisplayHandle, AndroidNdkWindowHandle, RawDisplayHandle, RawWindowHandle,
+    };
+
+    // SAFETY: the caller of the public constructor guarantees a live window.
+    let window = std::ptr::NonNull::new(window).expect("the native window is non-null");
+    wgpu::SurfaceTargetUnsafe::RawHandle {
+        raw_display_handle: Some(RawDisplayHandle::Android(AndroidDisplayHandle::new())),
+        raw_window_handle: RawWindowHandle::AndroidNdk(AndroidNdkWindowHandle::new(window)),
     }
 }
 
@@ -246,6 +270,62 @@ impl SurfaceTarget {
             surface,
             config,
         })
+    }
+
+    /// Create the GPU context and the swap chain over the `ANativeWindow`
+    /// behind an Android wallpaper surface.
+    ///
+    /// The surface must exist before the adapter is requested: the GLES
+    /// backend binds its adapter to the window, and a second adapter would not
+    /// be able to present into it. This is why the constructor returns both
+    /// halves, like the browser bootstrap does.
+    ///
+    /// The device asks for `adapter.limits()` rather than the desktop
+    /// defaults, because a GLES adapter reports smaller limits than the
+    /// defaults request.
+    ///
+    /// # Safety
+    ///
+    /// `window` must be a live `ANativeWindow` reference that outlives the
+    /// returned target; release it only after the target is dropped.
+    #[cfg(target_os = "android")]
+    pub unsafe fn create_android(
+        window: *mut std::ffi::c_void,
+        width: u32,
+        height: u32,
+    ) -> Result<(GpuContext, Self), GpuError> {
+        if window.is_null() {
+            return Err(GpuError::InvalidWindowHandle);
+        }
+        if width == 0 || height == 0 {
+            return Err(GpuError::InvalidFrameSize { width, height });
+        }
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let source = SurfaceSource::AndroidWindow(window);
+        let surface = create_surface(&instance, &source)?;
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::HighPerformance,
+            force_fallback_adapter: false,
+            compatible_surface: Some(&surface),
+            apply_limit_buckets: false,
+        }))
+        .map_err(GpuError::NoAdapter)?;
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            required_limits: adapter.limits(),
+            ..Default::default()
+        }))
+        .map_err(GpuError::NoDevice)?;
+        let config = surface_configuration(&surface, &adapter, width, height)?;
+        surface.configure(&device, &config);
+        let context = GpuContext::from_parts(instance, adapter, device, queue);
+        Ok((
+            context,
+            Self {
+                source,
+                surface,
+                config,
+            },
+        ))
     }
 
     /// The swap chain format the renderer builds its pipelines for.
@@ -420,6 +500,7 @@ impl std::fmt::Debug for SurfaceTarget {
     target_os = "ios",
     target_os = "windows",
     target_os = "linux",
+    target_os = "android",
     target_arch = "wasm32"
 ))]
 fn surface_configuration(
