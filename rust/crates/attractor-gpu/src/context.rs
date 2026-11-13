@@ -16,6 +16,17 @@ pub struct GpuContext {
     info: wgpu::AdapterInfo,
 }
 
+/// Request options of the headless native constructor.
+#[cfg(not(target_arch = "wasm32"))]
+const ADAPTER_OPTIONS: wgpu::RequestAdapterOptions<'static, 'static> =
+    wgpu::RequestAdapterOptions {
+        power_preference: wgpu::PowerPreference::HighPerformance,
+        force_fallback_adapter: false,
+        compatible_surface: None,
+        apply_limit_buckets: false,
+    };
+
+#[cfg(not(target_arch = "wasm32"))]
 impl GpuContext {
     /// Create a context on the best available native GPU backend.
     pub fn new() -> Result<Self, GpuError> {
@@ -35,13 +46,28 @@ impl GpuContext {
 
     fn from_instance_descriptor(descriptor: wgpu::InstanceDescriptor) -> Result<Self, GpuError> {
         let instance = wgpu::Instance::new(descriptor);
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            force_fallback_adapter: false,
-            compatible_surface: None,
-            apply_limit_buckets: false,
-        }))
-        .map_err(GpuError::NoAdapter)?;
+        let adapter = pollster::block_on(instance.request_adapter(&ADAPTER_OPTIONS))
+            .map_err(GpuError::NoAdapter)?;
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
+                .map_err(GpuError::NoDevice)?;
+        Ok(Self::from_parts(instance, adapter, device, queue))
+    }
+}
+
+impl GpuContext {
+    /// Assemble a context from an instance whose device has already been
+    /// requested.
+    ///
+    /// The browser bootstrap owns that sequence because the canvas surface
+    /// must exist before the adapter is requested; every constructor funnels
+    /// its result through here.
+    pub(crate) fn from_parts(
+        instance: wgpu::Instance,
+        adapter: wgpu::Adapter,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+    ) -> Self {
         let info = adapter.get_info();
         log::info!(
             "gpu adapter: {} ({:?}, {:?})",
@@ -49,18 +75,17 @@ impl GpuContext {
             info.backend,
             info.device_type
         );
-        let (device, queue) =
-            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
-                .map_err(GpuError::NoDevice)?;
-        Ok(Self {
+        Self {
             instance,
             adapter,
             device,
             queue,
             info,
-        })
+        }
     }
+}
 
+impl GpuContext {
     /// The instance every surface is created from.
     pub fn instance(&self) -> &wgpu::Instance {
         &self.instance
@@ -74,6 +99,28 @@ impl GpuContext {
     /// Description of the adapter in use.
     pub fn adapter_info(&self) -> &wgpu::AdapterInfo {
         &self.info
+    }
+
+    /// Short, stable name of the active backend (`webgpu`, `webgl2`, …).
+    ///
+    /// The web demo reports it so a browser test can assert which path ran.
+    pub fn backend_label(&self) -> &'static str {
+        match self.info.backend {
+            wgpu::Backend::Metal => "metal",
+            wgpu::Backend::Vulkan => "vulkan",
+            wgpu::Backend::Dx12 => "dx12",
+            wgpu::Backend::Gl => "webgl2",
+            wgpu::Backend::BrowserWebGpu => "webgpu",
+            wgpu::Backend::Noop => "noop",
+        }
+    }
+
+    /// Whether the backend can resolve a multisampled render target.
+    ///
+    /// WebGL2 has no multisampled textures, so the browser fallback draws the
+    /// same pipelines with a sample count of one.
+    pub fn supports_multisampling(&self) -> bool {
+        self.info.backend != wgpu::Backend::Gl
     }
 
     /// The logical device.

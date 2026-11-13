@@ -352,7 +352,7 @@ impl FrameRenderer {
         target: &wgpu::TextureView,
         geometry: &TrailGeometry,
         view_projection: &Mat4,
-        overlay: Option<&str>,
+        #[cfg_attr(not(feature = "text"), allow(unused_variables))] overlay: Option<&str>,
     ) -> Result<(), GpuError> {
         let device = context.device();
         let queue = context.queue();

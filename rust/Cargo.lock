@@ -140,6 +140,7 @@ dependencies = [
  "naga",
  "png",
  "pollster",
+ "web-sys",
  "wgpu",
 ]
 
@@ -166,6 +167,16 @@ dependencies = [
 [[package]]
 name = "attractor-wasm"
 version = "0.0.0"
+dependencies = [
+ "attractor-core",
+ "attractor-gpu",
+ "attractor-player",
+ "console_error_panic_hook",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
 
 [[package]]
 name = "attractor-windows-saver"
@@ -271,6 +282,16 @@ name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
+
+[[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen",
+]
 
 [[package]]
 name = "core_maths"
@@ -1577,6 +1598,7 @@ dependencies = [
  "thiserror",
  "wgpu-core-deps-apple",
  "wgpu-core-deps-emscripten",
+ "wgpu-core-deps-wasm",
  "wgpu-core-deps-windows-linux-android",
  "wgpu-hal",
  "wgpu-naga-bridge",
@@ -1597,6 +1619,15 @@ name = "wgpu-core-deps-emscripten"
 version = "30.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d98b86cf4abf524a902dd35f18ca6a3f08fc2ae9847c8f10b48e30491b1f0b86"
+dependencies = [
+ "wgpu-hal",
+]
+
+[[package]]
+name = "wgpu-core-deps-wasm"
+version = "30.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b20f43aeb9962d05e61e3ccb717e2e27ba1b04e979d4ca7e361384f8ee03db56"
 dependencies = [
  "wgpu-hal",
 ]

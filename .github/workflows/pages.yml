@@ -1,0 +1,71 @@
+name: Pages
+
+on:
+  # The demo publishes from the shippable branch. Until `rust-port` merges,
+  # Pages is not enabled and a deploy would only turn every push red; a manual
+  # dispatch can publish it earlier once the repository setting is switched on.
+  push:
+    branches: [main]
+    paths:
+      - "rust/**"
+      - "web/**"
+      # The Rust catalog embeds this file with include_str!.
+      - "Core/Sources/AttractorCore/Resources/attractors.json"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# GitHub Pages must be configured to deploy from GitHub Actions in the
+# repository settings; the workflow cannot enable it itself.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy the demo
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.130
+
+      - name: Install wasm-opt
+        run: sudo apt-get update && sudo apt-get install -y binaryen
+
+      - name: Build the bundle
+        run: ./web/build.sh
+
+      # Serve only what the page needs: the test suite and configs stay out of
+      # the published artifact.
+      - name: Stage the site
+        run: |
+          mkdir -p _site
+          cp -r web/index.html web/styles.css web/app.js web/pkg _site/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

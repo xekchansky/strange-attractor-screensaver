@@ -532,6 +532,50 @@ asserts the canvas is non-blank and the console is clean.
 
 **Verify:** CI green; URL live on Pages; manual check in Chrome/Safari/Firefox.
 
+**Implementation notes (I9).**
+- The crate splits in two halves. `attractor-wasm`'s native modules
+  (`options`, `selection`, `catalog_view`) are plain Rust and unit-tested on
+  every platform; the `web` module builds only for `wasm32` and owns the
+  canvas surface, the player and the page-facing API. JavaScript keeps the
+  `requestAnimationFrame` loop and the DOM overlay, as in the I0.5 spike.
+- The page's whole state lives in the URL: `?attractor=<id>&seed=<u64>` and
+  `?backend=webgl2`. Parsing is tolerant — a malformed seed or backend and
+  unknown keys are ignored, an empty or unknown attractor means "random" —
+  because a bad link must never stop the demo. A named attractor samples its
+  parameters and hyperparameters from the declared ranges with the seed; the
+  midpoint debug configuration is unusable here, since several attractors are
+  degenerate at their midpoints.
+- On load the page invents a seed when the link has none and writes it into
+  the address bar, so the frame on screen is reproducible by copying the URL.
+- `SurfaceTarget::create_web` creates the instance, the canvas surface, the
+  adapter, the device and the configured swap chain in that order. The
+  adapter is requested with `compatible_surface: Some(&surface)`: the WebGL2
+  backend binds the adapter to the canvas context, which is the order the
+  I0.5 spike verified. `pollster` moved to a non-wasm dependency and wgpu's
+  `webgl` feature is wasm-only.
+- `attractor-player` gained a `text` feature forwarding to
+  `attractor-gpu/text`; the wasm crate disables it, so glyphon is not in the
+  browser bundle and the overlay is DOM text (D8). The demo uses
+  `sample_count = 1` when the adapter reports the GL backend, because WebGL2
+  cannot resolve multisampled targets.
+- **Ruling (backend test).** ADR-1 requires the Playwright suite to assert
+  the backend and to exercise WebGL2. One test forces `?backend=webgl2` and
+  asserts `webgl2`; the default-URL test accepts either `webgpu` or
+  `webgl2`, because a headless CI runner may have no working WebGPU adapter.
+  Requiring WebGPU on CI would fail for an environmental reason, not a
+  product one.
+- **Ruling (wasm-opt and Pages).** `web/build.sh` runs `wasm-opt -Oz` when
+  the binary exists and keeps the unoptimized bundle (with a warning) if the
+  pass fails, since an installed binaryen may not know every feature the
+  module declares; CI installs binaryen so the size pass normally runs, while
+  a developer without it still gets a working bundle. The Pages workflow
+  publishes only the four page assets; enabling Pages with the "GitHub
+  Actions" source is a repository setting, so the URL stays pending until the
+  owner flips it. The workflow triggers on `main` only (plus
+  `workflow_dispatch`): deploying from `rust-port` would fail on every push
+  until that setting exists and turn the working branch red for an
+  environmental reason.
+
 ### I10 — Linux (M)
 
 **Deliverables:** xscreensaver hack binary (`-root`, `-window-id`),
