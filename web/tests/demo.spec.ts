@@ -9,19 +9,54 @@ interface DemoState {
   attractorId: string;
   attractorName: string;
   seed: string;
+  stage: string;
+  error: string;
 }
 
 function demoState(page: Page) {
   return page.evaluate(() => (window as unknown as { __attractorDemo: DemoState }).__attractorDemo);
 }
 
-async function waitForFrames(page: Page, minimum = 10) {
-  await page.waitForFunction(
-    (count) =>
-      (window as unknown as { __attractorDemo?: DemoState }).__attractorDemo?.frames >= count,
-    minimum,
-    { timeout: 30_000 },
-  );
+/** What the browser can actually give the demo, for a failure message. */
+function probeEnvironment(page: Page) {
+  return page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("webgl2");
+    return {
+      webgl2: context !== null,
+      webgl2Renderer: context?.getParameter(context.VERSION) ?? "",
+      webgpu: "gpu" in navigator,
+    };
+  });
+}
+
+/**
+ * Wait for the frame loop to advance.
+ *
+ * A bare timeout would not say whether the browser lacks WebGL2, the demo
+ * failed to start or the first frame raised, so a failure reports the page
+ * state, the environment and the errors collected so far.
+ */
+async function waitForFrames(page: Page, errors: string[], minimum = 10) {
+  try {
+    await page.waitForFunction(
+      (count) =>
+        (window as unknown as { __attractorDemo?: DemoState }).__attractorDemo?.frames >= count,
+      minimum,
+      { timeout: 30_000 },
+    );
+  } catch {
+    const state = await demoState(page).catch(() => null);
+    const environment = await probeEnvironment(page).catch(() => null);
+    throw new Error(
+      [
+        `the demo did not reach ${minimum} frames`,
+        `state: ${JSON.stringify(state)}`,
+        `environment: ${JSON.stringify(environment)}`,
+        `page errors: ${errors.length > 0 ? errors.join(" | ") : "(none)"}`,
+      ].join("\n"),
+    );
+  }
 }
 
 /** Count pixels that are not the black background. */
@@ -67,7 +102,7 @@ function collectErrors(page: Page): string[] {
 test("the forced WebGL2 fallback renders an animated, non-blank canvas", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto("/index.html?backend=webgl2&attractor=lorenz&seed=42");
-  await waitForFrames(page);
+  await waitForFrames(page, errors);
 
   const state = await demoState(page);
   expect(state.backend).toBe("webgl2");
@@ -90,9 +125,12 @@ test("the forced WebGL2 fallback renders an animated, non-blank canvas", async (
 test("the automatic backend renders through WebGPU or WebGL2", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto("/index.html?seed=7");
-  await waitForFrames(page);
+  await waitForFrames(page, errors);
 
   const state = await demoState(page);
+  // Which backend the runner picked is the first thing to read when this job
+  // goes red, and the successful run is the only place it is recorded.
+  console.log(`automatic backend: ${state.backend} (${state.adapter})`);
   expect(["webgpu", "webgl2"]).toContain(state.backend);
   expect(state.attractorId.length).toBeGreaterThan(0);
 

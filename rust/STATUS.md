@@ -646,6 +646,17 @@ enough.
   Chromium aborts with `bootstrap_check_in … Permission denied (1100)` because
   Seatbelt denies the Mach-port rendezvous. CI is the first real browser run;
   the manual Chrome/Safari/Firefox checklist remains with the reviewer.
+- **I9 first browser run (CI 43500194026, `7dd7096`)**: `rust`, `windows` and
+  the bundle build are green; the forced-WebGL2 test failed at
+  `waitForFrames` with a bare 30 s timeout, and the automatic-backend test
+  passed, so the page, the bundle and the frame loop work in headless
+  Chromium. A timeout alone cannot tell "the runner has no WebGL2" from "the
+  adapter refused the canvas" from "the first frame raised", so `app.js` now
+  publishes `stage` (`module` → `wasm-ready` → `starting` → `running` →
+  `failed`) and `error` on `window.__attractorDemo`, and the failure message
+  carries that state, a `webgl2`/`webgpu` probe of the page and the collected
+  console errors. The successful automatic-backend test also prints the
+  backend it picked, because that fact exists only in a green run.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
