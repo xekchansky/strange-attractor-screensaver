@@ -295,7 +295,9 @@ jobs:
 
       - name: Build the native libraries
         run: |
-          export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/27.2.12479018"
+          # setup-android always exports ANDROID_HOME; ANDROID_SDK_ROOT is the
+          # deprecated alias and is only a fallback.
+          export ANDROID_NDK_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/ndk/27.2.12479018"
           ./rust/shells/android/build-native.sh
 
       - name: Set up Gradle
