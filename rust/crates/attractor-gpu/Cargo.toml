@@ -1,0 +1,32 @@
+[package]
+name = "attractor-gpu"
+description = "wgpu device, pipeline and ribbon and text rendering."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[features]
+default = ["text"]
+text = ["dep:glyphon"]
+
+[dependencies]
+attractor-view = { path = "../attractor-view" }
+bytemuck = { version = "1", features = ["derive"] }
+glyphon = { version = "0.12", optional = true }
+log = "0.4"
+png = "0.18"
+wgpu = { version = "30", features = ["noop"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
+wgpu = { version = "30", features = ["webgl"] }
+
+[dev-dependencies]
+attractor-core = { path = "../attractor-core" }
+naga = { version = "30", features = ["wgsl-in"] }

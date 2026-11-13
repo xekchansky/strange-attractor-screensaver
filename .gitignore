@@ -5,17 +5,19 @@
 .claude/
 .serena/project.local.yml
 
-# Swift Package Manager build products.
-.build/
-.staging/
-.swiftpm/
-
 # Xcode build products and per-user state.
 DerivedData/
 build/
 xcuserdata/
 *.xcuserstate
 *.xcscmblueprint
+
+# Web demo build products and browser test output.
+web/pkg/
+web/node_modules/
+web/test-results/
+web/playwright-report/
+web/.playwright/
 
 # Release artifacts and diagnostics produced while capturing docs.
 dist/
@@ -26,3 +28,4 @@ default.profraw
 
 # macOS Finder noise.
 .DS_Store
+

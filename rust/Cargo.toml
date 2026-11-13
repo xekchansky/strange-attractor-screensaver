@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+exclude = [".toolchain"]
+members = [
+    "crates/attractor-core",
+    "crates/attractor-view",
+    "crates/attractor-gpu",
+    "crates/attractor-player",
+    "crates/attractor-ffi",
+    "crates/attractor-cli",
+    "crates/attractor-wasm",
+    "crates/attractor-shell",
+    "crates/attractor-linux-saver",
+    "crates/attractor-windows-saver",
+]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/xekchansky/strange-attractor-screensaver"
+authors = ["Khakayu Alexandr"]

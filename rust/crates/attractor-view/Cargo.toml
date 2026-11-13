@@ -1,0 +1,16 @@
+[package]
+name = "attractor-view"
+description = "GPU-free camera math, trail geometry, color ramps and overlay model."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+attractor-core = { path = "../attractor-core" }
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

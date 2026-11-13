@@ -1,0 +1,22 @@
+[package]
+name = "attractor-player"
+description = "Orchestration of engine, view and GPU surface: tick, render, resize and restart."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[features]
+default = ["text"]
+text = ["attractor-gpu/text"]
+
+[dependencies]
+attractor-core = { path = "../attractor-core" }
+attractor-gpu = { path = "../attractor-gpu", default-features = false }
+attractor-view = { path = "../attractor-view" }
+
+[dev-dependencies]
+attractor-cli = { path = "../attractor-cli" }
+png = "0.18"
