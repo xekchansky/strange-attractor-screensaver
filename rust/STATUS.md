@@ -956,7 +956,9 @@ plain `git checkout` of the tag is enough.
   the universal `.saver`, and `.github/workflows/release.yml` builds the
   macOS, Windows, Linux and Android artifacts with one `SHA256SUMS` file.
   `scripts/package_release.sh` accepts `ARCHS`, `scripts/package_linux.sh` is
-  new, and the workspace and Android versions are 1.0.0.
+  new, and the workspace, macOS bundle and Android versions are 2.0.0: the
+  Swift-era release already owned the `v1.0.0` tag, so the cross-platform
+  release takes the next major version.
 - **I12 rulings**: the catalog is canonical at `data/`; the Swift oracle lives
   only in the tag; Windows ships unsigned with the SmartScreen note; Linux
   ships a tarball; Android ships the debug-signed APK (release signing needs a
