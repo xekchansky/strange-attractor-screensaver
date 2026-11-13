@@ -752,6 +752,37 @@ enough.
   window. The runner creates one fullscreen window per monitor; a Wayland
   compositor that rejects several fullscreen surfaces falls back to whatever
   winit maps, and the manual pass records how each compositor behaves.
+- **I10 review (`be48758`)**: an independent read-only review found no
+  Critical or Important defects; the raw-handle constructor, the shared
+  crate move and the CI job were all accepted as correct. Seven Minor
+  findings are deferred; none blocks use:
+  1. `-root` key exit: an override-redirect window is never focused, so on
+     a desktop that sets focus explicitly a key press without pointer
+     motion does not quit. Under xscreensaver the daemon handles input, and
+     a click or pointer motion still ends the session, so only the README's
+     "any key" wording overstates the standalone case. A keyboard grab
+     would make it literal; it is a behavioural change that needs the
+     manual pass.
+  2. Xlib installs no error handler, so after a clean `DestroyNotify` the
+     `XUndefineCursor` on xscreensaver's already destroyed preview window
+     reaches the default handler: the saver exits 1 with an X-error trace.
+  3. `XSelectInput` runs after GPU and pipeline creation, so input arriving
+     during those seconds is lost.
+  4. `ScaleFactorChanged` reconfigures with the stale `inner_size()`; the
+     following `Resized` event corrects it a frame later.
+  5. A surface that stays lost is retried silently at 60 Hz instead of
+     ending the session (a black screen, like a blanked saver).
+  6. Unknown dash flags are a usage error (exit 2, a black hack under
+     xscreensaver); `-foreground`/`-background` are the flags a future
+     xscreensaver is most likely to pass, and ignoring unknown ones would
+     be more robust for an embedded hack.
+  7. With `-window-id` on a non-default X screen the display handle names
+     the default screen of `$DISPLAY` (unreachable on today's
+     single-screen setups).
+  The shared-crate move also shrank `attractor-windows-saver`'s re-exports
+  (`SelfTestBackend`, `SelfTestError`, `SelfTestReport`, the `input`
+  module); every crate is `publish = false` and nothing referenced the old
+  paths, so this is drift rather than breakage.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
