@@ -10,8 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I10 — Linux** (2026-11-14; local checks green,
-  CI run pending, the Debian/Ubuntu X11 and Wayland pass pending)
+- Last completed iteration: **I10 — Linux** (2026-11-14; CI green, run
+  43507189418, the Debian/Ubuntu X11 and Wayland pass pending)
 - Last completed change: **I10 — Linux** (2026-11-14)
 - Next iteration: **I11 — Android live wallpaper**
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
@@ -140,8 +140,8 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   README)
 - [x] I9 — web demo on GitHub Pages (done; manual: Pages enablement and the
   Chrome/Safari/Firefox pass pending)
-- [x] I10 — Linux (done; CI run pending, manual: Debian/Ubuntu X11 and
-  Wayland checklist in `shells/linux/README.md`)
+- [x] I10 — Linux (done; CI green, run 43507189418; manual: Debian/Ubuntu
+  X11 and Wayland checklist in `shells/linux/README.md`)
 - [ ] I11 — Android live wallpaper
 - [ ] I12 — distribution, docs and cleanup
 
@@ -735,6 +735,16 @@ enough.
   winit presentation paths; the job fails rather than skipping when no
   adapter is found. Native Wayland and xscreensaver's `-window-id` preview
   remain on the manual checklist.
+- **I10 CI green (43507189418, `be48758`)**: all seven jobs passed on the
+  first run. The `linux` job rendered the adapter self-test through
+  `llvmpipe (LLVM 21.1.8, 256 bits)`, backend Vulkan, 6 763 lit pixels at
+  640x480; the xscreensaver `-root` mode and the winit `--fullscreen` runner
+  each presented 30 frames under Xvfb; the CLI captured a 327 996-byte PNG
+  through the same software renderer (artifact `linux-screenshot`), and the
+  downloaded artifact shows the Lorenz attractor and its overlay rather than
+  an empty frame. The
+  ubuntu `rust` job also ran the new `attractor-gpu` raw-handle test, and the
+  `windows` job stayed green after the shared-crate move.
 - **I10 deferred**: no settings UI on Linux (hand-edited JSON); the
   `.desktop` file is not installed system-wide by the build; packaging
   (tarball/AUR/deb) belongs to I12; `-window-id` is covered by the manual
