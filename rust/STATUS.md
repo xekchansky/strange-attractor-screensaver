@@ -548,8 +548,9 @@ enough.
   (including the D3D12 surface code), the crate's tests, then both self-test
   modes. The ubuntu `rust` job is unchanged. Locally the Win32 code was
   verified with the same clippy command against `x86_64-pc-windows-gnu` and
-  the shell was exercised through `--self-test`; the first real Windows run is
-  the CI job.
+  the shell was exercised through `--self-test`; the first real Windows run was
+  CI run **43316581080** (push of `195d475`, 2026-11-12T22:05Z), which completed
+  successfully in 6m36s with the `windows` job green.
 - **I8 deferred**: the settings window exposes only the attractor choice;
   signing, an installer and the `.scr` packaging step belong to I12, and the
   crate README documents the build-and-rename recipe and SmartScreen note. A
