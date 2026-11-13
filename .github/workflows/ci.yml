@@ -265,14 +265,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Install the Android SDK
-        uses: android-actions/setup-android@v3
-
+      # The ubuntu runner image already ships the Android SDK and sets
+      # ANDROID_HOME. `android-actions/setup-android` is not used: it installs
+      # the legacy `tools` package, which the current SDK repository no longer
+      # publishes.
       # The NDK is what cross-links the Rust player into the shared library the
       # wallpaper loads; platform and build-tools match `app/build.gradle.kts`.
       - name: Install the NDK and the build tools
         run: |
-          sdkmanager --install \
+          sdkmanager_bin="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort | tail -1)/sdkmanager"
+          yes | "$sdkmanager_bin" --licenses > /dev/null || true
+          "$sdkmanager_bin" --install \
             "ndk;27.2.12479018" \
             "platforms;android-35" \
             "build-tools;35.0.0"
