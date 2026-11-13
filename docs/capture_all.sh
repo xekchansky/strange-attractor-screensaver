@@ -4,6 +4,9 @@
 # a normal logged-in terminal, not an SSH/background session.
 #
 # Usage: ./docs/capture_all.sh <binary-path> <output-dir>
+#
+# Build the binary first:  cargo build -p attractor-cli
+# Then:                    ./docs/capture_all.sh rust/target/debug/attractor-cli "$TMPDIR/captures"
 set -e
 BIN="${1:?Usage: capture_all.sh <binary-path> <output-dir>}"
 OUT="${2:?Usage: capture_all.sh <binary-path> <output-dir>}"
@@ -13,10 +16,20 @@ mkdir -p "$OUT/screenshots" "$OUT/aizawa-frames"
 # to re-capture only the failed set.
 ATTRACTORS=${ATTRACTORS:-lorenz rossler thomas chen aizawa lu chua sprott_a sprott_b sprott_c halvorsen moore_spiegel}
 
+# The seed pins the values a case does not spell out (unpinned parameters,
+# hyperparameters and the initial state), so the documentation baseline is
+# reproducible rather than a different picture every time.
+SEED=${SEED:-42}
+
 capture_args() {
   case "$1" in
     # The Sprott family's 2000–8000 default leaves the figure sparse here.
     sprott_*) echo "--trail-length 20000" ;;
+    # Random Aizawa sampling lands in near-periodic pockets at many seeds
+    # (42, 43 and 7 all fail the health check), so the documentation view pins
+    # the canonical chaotic parameters the hero recording uses.
+    aizawa)
+      echo "-p a=0.95 -p b=0.7 -p c=0.6 -p d=3.5 -p e=0.25 -p f=0.1 --step 0.002 --speed 0.7 --cam-azimuth 45 --cam-elevation 36 --cam-speed 0 --trail-color-speed 0" ;;
     # Pinned documentation views. Unpinned runs sample parameters and a random
     # camera azimuth on every launch, which makes a screenshot impossible to
     # reproduce and often lands on an unflattering side. Each set below was
@@ -68,21 +81,27 @@ capture_args() {
 }
 
 capture_with_retry() {
-  local log
+  local id="$1"
+  local log attempt seed
+  shift
   for attempt in 1 2 3 4 5; do
+    # A fixed seed makes a degenerate run reproducible too, so every retry
+    # advances the seed instead of replaying the same failure. The first
+    # attempt is the documented one; later seeds only appear when it failed.
+    seed=$((SEED + attempt - 1))
     log=$(mktemp)
     # `if !` keeps a non-zero exit inside the tested command: with `set -e`
     # a bare "$BIN" line would abort the whole script on the first failed
     # (degenerate) run instead of retrying.
-    if ! "$BIN" --attractor "$1" "${@:2}" > "$log" 2>&1; then
-      echo "    attempt $attempt failed, retrying (bad run detected)"
+    if ! "$BIN" --attractor "$id" --seed "$seed" "$@" > "$log" 2>&1; then
+      echo "    attempt $attempt (seed $seed) failed, retrying (bad run detected)"
       rm -f "$log"
     else
       rm -f "$log"
       return 0
     fi
   done
-  echo "    giving up on $1" >&2
+  echo "    giving up on $id" >&2
   return 1
 }
 
@@ -111,7 +130,7 @@ echo "=== Aizawa frames for the hero GIF ==="
 # figure is fully traced when the animation ends; the 2400 captured frames
 # play back as 48 s at the GIF's 50 fps.
 for attempt in 1 2 3 4 5; do
-  if "$BIN" --attractor aizawa \
+  if "$BIN" --attractor aizawa --seed "$SEED" \
       -p a=0.95 -p b=0.7 -p c=0.6 -p d=3.5 -p e=0.25 -p f=0.1 \
       --step 0.002 --speed 0.7 --warmup-steps 0 \
       --cam-speed 0.04 --trail-color-speed 0.05 --capture-scale 1 \

@@ -1,0 +1,108 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#overlay {
+  position: fixed;
+  left: 1.25rem;
+  bottom: 1.25rem;
+  margin: 0;
+  color: #d8d8e8;
+  font: 13px/1.35 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+  text-shadow: 0 0 6px #000;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+#controls {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 0.9rem;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0.6rem;
+  background: rgb(10 10 18 / 72%);
+  backdrop-filter: blur(8px);
+  color: #cfcfdd;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+#controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+#controls select,
+#controls input,
+#controls button {
+  font: inherit;
+  color: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 0.35rem;
+  background: rgb(255 255 255 / 8%);
+}
+
+#controls select {
+  max-width: 12rem;
+}
+
+#controls input[type="search"] {
+  width: 8rem;
+}
+
+#controls button {
+  cursor: pointer;
+}
+
+#controls button:hover {
+  background: rgb(255 255 255 / 16%);
+}
+
+#status {
+  position: fixed;
+  inset: auto 1rem 1rem 1rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgb(255 120 120 / 35%);
+  border-radius: 0.5rem;
+  background: rgb(40 8 12 / 88%);
+  color: #ffd7d7;
+  font: 13px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (max-width: 720px) {
+  #controls {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  #overlay {
+    font-size: 11px;
+  }
+}

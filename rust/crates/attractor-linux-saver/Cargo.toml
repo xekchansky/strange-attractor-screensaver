@@ -1,0 +1,37 @@
+[package]
+name = "attractor-linux-saver"
+description = "Linux screen saver shell: xscreensaver hack and fullscreen runner."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+name = "attractor_linux_saver"
+path = "src/lib.rs"
+
+[[bin]]
+name = "attractor-linux-saver"
+path = "src/main.rs"
+
+[dependencies]
+attractor-core = { path = "../attractor-core" }
+attractor-gpu = { path = "../attractor-gpu" }
+attractor-player = { path = "../attractor-player" }
+attractor-shell = { path = "../attractor-shell" }
+env_logger = "0.11"
+log = "0.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+raw-window-handle = "0.6"
+# The saver is always fullscreen, so the client-side decorations feature (and
+# its Skia-based renderer) is not needed.
+winit = { version = "0.30", default-features = false, features = [
+    "rwh_06",
+    "x11",
+    "wayland",
+    "wayland-dlopen",
+] }
+x11-dl = "2.21"

@@ -2,55 +2,293 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, rust-port]
   pull_request:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# The pinned swift-testing revision needs Swift tools 6.2, which the macOS 15
-# runner image does not have (it ships Swift 6.1).
 jobs:
-  core:
-    name: Core tests
+  rust:
+    name: Rust workspace
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --check
+
+      - name: Run clippy
+        working-directory: rust
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test --workspace
+
+  # `Host/` is the only Swift code left; it is a thin view over the Rust FFI,
+  # so building the bundle is what keeps the migration honest on every push.
+  macos:
+    name: macOS saver
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
 
-      - name: Show toolchain
-        run: swift --version
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: Run unit tests
-        working-directory: Core
-        run: swift test
+      - name: Install xcodegen
+        run: brew install xcodegen
 
-      - name: Build core
-        working-directory: Core
-        run: swift build
+      - name: Build the universal .saver
+        run: ARCHS="arm64 x86_64" ./scripts/package_release.sh "$RUNNER_TEMP/dist"
 
-  packages:
-    name: Render and Demo build
-    runs-on: macos-26
+  linux:
+    name: Linux saver
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Build render layer
-        working-directory: Render
-        run: swift build
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
-      - name: Build demo app
-        working-directory: Demo
-        run: swift build
+      # Xvfb provides an X server for the xscreensaver and winit paths; Mesa's
+      # Vulkan driver is the software rasterizer (`lavapipe`) that renders the
+      # frames on a runner without a GPU.
+      - name: Install a virtual X server and a software renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            mesa-vulkan-drivers \
+            libvulkan1 \
+            libx11-6 \
+            libx11-xcb1 \
+            libxkbcommon0 \
+            libxkbcommon-x11-0 \
+            libxcursor1
 
-  catalog:
-    name: Catalog validation
-    runs-on: macos-26
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --check
+
+      # The X11 and winit backends only compile on Linux, so clippy has to see
+      # this target's own sources.
+      - name: Run clippy
+        working-directory: rust
+        run: cargo clippy -p attractor-linux-saver -p attractor-gpu --all-targets -- -D warnings
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test -p attractor-linux-saver
+
+      - name: Validate the pipelines
+        working-directory: rust
+        run: cargo run -p attractor-linux-saver -- --self-test --noop
+
+      # A skip means no adapter was found, which would hide a broken software
+      # renderer. The step fails instead of tolerating it.
+      - name: Render a frame on the software rasterizer
+        working-directory: rust
+        run: |
+          set -o pipefail
+          cargo run -q -p attractor-linux-saver -- --self-test | tee self-test.txt
+          grep -q "lit pixels" self-test.txt
+          if grep -q "self-test: skipped" self-test.txt; then
+            echo "::error::no GPU adapter; the software rasterizer is unavailable"
+            exit 1
+          fi
+
+      - name: Run the xscreensaver hack for a few frames
+        working-directory: rust
+        run: xvfb-run -a cargo run -q -p attractor-linux-saver -- -root --frames 30
+
+      - name: Run the fullscreen runner for a few frames
+        working-directory: rust
+        run: xvfb-run -a cargo run -q -p attractor-linux-saver -- --fullscreen --frames 30
+
+      - name: Capture a screenshot through the shared CLI
+        working-directory: rust
+        run: |
+          cargo run -q -p attractor-cli -- \
+            --attractor lorenz --seed 42 --frames 30 \
+            --screenshot "$RUNNER_TEMP/lorenz.png"
+          test -s "$RUNNER_TEMP/lorenz.png"
+
+      - name: Upload the screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-screenshot
+          path: ${{ runner.temp }}/lorenz.png
+          retention-days: 7
+
+  windows:
+    name: Windows saver
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
 
-      # Bundled-attractor tests share the Core suite, but calling this out keeps
-      # a broken attractors.json visible as its own red check.
-      - name: Validate bundled catalog
-        working-directory: Core
-        run: swift test --filter AttractorCatalogValidationTests
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --check
+
+      # The Win32 shell and the D3D12 surface code only exist on Windows, so
+      # clippy has to see the Windows target's own sources.
+      - name: Run clippy
+        working-directory: rust
+        run: cargo clippy -p attractor-windows-saver -p attractor-gpu --all-targets -- -D warnings
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test -p attractor-windows-saver
+
+      # The noop backend proves the pipelines build even when the runner has
+      # no usable adapter; the adapter run then draws real pixels through WARP.
+      - name: Validate the pipelines
+        working-directory: rust
+        run: cargo run -p attractor-windows-saver -- --self-test --noop
+
+      - name: Render a frame
+        working-directory: rust
+        run: cargo run -p attractor-windows-saver -- --self-test
+
+  web:
+    name: Web demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: clippy
+
+      - name: Install wasm-bindgen
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.130
+
+      # wasm-opt is optional for the page but part of the build recipe.
+      - name: Install wasm-opt
+        run: sudo apt-get update && sudo apt-get install -y binaryen
+
+      # The browser glue only compiles on wasm32, so the workspace clippy pass
+      # in the rust job cannot see it.
+      - name: Lint the wasm target
+        working-directory: rust
+        run: cargo clippy -p attractor-wasm --target wasm32-unknown-unknown --all-targets -- -D warnings
+
+      - name: Build the bundle
+        run: ./web/build.sh
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the browser test dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the browser tests
+        working-directory: web
+        run: npm test
+
+      - name: Upload the browser report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/
+          retention-days: 7
+
+  android:
+    name: Android wallpaper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # The ubuntu runner image already ships the Android SDK and sets
+      # ANDROID_HOME. `android-actions/setup-android` is not used: it installs
+      # the legacy `tools` package, which the current SDK repository no longer
+      # publishes.
+      # The NDK is what cross-links the Rust player into the shared library the
+      # wallpaper loads; platform and build-tools match `app/build.gradle.kts`.
+      - name: Install the NDK and the build tools
+        run: |
+          sdkmanager_bin="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort | tail -1)/sdkmanager"
+          yes | "$sdkmanager_bin" --licenses > /dev/null || true
+          "$sdkmanager_bin" --install \
+            "ndk;27.2.12479018" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+          components: clippy
+
+      - name: Install cargo-ndk
+        run: cargo install --locked cargo-ndk
+
+      # The JNI bridge and the Android surface only compile for this target.
+      - name: Lint the Android target
+        working-directory: rust
+        run: >-
+          cargo clippy -p attractor-ffi -p attractor-gpu
+          --target aarch64-linux-android --all-targets -- -D warnings
+
+      - name: Build the native libraries
+        run: |
+          # setup-android always exports ANDROID_HOME; ANDROID_SDK_ROOT is the
+          # deprecated alias and is only a fallback.
+          export ANDROID_NDK_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/ndk/27.2.12479018"
+          ./rust/shells/android/build-native.sh
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      - name: Build and lint the APK
+        working-directory: rust/shells/android
+        run: ./gradlew assembleDebug lint
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: rust/shells/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7

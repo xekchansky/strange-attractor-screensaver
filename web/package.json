@@ -1,0 +1,16 @@
+{
+  "name": "strange-attractor-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GitHub Pages demo of the strange attractor screensaver.",
+  "scripts": {
+    "build": "bash build.sh",
+    "serve": "python3 -m http.server 4173 --bind 127.0.0.1",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "pngjs": "^7.0.0"
+  }
+}

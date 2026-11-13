@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Strange Attractor
+Comment=Animate a strange attractor in fullscreen
+Exec=attractor-linux-saver --fullscreen
+Icon=preferences-desktop-screensaver
+Terminal=false
+Categories=System;Screensaver;
+Keywords=screensaver;attractor;lorenz;

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="A strange attractor screensaver, integrated and drawn live in your browser."
+    />
+    <title>Strange Attractor — live demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <canvas id="stage" aria-label="Animated strange attractor"></canvas>
+    <pre id="overlay" aria-live="off"></pre>
+    <p id="status" role="status" hidden></p>
+
+    <section id="controls" aria-label="Demo controls">
+      <label>
+        Attractor
+        <select id="attractor"></select>
+      </label>
+      <label>
+        Search
+        <input id="search" type="search" placeholder="lorenz, chua, sprott…" />
+      </label>
+      <label>
+        Seed
+        <input id="seed" inputmode="numeric" pattern="[0-9]+" size="12" />
+      </label>
+      <button id="reseed" type="button">New seed</button>
+    </section>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

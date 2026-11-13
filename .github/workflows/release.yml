@@ -1,0 +1,194 @@
+name: Release
+
+# Tag pushes publish a GitHub release; a manual dispatch is a dry run that
+# builds all four artifacts and uploads them as a workflow artifact, without
+# publishing anything.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    name: macOS screen saver
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      # A universal bundle: the host target compiles the Rust player for both
+      # architectures and lipos the static libraries together.
+      - name: Build and package the .saver
+        run: ARCHS="arm64 x86_64" ./scripts/package_release.sh "$RUNNER_TEMP/dist"
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: ${{ runner.temp }}/dist/AttractorSaver.saver.zip
+          retention-days: 7
+
+  windows:
+    name: Windows screen saver
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build the .scr
+        working-directory: rust
+        run: cargo build --release --locked -p attractor-windows-saver
+
+      # Windows installs a screen saver by file extension, so the binary is
+      # renamed and shipped in a zip rather than as a bare .exe.
+      - name: Package the .scr
+        shell: pwsh
+        run: |
+          $dist = Join-Path $env:RUNNER_TEMP "dist"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          Copy-Item "rust/target/release/attractor-windows-saver.exe" `
+                    (Join-Path $dist "StrangeAttractor.scr")
+          Compress-Archive -Path (Join-Path $dist "StrangeAttractor.scr") `
+                           -DestinationPath (Join-Path $dist "StrangeAttractor.scr.zip")
+
+      - name: Upload the .scr
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: ${{ runner.temp }}/dist/StrangeAttractor.scr.zip
+          retention-days: 7
+
+  linux:
+    name: Linux tarball
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build and package the tarball
+        run: ./scripts/package_linux.sh "$RUNNER_TEMP/dist"
+
+      - name: Upload the tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: ${{ runner.temp }}/dist/strange-attractor-linux-x86_64.tar.gz
+          retention-days: 7
+
+  android:
+    name: Android wallpaper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the NDK and the build tools
+        run: |
+          sdkmanager_bin="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin | sort | tail -1)/sdkmanager"
+          yes | "$sdkmanager_bin" --licenses > /dev/null || true
+          "$sdkmanager_bin" --install \
+            "ndk;27.2.12479018" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install --locked cargo-ndk
+
+      - name: Build the native libraries
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/ndk/27.2.12479018"
+          ./rust/shells/android/build-native.sh
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
+
+      # `assembleDebug` is the installable APK: it is signed with the debug
+      # key, because release signing needs a keystore that must not live in
+      # the repository. The README says so next to the download link.
+      - name: Build the APK
+        working-directory: rust/shells/android
+        run: ./gradlew assembleDebug
+
+      - name: Stage the APK
+        run: |
+          mkdir -p "$RUNNER_TEMP/dist"
+          cp rust/shells/android/app/build/outputs/apk/debug/app-debug.apk \
+             "$RUNNER_TEMP/dist/strange-attractor-android.apk"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: ${{ runner.temp }}/dist/strange-attractor-android.apk
+          retention-days: 7
+
+  publish:
+    name: Checksums and release
+    needs: [macos, windows, linux, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Collect the artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+
+      # One checksum file covers every archive; users download it next to the
+      # artifacts and run `sha256sum -c SHA256SUMS` in the same directory.
+      - name: Write SHA256SUMS
+        working-directory: release
+        run: |
+          ls -l
+          sha256sum *.zip *.tar.gz *.apk > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload the checksum file
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle
+          path: release
+          retention-days: 7
+
+      # A manual dispatch stops here: it proves all four artifacts build and
+      # packages them for inspection without publishing anything.
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

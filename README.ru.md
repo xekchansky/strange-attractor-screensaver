@@ -1,23 +1,135 @@
 # Strange Attractor Screensaver
 
-Захватывающий скринсейвер для macOS, который симулирует и рендерит **странные аттракторы** — хаотические динамические системы, рисующие бесконечно сложные, никогда не повторяющиеся траектории в трёхмерном пространстве.
+Захватывающий скринсейвер, который симулирует и рендерит **странные аттракторы** —
+хаотические динамические системы, рисующие бесконечно сложные, никогда не
+повторяющиеся траектории в трёхмерном пространстве. Один движок на Rust — пять
+способов смотреть: macOS, Windows, Linux, Android и браузер.
+
+[![CI](https://github.com/xekchansky/strange-attractor-screensaver/actions/workflows/ci.yml/badge.svg)](https://github.com/xekchansky/strange-attractor-screensaver/actions/workflows/ci.yml)
+[![Живое демо](https://img.shields.io/badge/%D0%B4%D0%B5%D0%BC%D0%BE-%D0%B2%20%D0%B1%D1%80%D0%B0%D1%83%D0%B7%D0%B5%D1%80%D0%B5-brightgreen)](https://xekchansky.github.io/strange-attractor-screensaver/)
 
 ![Анимация аттрактора Айзавы](docs/images/strange-attractor-aizawa-screensaver-animation.gif)
 
-При каждом запуске случайно выбирается один из **12 классических хаотических аттракторов**, случайным образом подбираются его параметры и камера, а траектория рисуется светящейся градиентной линией. В углу экрана показываются живые формулы и текущие значения параметров — заставка, которая одновременно является небольшим математическим арт-объектом.
+При каждом запуске случайно выбирается один из **12 классических хаотических
+аттракторов**, случайным образом подбираются его параметры и камера, а
+траектория рисуется светящейся градиентной лентой. В углу экрана показываются
+живые формулы и текущие значения параметров — заставка, которая одновременно
+является небольшим математическим арт-объектом.
 
 → English version: [README.md](README.md)
 
+## Попробовать сразу
+
+Без установки и сборки: **[откройте живое демо](https://xekchansky.github.io/strange-attractor-screensaver/)**
+в браузере с WebGPU (или WebGL2). Выберите аттрактор и поделитесь URL — он
+хранит точный seed.
+
+## Установка
+
+Все загрузки подписаны ad-hoc и **не нотаризованы**. Перед первым запуском
+прочитайте примечание для своей платформы.
+
+| Платформа | Загрузка | Перед первым запуском |
+| --- | --- | --- |
+| **macOS** 13+ | [`AttractorSaver.saver.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Снять карантин: `xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver` (см. [macOS](#macos)). |
+| **Windows** 10+ | [`StrangeAttractor.scr.zip`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Распаковать, правый клик по `StrangeAttractor.scr` → **Установить**. SmartScreen может спросить — выберите **Подробнее → Выполнить в любом случае** (см. [Windows](#windows)). |
+| **Linux** (x86_64) | [`strange-attractor-linux-x86_64.tar.gz`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Распаковать и прочитать `README.md` внутри; в архиве заставка, CLI для захвата и `.desktop`-файл (см. [Linux](#linux)). |
+| **Android** 8+ | [`strange-attractor-android.apk`](https://github.com/xekchansky/strange-attractor-screensaver/releases) | Разрешить установку из браузера, затем выбрать **Strange Attractor** в *Настройки → Дисплей → Живые обои* (см. [Android](#android)). |
+| **Браузер** | [Живое демо](https://xekchansky.github.io/strange-attractor-screensaver/) | Ничего устанавливать не нужно. |
+
+Все архивы покрыты одним файлом `SHA256SUMS` в том же релизе:
+
+```bash
+sha256sum -c SHA256SUMS        # Linux
+shasum -a 256 -c SHA256SUMS    # macOS
+```
+
+### macOS
+
+1. Скачайте zip и файл контрольных сумм, распакуйте (Safari делает это сам) и
+   при желании проверьте загрузку: `shasum -a 256 -c SHA256SUMS`.
+2. Снимите карантин, чтобы Gatekeeper разрешил запуск ad-hoc подписанного
+   бандла: `xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver`.
+   Если Homebrew-версия `xattr` перекрывает системную и падает с
+   `bad interpreter`, вызывайте `/usr/bin/xattr` явно. Либо попробуйте открыть
+   бандл один раз и разрешите его через **Системные настройки → Конфиденциальность
+   и безопасность → Всё равно открыть**.
+3. Двойной клик по `AttractorSaver.saver` — macOS откроет **Системные настройки →
+   Обои → Экранная заставка**. Либо скопируйте бандл в
+   `~/Library/Screen Savers/`.
+4. Выберите **AttractorSaver** в списке заставок.
+
+macOS 26 дополнительно требует подпись (ad-hoc достаточно) — неподписанный
+`.saver` хост убивает с `Code Signature Invalid`. Нотаризация требует платного
+аккаунта Apple Developer и сознательно отложена (решение D11).
+
+### Windows
+
+1. Скачайте и распакуйте `StrangeAttractor.scr.zip`.
+2. Правый клик по `StrangeAttractor.scr` → **Установить**, либо скопируйте файл
+   вручную в `C:\Windows\System32` и выберите **Strange Attractor** в
+   *Параметры → Персонализация → Экран блокировки → Параметры экранной заставки*.
+3. Бинарник не подписан, поэтому SmartScreen покажет предупреждение для свежей
+   загрузки; выберите **Подробнее → Выполнить в любом случае**.
+
+`.scr` поддерживает протокол экранных заставок Windows: `/s` запускает,
+`/p HWND` рисует в превью панели управления, `/c` открывает небольшое окно
+настроек (выбор аттрактора хранится в
+`%APPDATA%\StrangeAttractor\settings.json`), пустая командная строка открывает
+настройки.
+
+### Linux
+
+В архиве лежат `attractor-linux-saver` (одновременно hack для xscreensaver и
+полноэкранный runner), `attractor-cli` (захват и демо),
+`strange-attractor.desktop` и Linux-`README.md` с полным рецептом. Коротко:
+
+```bash
+install -Dm755 attractor-linux-saver ~/.local/bin/attractor-linux-saver
+install -Dm644 strange-attractor.desktop ~/.local/share/applications/strange-attractor.desktop
+attractor-linux-saver --fullscreen      # Wayland или любой лаунчер
+```
+
+Для xscreensaver добавьте `"Strange Attractor" attractor-linux-saver -root` в
+`~/.xscreensaver` и перезапустите демон. Файл настроек следует XDG:
+`${XDG_CONFIG_HOME:-~/.config}/strange-attractor/settings.json`. Архив собран
+против glibc CI-раннера; на более старом дистрибутиве собирайте из исходников.
+
+### Android
+
+1. Скачайте `strange-attractor-android.apk` и откройте; разрешите установку из
+   этого источника, когда Android спросит.
+2. Откройте **Настройки → Дисплей → Живые обои → Strange Attractor**. Пикер в
+   настройках обоев выбирает аттрактор (или *Случайный каждый раз*).
+
+Опубликованный APK подписан **debug-ключом**, потому что для release-подписи
+нужен keystore, которого не может быть в репозитории. Он устанавливается и
+работает, но публикация в магазине не настроена. Обои рендерятся через GLES,
+по одному плееру на каждую видимую поверхность.
+
 ## Возможности
 
-- **12 странных аттракторов** — Лоренц, Айзава, Рёсслер, Томас, Чен, Лу, Чуа, Халворсен, Мур–Шпигель и семейство Спротта (см. [каталог](#каталог-аттракторов)).
-- **Данные вместо кода** — аттракторы описаны в едином JSON-каталоге (формулы, диапазоны параметров, начальные состояния), а не в коде. Новый аттрактор добавляется без единой строчки кода.
-- **Интегрирование Рунге–Кутты 4-го порядка**: число шагов на кадр ограничено, поэтому подвисание системы после сна не замораживает анимацию.
-- **Самолечение** — сторожевой механизм распознаёт вырожденные запуски (расходимость, схлопывание в точку, устойчивые периодические орбиты, нефинитные состояния) и бесшовно перезапускает симуляцию с новым случайным набором.
-- **4 цветовых режима трейла** — радуга вдоль траектории, монохром по устареванию, глубина от камеры, окраска по координатам.
-- **Парсинг формул в рантайме** — уравнения dX/dY/dZ разбираются из строк, поэтому каталог остаётся чистыми данными.
-- **Без сторонних зависимостей в рантайме** — только Swift и фреймворки Apple (Foundation, SceneKit, AppKit). Тесты используют только Swift Testing.
-- **Демо-приложение с CLI** — запуск любого аттрактора с явными параметрами для исследования и отладки.
+- **12 странных аттракторов** — Лоренц, Айзава, Рёсслер, Томас, Чен, Лу, Чуа,
+  Халворсен, Мур–Шпигель и семейство Спротта (см. [каталог](#каталог-аттракторов)).
+- **Один движок, пять оболочек** — один и тот же Rust-core и рендерер на `wgpu`
+  рисуют macOS `.saver`, Windows `.scr`, Linux-hack, Android-обои и браузерное
+  демо.
+- **Данные вместо кода** — аттракторы описаны в едином JSON-каталоге (формулы,
+  диапазоны параметров, начальные состояния), а не в коде. Новый аттрактор
+  добавляется без единой строчки кода.
+- **Интегрирование Рунге–Кутты 4-го порядка**: число шагов на кадр ограничено,
+  поэтому подвисание системы после сна не замораживает анимацию.
+- **Самолечение** — сторожевой механизм распознаёт вырожденные запуски
+  (расходимость, схлопывание в точку, устойчивые периодические орбиты,
+  нефинитные состояния) и бесшовно перезапускает симуляцию с новым случайным
+  набором.
+- **4 цветовых режима трейла** — радуга вдоль траектории, монохром по
+  устареванию, глубина от камеры, окраска по координатам.
+- **Парсинг формул в рантайме** — уравнения `dx/dy/dz` разбираются из строк,
+  поэтому каталог остаётся чистыми данными.
+- **Воспроизводимый захват** — `attractor-cli` точно повторяет любой кадр
+  (`--attractor`, `--seed`, `--screenshot`); так сделаны картинки ниже и
+  регрессионные фикстуры.
 
 ## Каталог аттракторов
 
@@ -36,139 +148,183 @@
 | **Спротт B** | `dx = yz`<br>`dy = x − y`<br>`dz = 1 − xy` | фикс. | ![Спротт B](docs/images/attractor-sprott_b-simulation.png) |
 | **Спротт C** | `dx = yz`<br>`dy = x − y`<br>`dz = 1 − x²` | фикс. | ![Спротт C](docs/images/attractor-sprott_c-simulation.png) |
 
-Параметры и гиперпараметры симуляции (шаг интегрирования, длина трейла, скорость камеры, скорость смены цвета) выбираются случайно из отобранных диапазонов в [`Core/Sources/AttractorCore/Resources/attractors.json`](Core/Sources/AttractorCore/Resources/attractors.json). Каталог проверяется при загрузке — формулы должны разбираться, диапазоны быть корректными, а функции — поддерживаемыми; юнит-тесты интегрируют каждую запись каталога. Хаотические семейства с крошечными бассейнами притяжения (например, Sprott D–J, Рабиновича–Фабриканта) исключены — от случайных стартов они расходятся.
+Параметры и гиперпараметры симуляции (шаг интегрирования, длина трейла,
+скорость камеры, скорость смены цвета) выбираются случайно из отобранных
+диапазонов в [`data/attractors.json`](data/attractors.json). Каталог проверяется
+при загрузке — формулы должны разбираться, диапазоны быть корректными, а
+функции — поддерживаемыми; юнит-тесты интегрируют каждую запись каталога.
+Хаотические семейства с крошечными бассейнами притяжения (например, Sprott D–J,
+Рабиновича–Фабриканта) исключены — от случайных стартов они расходятся.
+Картинки выше переснимаются скриптом
+[`docs/capture_all.sh`](docs/capture_all.sh) через Rust-CLI захвата, с
+фиксированным seed и закреплёнными ракурсами.
 
-## Установка
+## Как это устроено
 
-### Из релиза (рекомендуется)
+```text
+data/attractors.json ──▶ attractor-core ──▶ attractor-view ──▶ attractor-gpu
+   каталог + формулы      RK4-движок,        камера, геометрия    лента wgpu +
+                          health monitor     трейла, оверлей     текст оверлея
+                                                  │
+                                                  ▼
+                                            attractor-player
+                                     tick / render / resize / restart
+                                                  │
+        ┌──────────────┬──────────────┬────────────┴──────────┬──────────────┐
+        ▼              ▼              ▼                       ▼              ▼
+   macOS .saver   Windows .scr   Linux hack / runner    Android JNI     wasm demo
+     (FFI +         (Win32)          (X11/winit)          (Wallpaper       (canvas
+    AppKit view)                                          Service)        в браузере)
+```
 
-1. Скачайте `AttractorSaver.saver.zip` (и файл `.sha256`) из последнего [релиза](https://github.com/xekchansky/strange-attractor-screensaver/releases) и распакуйте (Safari делает это сам). При желании проверьте загрузку:
+- **`rust/crates/attractor-core`** — чистый движок без UI: модель данных,
+  рекурсивный парсер формул, RK4-решатель, движок с кольцевым буфером трейла,
+  рандомайзер и health monitor.
+- **`rust/crates/attractor-view`** — слой представления без GPU: орбитальная
+  камера с автокадрированием, геометрия градиентной ленты, все четыре цветовых
+  режима, модель оверлея.
+- **`rust/crates/attractor-gpu`** — конвейеры `wgpu`: лента с мультисэмплингом,
+  текстовый оверлей, чтение кадра в PNG и платформенные surface-таргеты.
+- **`rust/crates/attractor-player`** — рантайм, который встраивает каждая
+  оболочка.
+- **`rust/crates/attractor-ffi`** — C ABI для macOS-хоста и Android JNI;
+  **`attractor-wasm`** — браузерная обвязка.
+- **`rust/crates/attractor-windows-saver`** и
+  **`rust/crates/attractor-linux-saver`** — нативные оболочки.
+- **`rust/shells/android`** — Kotlin `WallpaperService` и пикер.
+- **`Host/`** — macOS `.saver`, тонкое Swift/AppKit-представление над C ABI.
 
-   ```bash
-   shasum -a 256 -c AttractorSaver.saver.zip.sha256
-   ```
+Плеер перевыбирает аттрактор, когда watchdog видит плохой запуск (траектория
+схлопнулась в точку или ушла в периодическую петлю), поэтому заставка никогда
+не замирает на сломанном кадре.
 
-2. Бандл подписан ad-hoc и **не нотаризован**, поэтому Gatekeeper заблокирует скачанную копию с сообщением «Apple не удалось подтвердить…». Сначала снимите карантинный флаг:
+## Сборка из исходников
 
-   ```bash
-   xattr -r -d com.apple.quarantine ~/Downloads/AttractorSaver.saver
-   ```
-
-   Если в PATH стоит Homebrew-версия `xattr` и падает с `bad interpreter`, вызывайте `/usr/bin/xattr`. Альтернатива — один раз попробовать открыть бандл и разрешить его через **Настройки системы → Конфиденциальность и безопасность → Всё равно открыть**.
-
-3. Откройте `AttractorSaver.saver` двойным кликом — macOS предложит установить его в **Настройки системы → Обои → Заставка**. Либо скопируйте его в `~/Library/Screen Savers/`.
-4. Выберите **AttractorSaver** в списке заставок.
-
-На macOS 26 бандл дополнительно обязан быть подписан (достаточно ad-hoc) — неподписанный `.saver` хост убивает с `Code Signature Invalid`.
-
-### Сборка из исходников
-
-Понадобятся macOS с Xcode (или Xcode Command Line Tools) и [xcodegen](https://github.com/yonaskolb/XcodeGen):
+Для движка достаточно стабильного Rust (edition 2024); оболочкам нужны Xcode,
+Windows SDK или Android SDK/NDK.
 
 ```bash
 git clone https://github.com/xekchansky/strange-attractor-screensaver.git
 cd strange-attractor-screensaver
 
-# Юнит-тесты ядра (Xcode не требуется)
-cd Core && swift test && cd ..
+# Тесты движка и проверка workspace
+cd rust
+cargo test --workspace
 
-# Сборка и установка .saver-бандла
-cd Host
-xcodegen generate
-xcodebuild -project AttractorHost.xcodeproj -scheme AttractorSaver \
-  -configuration Release -derivedDataPath /tmp/host-dd build
-mkdir -p ~/Library/Screen\ Savers
-rm -rf ~/Library/Screen\ Savers/AttractorSaver.saver
-ditto /tmp/host-dd/Build/Products/Release/AttractorSaver.saver \
-      ~/Library/Screen\ Savers/AttractorSaver.saver
+# Захват кадра (нужен реальный GPU, поэтому запускайте в GUI-сессии)
+cargo run --release -p attractor-cli -- \
+  --attractor lorenz --seed 42 --screenshot lorenz.png
 ```
 
-Чтобы собрать zip для релиза и контрольную сумму, запустите
-[`scripts/package_release.sh`](scripts/package_release.sh).
+CLI захвата повторяет флаги старого демо-приложения: `--attractor`,
+`-p name=value` (можно повторять), `--step`, `--speed`, `--cam-speed`,
+`--trail-color-speed`, `--trail-length`, `--color-mode`, `--screenshot`,
+`--record`, `--record-seconds`, `--frame-stride`, `--capture-scale`,
+`--warmup-steps`, `--cam-azimuth`, `--cam-elevation`, `--initial-state`, плюс
+`--seed`, `--frames`, `--width` и `--height`.
 
-### Попробовать без установки: демо-приложение
-
-Автономное демо позволяет запустить конкретный аттрактор с явными параметрами — удобно для исследования пространства параметров:
+### macOS-заставка
 
 ```bash
-cd Demo && swift run AttractorDemo --attractor aizawa
+cd Host && xcodegen generate && cd ..
+./scripts/package_release.sh            # пишет dist/AttractorSaver.saver.zip
 ```
 
-Демо требует GUI-сессию: оно открывает настоящее окно, и живой вид, и съёмка PNG используют Metal.
+`ARCHS="arm64 x86_64"` собирает универсальный бандл (нужны обе стандартные
+библиотеки Rust: `rustup target add aarch64-apple-darwin x86_64-apple-darwin`).
 
-Опции командной строки:
+### Windows-заставка
 
-```text
--a, --attractor <id>       выбрать конкретный аттрактор (список — в --help)
--p, --param <имя>=<значение>  переопределить параметр (повторяемо, требует --attractor)
---step <v>                 шаг интегрирования
---speed <v>                множитель скорости симуляции
---cam-speed <v>            скорость вращения камеры
---trail-color-speed <v>    скорость смены цвета трейла
---trail-length <n>         длина трейла в точках
---color-mode <mode>        trail | age | depth | spatial
---screenshot <path>        снять один PNG прогретой сцены и выйти
---record <dir>             записать PNG-кадры (для сборки гифки) и выйти
---record-seconds <v>       длительность записи (по умолчанию 4)
---frame-stride <n>         снимать каждый n-й кадр (по умолчанию 2)
---capture-scale <n>        множитель разрешения снимка (по умолчанию 2)
---warmup-steps <n>         шагов интегрирования перед съёмкой (по умолчанию 60000)
---cam-azimuth <deg>        начальный азимут орбиты камеры (по умолчанию случайный)
---cam-elevation <deg>      высота камеры над горизонтальной плоскостью (по умолчанию 36)
---initial-state x,y,z      начальная точка интегрирования
+```powershell
+cargo build --release -p attractor-windows-saver
+Copy-Item rust\target\release\attractor-windows-saver.exe StrangeAttractor.scr
 ```
 
-## Как это устроено
+### Linux
 
-```
-attractors.json ──▶ AttractorCatalog ──▶ Randomizer ──▶ AttractorSelection
-                                                              │
-                                                              ▼
-   SceneKit view ◀── TraceRenderer ◀── AttractorEngine ◀── AttractorModel
-   (камера, трейл)                      ▲              (парсер формул
-                                        │                рекурсивным спуском)
-                                  ODESolver (RK4)
+```bash
+cd rust
+cargo build --release -p attractor-linux-saver -p attractor-cli
+./scripts/package_linux.sh              # из корня репозитория
 ```
 
-- **`Core/`** — `AttractorCore`: чистый SPM-модуль без UI. Модель данных, парсер формул (рекурсивный спуск — `NSExpression` не умеет `sin`/`abs`), решатель RK4, движок с кольцевым буфером трейла, рандомизатор и сторожевой монитор, проверяющий каждое интегрированное состояние.
-- **`Render/`** — `AttractorRender`: рендер на SceneKit — градиентная полилиния трейла, орбитальная камера с автокадрированием, оверлей формул. Общий для демо и заставки.
-- **`Demo/`** — `AttractorDemo`: автономное AppKit-приложение для интерактивных запусков и offscreen-съёмки кадров (`--screenshot` / `--record`).
-- **`Host/`** — таргеты заставки: классический `.saver`, который устанавливают пользователи, и экспериментальный вариант `.appex` для встраивания в приложение-контейнер. Оба генерируются xcodegen из `Host/project.yml`.
+Подробности про xscreensaver, `swayidle`/`hypridle` и настройки —
+в [`rust/shells/linux/README.md`](rust/shells/linux/README.md).
 
-Заставка пересоздаёт всю сцену, когда сторож обнаруживает неудачный запуск (например, траектория схлопнулась в точку или застряла в периодической петле), поэтому она никогда не замирает на сломанном кадре.
+### Android
 
-## Если что-то пошло не так
+```bash
+cd rust/shells/android
+rustup target add aarch64-linux-android x86_64-linux-android
+cargo install --locked cargo-ndk
+export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018
+./build-native.sh                       # jniLibs для APK
+./gradlew assembleDebug
+```
 
-- **Заставки нет в Настройках системы.** Скопируйте бандл через `ditto` (не
-  `cp -R`) и перезапустите агент обоев: `killall WallpaperAgent`. Система
-  кеширует список заставок.
-- **Заставка показывает «Invalid Page» или чёрное превью.** Обычно хост всё ещё
-  держит старую копию. Закройте Настройки системы, удалите бандл, скопируйте
-  заново и откройте панель снова.
-- **Gatekeeper блокирует загрузку.** См. шаг с карантином в разделе
-  [Установка](#установка).
+Ручной чек-лист для эмулятора и телефона —
+в [`rust/shells/android/README.md`](rust/shells/android/README.md).
 
-## Требования и проверенная конфигурация
+### Браузерное демо
 
-- macOS 13 или новее, Apple Silicon или Intel.
-- Проверено на macOS 26 (Apple Silicon): Xcode 26, Swift 6.3.
-- Для сборки заставки нужны Xcode и [xcodegen](https://github.com/yonaskolb/XcodeGen);
-  тесты ядра работают и с Command Line Tools.
+```bash
+bash web/build.sh
+cd web && npm ci && npm test
+```
 
-## Примечания и известные проблемы
+## Требования и проверенное окружение
 
-- Установка **неподписанного** `.saver` на macOS 26 может подвесить глобальные
+- **Движок:** стабильный Rust (edition 2024), GPU для тестов не нужен —
+  тесты конвейеров используют бэкенд `noop` из `wgpu`. Захвату и оболочкам
+  нужен реальный GPU-адаптер.
+- **macOS:** 13 или новее, Apple Silicon или Intel; Xcode и
+  [xcodegen](https://github.com/yonaskolb/XcodeGen) для бандла. Проверено на
+  macOS 26 со стабильным Rust и Xcode 26.
+- **Windows:** 10 или новее с DirectX 12 (или Vulkan). CI собирает и рендерит
+  через WARP на `windows-latest`.
+- **Linux:** X11 или Wayland с Vulkan или GLES; CI прогоняет X11-пути под Xvfb
+  с программным Vulkan-драйвером Mesa.
+- **Android:** 8.0+ (API 26), `arm64-v8a` и `x86_64`; NDK 27.2.
+- **Браузер:** WebGPU с автоматическим откатом на WebGL2.
+
+## Решение проблем
+
+- **macOS-заставка не появляется в Системных настройках.** Перекопируйте бандл
+  через `ditto` (не `cp -R`) и перезапустите агент обоев:
+  `killall WallpaperAgent`. Система кеширует список заставок.
+- **macOS-заставка показывает «Invalid Page» или чёрное превью.** Обычно хост
+  всё ещё держит старую копию. Закройте Системные настройки, удалите бандл,
+  скопируйте заново и откройте панель снова.
+- **Загрузка для macOS блокируется Gatekeeper.** См. шаг с карантином
+  в разделе [macOS](#macos).
+- **Windows показывает «Windows защитила ваш компьютер».** `.scr` не подписан;
+  выберите **Подробнее → Выполнить в любом случае** или купите сертификат
+  подписи кода и подпишите бинарник сами.
+- **Оболочка запускается и сразу выходит.** Нужен рабочий GPU-адаптер; сначала
+  прогоните `attractor-cli --screenshot` — ошибка назовёт точную причину
+  (`no GPU adapter`, ошибка поверхности, ошибка каталога).
+
+## Заметки и известные проблемы
+
+- Установка **неподписанной** `.saver` на macOS 26 может заблокировать глобальные
   горячие клавиши сессии (Cmd+Tab, переключение раскладки) до перезагрузки — см.
-  [описание](.serena/memories/macos_input_lockup.md). Релизные бандлы подписаны
-  ad-hoc, и система их принимает.
+  [разбор](.serena/memories/macos_input_lockup.md). Релизные бандлы подписаны
+  ad-hoc, система их принимает.
+- Опубликованный Android APK несёт debug-подпись (см. [Android](#android));
+  macOS-бандлы не нотаризованы (D11); Windows `.scr` не подписан.
 
 ## Документация
 
 - [README на английском](README.md)
-- Заметки для контрибьюторов и агентов: [`AGENTS.md`](AGENTS.md)
+- Заметки для контрибьюторов и кодирующих агентов: [`AGENTS.md`](AGENTS.md)
+- Статус итераций, решения и отложенная работа:
+  [`rust/STATUS.md`](rust/STATUS.md)
+- Кросс-платформенный дизайн и ADR:
+  [`docs/superpowers/specs/2026-11-12-rust-cross-platform-design.md`](docs/superpowers/specs/2026-11-12-rust-cross-platform-design.md)
+- Скрипт захвата ассетов документации: [`docs/capture_all.sh`](docs/capture_all.sh)
+- Упаковка релиза: [`scripts/package_release.sh`](scripts/package_release.sh),
+  [`scripts/package_linux.sh`](scripts/package_linux.sh)
 - Политика безопасности: [`SECURITY.md`](SECURITY.md)
-- Скрипт съёмки документационных ассетов: [`docs/capture_all.sh`](docs/capture_all.sh)
-- Сборка релиза: [`scripts/package_release.sh`](scripts/package_release.sh)
 
 ## Лицензия
 

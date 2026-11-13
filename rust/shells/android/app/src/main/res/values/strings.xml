@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Strange Attractor</string>
+    <string name="wallpaper_description">A chaotic attractor integrated and drawn in real time.</string>
+    <string name="attractor_random">Random each time</string>
+    <string name="settings_intro">Choose the attractor the wallpaper draws. The choice applies the next time the wallpaper starts.</string>
+    <string name="save">Save</string>
+    <string name="set_wallpaper">Set as wallpaper</string>
+    <string name="saved">Saved</string>
+</resources>
