@@ -10,8 +10,9 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I9 — web demo on GitHub Pages** (2026-11-13,
-  manual: Pages enablement and the real-browser pass pending)
+- Last completed iteration: **I9 — web demo on GitHub Pages** (2026-11-13;
+  CI green, Pages source switched to "GitHub Actions" by the owner, the
+  deployment and the manual real-browser pass pending)
 - Last completed change: **I9 — web demo on GitHub Pages** (2026-11-13)
 - Next iteration: **I10 — Linux**
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
@@ -631,12 +632,11 @@ enough.
   leaves the picker blank while Rust correctly runs a random attractor. Both
   are worth a follow-up, neither affects the green path.
 - **I9 Pages**: `.github/workflows/pages.yml` builds the bundle and publishes
-  only `index.html`, `styles.css`, `app.js` and `pkg/`. The workflow stays
-  dormant until GitHub Pages is switched to "GitHub Actions" in the repository
-  settings (manual: pending). It triggers on `main` (a `workflow_dispatch`
-  from `rust-port` can publish earlier), so it never turns the working
-  branch's CI red before the setting exists; the URL goes live when the
-  branch merges.
+  only `index.html`, `styles.css`, `app.js` and `pkg/`. The repository's Pages
+  source is switched to "GitHub Actions" (done by the owner on 2026-11-13).
+  It triggers on `main` (a `workflow_dispatch` from `rust-port` can publish
+  earlier), so it never runs on the working branch's pushes; the URL goes
+  live on the first `main` push or dispatch.
 - **I9 local verification**: fmt, clippy for the workspace and for the wasm
   target, `cargo test --workspace` (run bare, so the Metal-backed tests
   executed), the release wasm build, the wasm-bindgen bundle, a Node
@@ -666,6 +666,11 @@ enough.
   instead. `--use-angle=swiftshader` does provide WebGL2 in the headless
   runner (the probe reported `WebGL 2.0 (OpenGL ES 3.0 Chromium)`), so the
   test was exercising the fallback, not a missing platform feature.
+- **I9 CI green (43502605634, `d47538c`)**: all six jobs passed — the browser
+  suite reports `2 passed (6.4s)`, covering the forced WebGL2 path and the
+  automatic backend, and `rust`, `windows`, `Core tests`, `Render and Demo
+  build` and `Catalog validation` are unchanged. The first WebGL2 rendering
+  of the page therefore happens on a runner without a GPU.
 - **Sandbox note**: in the agent sandbox `~/.cargo` is not writable, so local
   builds point `CARGO_HOME` at the git-ignored `rust/.toolchain/cargo` and
   `RUSTUP_HOME` at `rust/.toolchain/rustup`. CI and a normal developer shell
