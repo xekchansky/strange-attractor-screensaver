@@ -9,6 +9,8 @@ members = [
     "crates/attractor-ffi",
     "crates/attractor-cli",
     "crates/attractor-wasm",
+    "crates/attractor-shell",
+    "crates/attractor-linux-saver",
     "crates/attractor-windows-saver",
 ]
 

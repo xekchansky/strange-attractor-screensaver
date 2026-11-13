@@ -28,10 +28,10 @@ use super::{
     register_window_class, run_message_loop,
 };
 use crate::args::WindowHandle;
-use crate::input::{self, InputEvent};
-use crate::selection;
-use crate::settings::Settings;
 use crate::text::wide;
+use attractor_shell::Settings;
+use attractor_shell::input::{self, InputEvent};
+use attractor_shell::selection;
 
 /// Identifier of the one process timer that drives every display.
 const TIMER_ID: usize = 1;

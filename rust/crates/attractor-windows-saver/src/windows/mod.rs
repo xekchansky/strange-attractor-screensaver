@@ -24,8 +24,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     RegisterClassW, TranslateMessage, WNDCLASSW, WNDPROC,
 };
 
-use crate::settings::Settings;
 use crate::text::wide;
+use attractor_shell::Settings;
 
 /// Window class of the fullscreen saver windows and the preview control.
 const SESSION_CLASS: &str = "StrangeAttractorSaverWindow";

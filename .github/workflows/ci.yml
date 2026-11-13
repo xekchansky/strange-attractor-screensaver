@@ -78,6 +78,87 @@ jobs:
         working-directory: rust
         run: cargo test --workspace
 
+  linux:
+    name: Linux saver
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # Xvfb provides an X server for the xscreensaver and winit paths; Mesa's
+      # Vulkan driver is the software rasterizer (`lavapipe`) that renders the
+      # frames on a runner without a GPU.
+      - name: Install a virtual X server and a software renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            xvfb \
+            mesa-vulkan-drivers \
+            libvulkan1 \
+            libx11-6 \
+            libx11-xcb1 \
+            libxkbcommon0 \
+            libxkbcommon-x11-0 \
+            libxcursor1
+
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --check
+
+      # The X11 and winit backends only compile on Linux, so clippy has to see
+      # this target's own sources.
+      - name: Run clippy
+        working-directory: rust
+        run: cargo clippy -p attractor-linux-saver -p attractor-gpu --all-targets -- -D warnings
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test -p attractor-linux-saver
+
+      - name: Validate the pipelines
+        working-directory: rust
+        run: cargo run -p attractor-linux-saver -- --self-test --noop
+
+      # A skip means no adapter was found, which would hide a broken software
+      # renderer. The step fails instead of tolerating it.
+      - name: Render a frame on the software rasterizer
+        working-directory: rust
+        run: |
+          set -o pipefail
+          cargo run -q -p attractor-linux-saver -- --self-test | tee self-test.txt
+          grep -q "lit pixels" self-test.txt
+          if grep -q "self-test: skipped" self-test.txt; then
+            echo "::error::no GPU adapter; the software rasterizer is unavailable"
+            exit 1
+          fi
+
+      - name: Run the xscreensaver hack for a few frames
+        working-directory: rust
+        run: xvfb-run -a cargo run -q -p attractor-linux-saver -- -root --frames 30
+
+      - name: Run the fullscreen runner for a few frames
+        working-directory: rust
+        run: xvfb-run -a cargo run -q -p attractor-linux-saver -- --fullscreen --frames 30
+
+      - name: Capture a screenshot through the shared CLI
+        working-directory: rust
+        run: |
+          cargo run -q -p attractor-cli -- \
+            --attractor lorenz --seed 42 --frames 30 \
+            --screenshot "$RUNNER_TEMP/lorenz.png"
+          test -s "$RUNNER_TEMP/lorenz.png"
+
+      - name: Upload the screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-screenshot
+          path: ${{ runner.temp }}/lorenz.png
+          retention-days: 7
+
   windows:
     name: Windows saver
     runs-on: windows-latest

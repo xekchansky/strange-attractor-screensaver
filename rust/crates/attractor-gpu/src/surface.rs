@@ -49,6 +49,14 @@ enum SurfaceSource {
         /// Module instance the window belongs to; may be null.
         hinstance: *mut std::ffi::c_void,
     },
+    /// Raw X11 or Wayland handles supplied by the Linux shell.
+    #[cfg(target_os = "linux")]
+    RawHandle {
+        /// The window the swap chain presents into.
+        window: wgpu::rwh::RawWindowHandle,
+        /// The display the window belongs to; the Vulkan backend needs it.
+        display: Option<wgpu::rwh::RawDisplayHandle>,
+    },
     /// The `<canvas>` the browser surface was created from.
     #[cfg(target_arch = "wasm32")]
     Canvas(web_sys::HtmlCanvasElement),
@@ -67,6 +75,11 @@ impl SurfaceSource {
             Self::CoreAnimationLayer(layer) => wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer),
             #[cfg(target_os = "windows")]
             Self::Win32Window { hwnd, hinstance } => win32_target(hwnd, hinstance),
+            #[cfg(target_os = "linux")]
+            Self::RawHandle { window, display } => wgpu::SurfaceTargetUnsafe::RawHandle {
+                raw_window_handle: window,
+                raw_display_handle: display,
+            },
         }
     }
 }
@@ -83,6 +96,7 @@ impl SurfaceSource {
         target_os = "macos",
         target_os = "ios",
         target_os = "windows",
+        target_os = "linux",
         target_arch = "wasm32"
     )),
     allow(unreachable_code)
@@ -188,6 +202,42 @@ impl SurfaceTarget {
             return Err(GpuError::InvalidFrameSize { width, height });
         }
         let source = SurfaceSource::Win32Window { hwnd, hinstance };
+        let surface = create_surface(context.instance(), &source)?;
+        let config = surface_configuration(&surface, context.adapter(), width, height)?;
+        surface.configure(context.device(), &config);
+        Ok(Self {
+            source,
+            surface,
+            config,
+        })
+    }
+
+    /// Wrap a raw X11 or Wayland window in a swap chain sized `width`×`height`
+    /// pixels.
+    ///
+    /// The Linux shells own their windows through different libraries (raw
+    /// Xlib for the xscreensaver hack, winit for the fullscreen runner), so
+    /// they hand over `raw-window-handle` values instead of a platform type.
+    /// The Vulkan backend needs the display handle as well; an X11 shell
+    /// passes its `Display*` or `xcb_connection_t*`, a Wayland shell its
+    /// `wl_display*`.
+    ///
+    /// # Safety
+    ///
+    /// The window and the display a handle points to must outlive the
+    /// returned target.
+    #[cfg(target_os = "linux")]
+    pub unsafe fn from_raw_handles(
+        context: &GpuContext,
+        window: wgpu::rwh::RawWindowHandle,
+        display: Option<wgpu::rwh::RawDisplayHandle>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, GpuError> {
+        if width == 0 || height == 0 {
+            return Err(GpuError::InvalidFrameSize { width, height });
+        }
+        let source = SurfaceSource::RawHandle { window, display };
         let surface = create_surface(context.instance(), &source)?;
         let config = surface_configuration(&surface, context.adapter(), width, height)?;
         surface.configure(context.device(), &config);
@@ -369,6 +419,7 @@ impl std::fmt::Debug for SurfaceTarget {
     target_os = "macos",
     target_os = "ios",
     target_os = "windows",
+    target_os = "linux",
     target_arch = "wasm32"
 ))]
 fn surface_configuration(
@@ -415,4 +466,33 @@ fn surface_configuration(
         alpha_mode,
         view_formats: Vec::new(),
     })
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use std::num::NonZeroU32;
+
+    use wgpu::rwh::{RawDisplayHandle, RawWindowHandle, XcbDisplayHandle, XcbWindowHandle};
+
+    use super::*;
+
+    #[test]
+    fn a_zero_frame_size_is_rejected_before_the_handles_are_used() {
+        let context = GpuContext::new_noop().expect("the noop backend always exists");
+        let window = XcbWindowHandle::new(NonZeroU32::new(1).expect("one is not zero"));
+        let display = XcbDisplayHandle::new(None, 0);
+        let result = unsafe {
+            SurfaceTarget::from_raw_handles(
+                &context,
+                RawWindowHandle::Xcb(window),
+                Some(RawDisplayHandle::Xcb(display)),
+                0,
+                480,
+            )
+        };
+        assert!(matches!(
+            result,
+            Err(GpuError::InvalidFrameSize { width: 0, .. })
+        ));
+    }
 }
