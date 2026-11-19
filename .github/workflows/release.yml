@@ -184,11 +184,20 @@ jobs:
 
       # A manual dispatch stops here: it proves all four artifacts build and
       # packages them for inspection without publishing anything.
+      #
+      # Re-pushing a tag reruns this workflow against a release that already
+      # exists (`gh release create` then fails with "a release with the same
+      # tag name already exists"), so the assets are replaced instead. The
+      # notes are left alone: they describe the tag, not the rebuild.
       - name: Publish the release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/* \
-            --title "$GITHUB_REF_NAME" \
-            --generate-notes
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release/* \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
