@@ -220,7 +220,8 @@ CLI захвата повторяет флаги старого демо-при�
 `-p name=value` (можно повторять), `--step`, `--speed`, `--cam-speed`,
 `--trail-color-speed`, `--trail-length`, `--color-mode`, `--screenshot`,
 `--record`, `--record-seconds`, `--frame-stride`, `--capture-scale`,
-`--warmup-steps`, `--cam-azimuth`, `--cam-elevation`, `--initial-state`, плюс
+`--no-overlay`, `--warmup-steps`, `--cam-azimuth`, `--cam-elevation`,
+`--initial-state`, плюс
 `--seed`, `--frames`, `--width` и `--height`.
 
 ### macOS-заставка

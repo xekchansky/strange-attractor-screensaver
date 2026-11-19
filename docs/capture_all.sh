@@ -7,6 +7,10 @@
 #
 # Build the binary first:  cargo build -p attractor-cli
 # Then:                    ./docs/capture_all.sh rust/target/debug/attractor-cli "$TMPDIR/captures"
+#
+# All captures pass `--no-overlay`: the README shows only the attractor. Preview
+# runs write to an ignored `docs/previews/<label>` directory until the assets
+# are approved.
 set -e
 BIN="${1:?Usage: capture_all.sh <binary-path> <output-dir>}"
 OUT="${2:?Usage: capture_all.sh <binary-path> <output-dir>}"
@@ -112,7 +116,7 @@ for a in ${=ATTRACTORS}; do
   echo "--- $a"
   # `${=...}` re-splits the helper's output into separate words (zsh does not
   # word-split command substitution by default).
-  capture_with_retry "$a" ${=$(capture_args "$a")} --screenshot "$OUT/screenshots/$a.png"
+  capture_with_retry "$a" ${=$(capture_args "$a")} --no-overlay --screenshot "$OUT/screenshots/$a.png"
 done
 
 # The hero recording takes a couple of minutes; SKIP_HERO=1 replays only the
@@ -133,7 +137,7 @@ for attempt in 1 2 3 4 5; do
   if "$BIN" --attractor aizawa --seed "$SEED" \
       -p a=0.95 -p b=0.7 -p c=0.6 -p d=3.5 -p e=0.25 -p f=0.1 \
       --step 0.002 --speed 0.7 --warmup-steps 0 \
-      --cam-speed 0.04 --trail-color-speed 0.05 --capture-scale 1 \
+      --cam-speed 0.04 --trail-color-speed 0.05 --capture-scale 1 --no-overlay \
       --record "$OUT/aizawa-frames" --record-seconds 40 --frame-stride 1; then
     break
   fi

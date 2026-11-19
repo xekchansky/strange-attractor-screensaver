@@ -19,6 +19,9 @@ web/test-results/
 web/playwright-report/
 web/.playwright/
 
+# Local documentation previews, reviewed before they land in docs/images.
+docs/previews/
+
 # Release artifacts and diagnostics produced while capturing docs.
 dist/
 *.zip
