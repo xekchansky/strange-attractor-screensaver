@@ -98,6 +98,8 @@ pub struct CommandLineArguments {
     pub seed: Option<u64>,
     /// Frames to simulate before a screenshot (or to record after settle).
     pub frames: Option<usize>,
+    /// True when `--no-overlay` was passed: captures leave out the corner text.
+    pub no_overlay: bool,
     /// Logical capture width in points; the default is 1200.
     pub width: Option<u32>,
     /// Logical capture height in points; the default is 900.
@@ -137,6 +139,7 @@ Options:
       --frames <n>            simulation frames before a screenshot (default
                               90), or the number of frames to record
                               (at most 216000, one hour at 60 fps)
+      --no-overlay            hide the formula overlay in the capture
       --warmup-steps <n>      integration steps fast-forwarded before capture
                               (default 60000; 0 records the trail from the start)
       --capture-scale <n>     resolution multiplier (default 2; 1-4)
@@ -178,6 +181,7 @@ required. The interactive surfaces are hosted by the platform shells.
         let mut frames = None;
         let mut width = None;
         let mut height = None;
+        let mut no_overlay = false;
         let mut show_help = false;
 
         let mut index = 0;
@@ -261,6 +265,7 @@ required. The interactive surfaces are hosted by the platform shells.
                         .ok_or_else(|| invalid(argument, &raw))?;
                     record_stride = Some(stride);
                 }
+                "--no-overlay" => no_overlay = true,
                 "-h" | "--help" => show_help = true,
                 "--warmup-steps" => {
                     let raw = take_value(arguments, &mut index, argument)?;
@@ -365,6 +370,7 @@ required. The interactive surfaces are hosted by the platform shells.
             frames,
             width,
             height,
+            no_overlay,
             show_help,
         })
     }

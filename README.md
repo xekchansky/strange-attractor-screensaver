@@ -218,7 +218,8 @@ cargo run --release -p attractor-cli -- \
 The capture CLI mirrors the old demo app's flags: `--attractor`, `-p name=value`
 (repeatable), `--step`, `--speed`, `--cam-speed`, `--trail-color-speed`,
 `--trail-length`, `--color-mode`, `--screenshot`, `--record`,
-`--record-seconds`, `--frame-stride`, `--capture-scale`, `--warmup-steps`,
+`--record-seconds`, `--frame-stride`, `--capture-scale`, `--no-overlay`,
+`--warmup-steps`,
 `--cam-azimuth`, `--cam-elevation`, `--initial-state`, plus `--seed`,
 `--frames`, `--width` and `--height`.
 

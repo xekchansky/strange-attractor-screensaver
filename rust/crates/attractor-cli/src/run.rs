@@ -345,6 +345,7 @@ pub fn prepare(arguments: &CommandLineArguments) -> Result<PreparedRun, RunError
             camera_azimuth: arguments.camera_azimuth_degrees.map(f64::to_radians),
             camera_elevation: arguments.camera_elevation_degrees.map(f64::to_radians),
             heal_automatically: false,
+            show_overlay: !arguments.no_overlay,
             ..PlayerOptions::default()
         },
         rng,

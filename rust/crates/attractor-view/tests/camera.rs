@@ -191,17 +191,19 @@ fn the_view_projection_puts_the_orbit_centre_in_the_middle() {
 }
 
 #[test]
-fn the_horizontal_field_of_view_is_sixty_degrees() {
+fn a_landscape_frame_keeps_sixty_degrees_on_the_vertical_axis() {
     let camera = settled_camera();
     let matrix = camera.view_projection(4.0 / 3.0);
-    // SceneKit measures its default 60-degree FOV along the larger dimension.
-    let half_width = camera.distance() * (PI / 6.0).tan();
-    let edge = camera.center() + Vector3::new(0.0, 0.0, -half_width);
+    // The vertical field of view stays 60 degrees in landscape. Measuring it
+    // along the horizontal axis instead shrinks the vertical angle by the
+    // aspect ratio and crops the attractor's top and bottom.
+    let half_height = camera.distance() * (PI / 6.0).tan();
+    let edge = camera.center() + Vector3::new(0.0, half_height, 0.0);
     let clip = matrix.project(edge);
-    let x = clip[0] / clip[3];
+    let y = clip[1] / clip[3];
     assert!(
-        (x.abs() - 1.0).abs() < 1e-5,
-        "horizontal edge maps to {x}, not +/-1"
+        (y.abs() - 1.0).abs() < 1e-5,
+        "vertical edge maps to {y}, not +/-1"
     );
 }
 
@@ -217,4 +219,70 @@ fn a_portrait_frame_puts_sixty_degrees_on_the_vertical_axis() {
         (y.abs() - 1.0).abs() < 1e-5,
         "vertical edge maps to {y}, not +/-1"
     );
+}
+
+/// A trace whose bounding box is the unit cube, so the framing radius is
+/// exactly `radius`.
+fn sphere_trace(radius: f64) -> TraceBuffer {
+    let states = [
+        State::new(radius, 0.0, 0.0),
+        State::new(-radius, 0.0, 0.0),
+        State::new(0.0, radius, 0.0),
+        State::new(0.0, -radius, 0.0),
+        State::new(0.0, 0.0, radius),
+        State::new(0.0, 0.0, -radius),
+    ];
+    trace_from(&states)
+}
+
+/// A camera settled on a trace with the given bounding radius.
+fn settled_camera_around(radius: f64) -> CameraController {
+    let trace = sphere_trace(radius);
+    let mut camera = CameraController::new(0.0, 0.0);
+    for _ in 0..600 {
+        camera.update(0.0, 0.0, &trace);
+    }
+    camera
+}
+
+#[test]
+fn the_framed_bounding_sphere_stays_inside_the_frame() {
+    let radius = 1.0;
+    let camera = settled_camera_around(radius);
+    assert_close(camera.distance(), radius * CameraController::FRAMING_FACTOR);
+
+    const STEPS: usize = 48;
+    for aspect in [1.0, 4.0 / 3.0, 16.0 / 9.0] {
+        let matrix = camera.view_projection(aspect);
+        let mut vertical_reach: f64 = 0.0;
+        for i in 0..=STEPS {
+            let polar = PI * i as f64 / STEPS as f64;
+            for j in 0..=STEPS {
+                let azimuth = 2.0 * PI * j as f64 / STEPS as f64;
+                let point = Vector3::new(
+                    radius * polar.sin() * azimuth.cos(),
+                    radius * polar.cos(),
+                    radius * polar.sin() * azimuth.sin(),
+                );
+                let clip = matrix.project(point);
+                assert!(
+                    clip[3] > 0.0,
+                    "point {point:?} is behind the camera at aspect {aspect}"
+                );
+                let x = (clip[0] / clip[3]).abs();
+                let y = (clip[1] / clip[3]).abs();
+                assert!(
+                    x <= 1.0 && y <= 1.0,
+                    "point {point:?} is outside the frame at aspect {aspect}: x {x}, y {y}"
+                );
+                vertical_reach = vertical_reach.max(f64::from(y));
+            }
+        }
+        // The framing must stay tight: a sphere cropped by the frame is the
+        // bug, but shrinking it to a dot would be no fix either.
+        assert!(
+            vertical_reach > 0.7,
+            "the sphere fills only {vertical_reach} of the half-height at aspect {aspect}"
+        );
+    }
 }

@@ -10,10 +10,9 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I12 — distribution, docs and cleanup**
-  (2026-11-14; CI green, run 43520803196, the release dry run pending)
-- Last completed change: **I12 — distribution, docs and cleanup**
-  (2026-11-14)
+- Last completed iteration: **I13 — documentation media refresh**
+  (2026-11-20)
+- Last completed change: **I13 — documentation media refresh** (2026-11-20)
 - Next iteration: none — the plan is complete. Open follow-ups are listed in
   the per-iteration notes below and in design §9.
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
@@ -178,6 +177,7 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   emulator/phone checklist in `shells/android/README.md`)
 - [x] I12 — distribution, docs and cleanup (done; CI green, run 43520803196;
   release dry run pending)
+- [x] I13 — documentation media refresh (done; 2026-11-20)
 
 ## Swift oracle
 
@@ -994,3 +994,21 @@ plain `git checkout` of the tag is enough.
   repository metadata, applied by hand (`gh repo edit --add-topic …`) and not
   reproducible from the tree; the agent sandbox cannot read `~/.config/gh`, so
   that step was not run from here.
+- **I13 rulings**: the README captures pass `--no-overlay` — the Swift snapshot
+  rendered offscreen and never included the AppKit label, so the burned-in
+  overlay was a porting regression. The Swift parity projection is the
+  **vertical** 60-degree field of view: the captures made with SceneKit's
+  horizontal-60 behaviour are exactly 1.333x larger than the tag's stills
+  (measured ink bboxes), which is `tan 30 / tan 23.4`, so the
+  `fix/camera-framing` change is a parity fix and is restored for the capture.
+  Aizawa and Halvorsen are pinned to seed-chosen instances (28 and 50): the
+  Swift-era stills used unpinned random parameters and are not reproducible.
+- **I13 media**: twelve stills and the hero GIF were re-captured into a
+  git-ignored `docs/previews/<label>` directory, reviewed through an HTML
+  contact sheet, and only then copied into `docs/images`. Every still passes
+  the border-ink check (YAVG 16 on all four edges at a 3 px strip). The hero is
+  recorded at azimuth 185 degrees, 40 s of simulated time, 2400 frames, 640 px,
+  25 MB; Aizawa's table still is the seed-28 instance at azimuth 315 degrees.
+- **I13 deferred**: the social preview card — build the seed-21 Aizawa variant
+  and compare it with the current Swift-era card (`docs/images/social-preview.png`)
+  before replacing it.
