@@ -55,8 +55,15 @@ impl CameraController {
     pub const FRAMING_STRIDE: u64 = 6;
     /// The orbit angle above the horizontal plane used when none is given.
     pub const DEFAULT_ELEVATION: f64 = PI / 5.0;
-    /// SceneKit's default field of view in radians, measured along the larger
-    /// frame dimension (horizontal for a landscape window).
+    /// Field of view in radians, always measured along the vertical frame
+    /// axis.
+    ///
+    /// SceneKit measured its default 60-degree field of view along the larger
+    /// frame dimension, which shrank the vertical angle by the aspect ratio on
+    /// landscape frames. With the framing distance tied to the bounding radius
+    /// that cropped the top and bottom of the attractor — visibly so in the
+    /// README captures (4:3) and the browser demo (16:9). Keeping the vertical
+    /// angle fixed frames the same sphere regardless of the window shape.
     pub const FIELD_OF_VIEW: f64 = PI / 3.0;
     /// Distance used until the first framing scan completes.
     const INITIAL_DISTANCE: f64 = 8.0;
@@ -159,20 +166,15 @@ impl CameraController {
     /// Combined perspective and view transform for a frame of `aspect`
     /// (width divided by height).
     ///
-    /// SceneKit's default 60-degree field of view is measured along the larger
-    /// frame dimension, so a landscape frame gets that angle horizontally and
-    /// a portrait frame vertically. The projection uses clip-space depth in
+    /// The 60-degree field of view is measured vertically at every aspect
+    /// ratio; a landscape frame simply shows more to the sides, and a portrait
+    /// frame more above and below. The projection uses clip-space depth in
     /// `[0, 1]`, the wgpu convention, and a depth range scaled to the current
     /// orbit distance (the Swift camera auto-adjusts its z-range to the scene).
     pub fn view_projection(&self, aspect: f64) -> Mat4 {
         let near = (self.distance * Self::NEAR_FRACTION).max(1e-6);
         let far = (self.distance * Self::FAR_FACTOR).max(near * 1.001);
-        let vertical_field_of_view = if aspect >= 1.0 {
-            2.0 * ((Self::FIELD_OF_VIEW / 2.0).tan() / aspect).atan()
-        } else {
-            Self::FIELD_OF_VIEW
-        };
-        Mat4::perspective(vertical_field_of_view, aspect, near, far).multiply(&self.view_matrix())
+        Mat4::perspective(Self::FIELD_OF_VIEW, aspect, near, far).multiply(&self.view_matrix())
     }
 
     /// Compute the bounding box of `trace` and a camera distance that frames
