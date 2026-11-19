@@ -67,8 +67,11 @@ pub async fn start(
             width,
             height,
             // The overlay is DOM text on the web (D8), so this only has to stay
-            // a sane positive number for the player's bookkeeping.
+            // a sane positive number for the player's bookkeeping. The browser
+            // draws the text itself, so the in-frame copy stays off even if the
+            // wasm build ever enables the `text` feature.
             overlay_scale: 1.0,
+            show_overlay: false,
             sample_count,
         },
         SplitMix64::new(run.seed),

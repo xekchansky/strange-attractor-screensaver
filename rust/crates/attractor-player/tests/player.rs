@@ -284,3 +284,42 @@ fn a_rendered_frame_is_not_blank() {
     assert_eq!(pixels.len(), 160 * 120 * 4);
     assert!(lit_pixels(&pixels) > 0, "the resized ribbon must draw ink");
 }
+
+#[test]
+fn hiding_the_overlay_inks_fewer_pixels_than_showing_it() {
+    let context = match GpuContext::new() {
+        Ok(context) => context,
+        Err(error) => {
+            eprintln!("skipping the overlay test: {error}");
+            return;
+        }
+    };
+    let mut shown = player(
+        42,
+        PlayerOptions {
+            overlay_scale: 2.0,
+            ..pinned_options()
+        },
+    );
+    let mut hidden = player(
+        42,
+        PlayerOptions {
+            overlay_scale: 2.0,
+            show_overlay: false,
+            ..pinned_options()
+        },
+    );
+    for player in [&mut shown, &mut hidden] {
+        player.warm_up(5_000).expect("warm-up stays healthy");
+        for _ in 0..60 {
+            player.tick(FRAME_INTERVAL).expect("frame advances");
+        }
+    }
+    let shown_pixels = lit_pixels(&shown.render(&context).expect("frame renders"));
+    let hidden_pixels = lit_pixels(&hidden.render(&context).expect("frame renders"));
+    assert!(shown_pixels > 0, "the ribbon must draw ink");
+    assert!(
+        hidden_pixels < shown_pixels,
+        "the overlay must add ink: {hidden_pixels} hidden vs {shown_pixels} shown"
+    );
+}

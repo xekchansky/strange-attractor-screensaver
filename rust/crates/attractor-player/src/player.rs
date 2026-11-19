@@ -30,6 +30,8 @@ pub struct PlayerOptions {
     pub height: u32,
     /// Overlay font and margin multiplier.
     pub overlay_scale: f32,
+    /// Draw the formula overlay into captured and presented frames.
+    pub show_overlay: bool,
     /// Multisample count of the render target.
     pub sample_count: u32,
 }
@@ -43,6 +45,7 @@ impl Default for PlayerOptions {
             width: 1_200,
             height: 900,
             overlay_scale: 1.0,
+            show_overlay: true,
             sample_count: SAMPLE_COUNT,
         }
     }
@@ -268,11 +271,12 @@ impl Player {
         let aspect = f64::from(self.width) / f64::from(self.height);
         let view_projection = self.camera.view_projection(aspect);
         let overlay = OverlayModel::new(&self.selection, self.engine.state()).text();
+        let overlay = self.options.show_overlay.then_some(overlay.as_str());
         let pixels = renderer.render(
             context,
             self.builder.geometry(),
             &view_projection,
-            Some(&overlay),
+            overlay,
         )?;
         Ok(pixels)
     }
@@ -316,13 +320,14 @@ impl Player {
         let aspect = f64::from(self.width) / f64::from(self.height);
         let view_projection = self.camera.view_projection(aspect);
         let overlay = OverlayModel::new(&self.selection, self.engine.state()).text();
+        let overlay = self.options.show_overlay.then_some(overlay.as_str());
         let view = frame.texture.create_view(&Default::default());
         renderer.render_to_view(
             context,
             &view,
             self.builder.geometry(),
             &view_projection,
-            Some(&overlay),
+            overlay,
         )?;
         context.queue().present(frame);
         Ok(())
@@ -508,6 +513,10 @@ mod tests {
         assert_eq!(options.width, 1_200);
         assert_eq!(options.height, 900);
         assert_eq!(options.overlay_scale, 1.0);
+        assert!(
+            options.show_overlay,
+            "the screensaver shows the overlay by default"
+        );
         assert_eq!(options.sample_count, SAMPLE_COUNT);
         assert!(options.heal_automatically);
         assert_eq!(options.camera_azimuth, None);
