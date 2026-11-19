@@ -29,11 +29,13 @@ capture_args() {
   case "$1" in
     # The Sprott family's 2000–8000 default leaves the figure sparse here.
     sprott_*) echo "--trail-length 20000" ;;
-    # Random Aizawa sampling lands in near-periodic pockets at many seeds
-    # (42, 43 and 7 all fail the health check), so the documentation view pins
-    # the canonical chaotic parameters the hero recording uses.
+    # Aizawa needs a pinned instance: the canonical parameters render as a thin
+    # wire frame here, while the Swift-era still was a random instance that
+    # cannot be reproduced. Seed 28 draws the flowing ribbon chosen for the
+    # README (it passes the health check), and the angle is pinned so the shot
+    # is stable.
     aizawa)
-      echo "-p a=0.95 -p b=0.7 -p c=0.6 -p d=3.5 -p e=0.25 -p f=0.1 --step 0.002 --speed 0.7 --cam-azimuth 45 --cam-elevation 36 --cam-speed 0 --trail-color-speed 0" ;;
+      echo "--seed 28 --cam-azimuth 315 --cam-elevation 36 --cam-speed 0 --trail-color-speed 0" ;;
     # Pinned documentation views. Unpinned runs sample parameters and a random
     # camera azimuth on every launch, which makes a screenshot impossible to
     # reproduce and often lands on an unflattering side. Each set below was
@@ -80,6 +82,11 @@ capture_args() {
     # straight segments at 0.007.
     moore_spiegel)
       echo "-p R=250 -p T=10 --step 0.003 --trail-length 20000 --cam-azimuth 90 --cam-elevation 12 --cam-speed 0 --trail-color-speed 0" ;;
+    # Halvorsen's parameter is a single chaotic coefficient, so the catalogue
+    # default is fine; the seed pins which instance and camera angle the README
+    # shows. Seed 50 draws the dense symmetrical knot picked for the table.
+    halvorsen)
+      echo "--seed 50" ;;
     *) echo "" ;;
   esac
 }
@@ -132,11 +139,14 @@ echo "=== Aizawa frames for the hero GIF ==="
 # same amount of simulated time. 40 s of recording at 5.83 steps per frame
 # fills the Aizawa trail (14000 points) exactly by the last frame, so the
 # figure is fully traced when the animation ends; the 2400 captured frames
-# play back as 48 s at the GIF's 50 fps.
+# play back as 48 s at the GIF's 50 fps. The azimuth is pinned at 185 degrees:
+# the hero needs a fixed angle so the loop starts from the chosen side, and the
+# previous seeded-random angle read as a wire frame from the start.
 for attempt in 1 2 3 4 5; do
   if "$BIN" --attractor aizawa --seed "$SEED" \
       -p a=0.95 -p b=0.7 -p c=0.6 -p d=3.5 -p e=0.25 -p f=0.1 \
       --step 0.002 --speed 0.7 --warmup-steps 0 \
+      --cam-azimuth 185 --cam-elevation 36 \
       --cam-speed 0.04 --trail-color-speed 0.05 --capture-scale 1 --no-overlay \
       --record "$OUT/aizawa-frames" --record-seconds 40 --frame-stride 1; then
     break
