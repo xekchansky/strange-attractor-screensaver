@@ -981,7 +981,7 @@ plain `git checkout` of the tag is enough.
   built the universal bundle in the run below. A `workflow_dispatch` of
   `release.yml` is still the dry run for all four artifacts; a `v*` tag is the
   real publish.
-- **I12 CI green (43520803196, `edab171`)**: all six jobs passed — `rust`,
+- **I12 CI green (43520803196, `7728a3a`)**: all six jobs passed — `rust`,
   `macos` (the new universal `.saver` build), `linux`, `windows`, `web` and
   `android`. The macOS job is the first CI build of the bundle after the Swift
   tree was removed, so it also proves the FFI link path and the pre-build
@@ -1009,6 +1009,17 @@ plain `git checkout` of the tag is enough.
   the border-ink check (YAVG 16 on all four edges at a 3 px strip). The hero is
   recorded at azimuth 185 degrees, 40 s of simulated time, 2400 frames, 640 px,
   25 MB; Aizawa's table still is the seed-28 instance at azimuth 315 degrees.
+- **I13 history cleanup**: `docs/images` was cut from every commit and tag with
+  `git filter-branch` — the three GIF generations and the superseded stills were
+  about 40 MB of history — and the current fourteen files were then re-added in
+  one commit. `main`, `release/v2.0.0`, `rust-port` and the tags that contained
+  the folder now carry new SHAs, and the local `origin/*` refs were rewritten
+  with them, so the next push needs `--force-with-lease`. A full backup bundle
+  was taken first and lives outside the repository. The Swift-era stills were
+  copied out of the doomed tag into `docs/reference/swift-oracle/` before the
+  rewrite so the reference images survive. Commits that only touched
+  `docs/images` (`docs: add a social preview card`) were dropped as empty, and
+  the SHAs quoted in older status entries were re-pointed to their new commits.
 - **I13 deferred**: the social preview card — build the seed-21 Aizawa variant
   and compare it with the current Swift-era card (`docs/images/social-preview.png`)
   before replacing it.

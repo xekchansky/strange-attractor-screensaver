@@ -47,7 +47,7 @@ impossible, retune that attractor on its own.
 - **C. adaptive framing from the projected extent.** Always tight and unclipped,
   but it is a new composition, not a restoration.
 
-The camera fix is committed in this branch (`fd5f1dd`) as the parity fix
+The camera fix is committed in this branch (`2c2b638`) as the parity fix
 described above.
 
 ## Goals
@@ -94,7 +94,7 @@ axis SceneKit measures its field of view along. Measuring the committed captures
 against the `swift-oracle` stills showed the horizontal-60 renders are exactly
 1.333x larger (`tan 30° / tan 23.4°`), so the vertical-60 camera fix is the Swift
 parity behaviour, not a new composition: it was committed in this branch
-(`fd5f1dd`) instead of being parked, and the Findings, Approaches and Non-goals
+(`2c2b638`) instead of being parked, and the Findings, Approaches and Non-goals
 sections above are amended accordingly.
 
 Two further deviations from the first draft: the delivery is a sequence of
