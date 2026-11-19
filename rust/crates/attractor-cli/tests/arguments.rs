@@ -32,6 +32,7 @@ fn an_empty_command_line_keeps_every_default() {
     assert_eq!(arguments.frames, None);
     assert_eq!(arguments.width, None);
     assert_eq!(arguments.height, None);
+    assert!(!arguments.no_overlay);
     assert!(!arguments.show_help);
     assert_eq!(arguments.overrides, Default::default());
 }
@@ -301,6 +302,21 @@ fn frames_are_capped_at_one_hour_of_capture() {
 }
 
 #[test]
+fn the_overlay_is_shown_unless_it_is_turned_off() {
+    assert!(!parse(&[]).no_overlay);
+    assert!(
+        parse(&[
+            "--no-overlay",
+            "--attractor",
+            "lorenz",
+            "--screenshot",
+            "x.png"
+        ])
+        .no_overlay
+    );
+}
+
+#[test]
 fn help_is_recognised() {
     assert!(parse(&["-h"]).show_help);
     assert!(parse(&["--help"]).show_help);
@@ -315,6 +331,7 @@ fn usage_lists_the_headless_capture_flags() {
         "--record",
         "--record-seconds",
         "--frames",
+        "--no-overlay",
         "--frame-stride",
         "--width",
         "--height",

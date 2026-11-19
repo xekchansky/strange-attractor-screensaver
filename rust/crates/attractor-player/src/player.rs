@@ -272,12 +272,8 @@ impl Player {
         let view_projection = self.camera.view_projection(aspect);
         let overlay = OverlayModel::new(&self.selection, self.engine.state()).text();
         let overlay = self.options.show_overlay.then_some(overlay.as_str());
-        let pixels = renderer.render(
-            context,
-            self.builder.geometry(),
-            &view_projection,
-            overlay,
-        )?;
+        let pixels =
+            renderer.render(context, self.builder.geometry(), &view_projection, overlay)?;
         Ok(pixels)
     }
 
