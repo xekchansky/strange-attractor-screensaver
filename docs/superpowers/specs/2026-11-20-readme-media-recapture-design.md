@@ -17,31 +17,38 @@ impossible, retune that attractor on its own.
   an `NSTextField` outside that render, so it never reached the PNG. In the Rust
   port the overlay is drawn into the frame by `FrameRenderer::render`, and the
   CLI always passes it.
-- The Swift camera measured its 60-degree field of view along the larger frame
-  dimension (46.8 degrees vertically at 4:3). The port copied that, and the
-  committed captures match the Swift stills exactly apart from the overlay.
-- A CPU-only projection probe of the documented Aizawa view gives `max|y| = 1.19`
-  under the Swift projection (19% cropped) and `0.89` under a vertical-60-degree
-  projection. The same probe gives Lorenz `0.79` vs `0.595`: the vertical-60 fix
-  shrinks every figure by 25%, which is not the Swift look.
+- The port assumed SceneKit measured its 60-degree field of view along the
+  larger frame dimension (46.8 degrees vertically at 4:3), and a CPU-only
+  projection probe supported that reading. **The probe was falsified by
+  measurement:** the captures rendered with the horizontal-60 behaviour are
+  exactly 1.333x larger than the `swift-oracle` stills (ink bboxes: Rössler
+  1380 vs 1030 px, Chen 1408 vs 1054, Lorenz 1530 vs 1096), and
+  `tan 30° / tan 23.4° = 1.333`. The Swift behaviour is the **vertical** 60
+  degrees, so the camera fix on `fix/camera-framing` is a parity fix, not a new
+  composition; it is part of this iteration. See the revision note below.
+- The CPU probe of the documented Aizawa view still gave `max|y| = 1.19` under
+  horizontal-60 and `0.89` under vertical-60, which is why the cropped frames
+  and the 25%-smaller estimate appeared in the first draft of this spec.
 - The Swift-era Aizawa still was captured without pinned parameters (the old
   script has no `aizawa` screenshot case), so it is not reproducible; the Rust
-  script pins the canonical chaotic parameters, which is why that trace is
-  denser and reaches the frame edge.
+  script pinned the canonical chaotic parameters, which is why that trace was
+  denser and reached the frame edge.
 
 ## Approaches considered
 
-- **A. swift-era projection, per-attractor retune (chosen).** Keep SceneKit's
-  FOV behaviour for capture so eleven assets match the tag one-to-one; retune
-  only the attractors that still clip.
-- **B. vertical-60-degree projection everywhere.** Nothing clips, but every
-  figure is 25% smaller than the reference the human partner liked.
+- **A. horizontal-60 projection, per-attractor retune (first draft).** Assumed
+  SceneKit's FOV along the larger dimension and planned to keep it; abandoned
+  once the ink-bbox measurement showed horizontal-60 renders are 1.333x larger
+  than the tag's stills.
+- **B. vertical-60-degree projection (chosen).** The measured Swift behaviour:
+  the stills match the tag almost pixel for pixel and nothing clips. The
+  camera fix from `fix/camera-framing` is therefore promoted from "separate
+  product concern" to part of this iteration.
 - **C. adaptive framing from the projected extent.** Always tight and unclipped,
   but it is a new composition, not a restoration.
 
-The uncommitted camera fix on `fix/camera-framing` (vertical field of view) is a
-separate product concern for 16:9 and the browser demo. It is stashed for the
-capture and restored afterwards; it is not part of this iteration.
+The camera fix is committed in this branch (`fd5f1dd`) as the parity fix
+described above.
 
 ## Goals
 
@@ -53,7 +60,6 @@ capture and restored afterwards; it is not part of this iteration.
 ## Non-goals
 
 - Changing the screensaver's live overlay.
-- Merging the camera FOV fix.
 - Retuning attractors that already match the reference.
 
 ## Design
@@ -80,3 +86,19 @@ capture and restored afterwards; it is not part of this iteration.
 - Whether the edge-ink threshold is per-mille of border pixels; any sane report
   that flags Aizawa and clears the other eleven is enough.
 - The retune recipe for Aizawa.
+
+## Revision 2026-11-20 (during implementation)
+
+The pre-flight probe this spec's first draft relied on was wrong about which
+axis SceneKit measures its field of view along. Measuring the committed captures
+against the `swift-oracle` stills showed the horizontal-60 renders are exactly
+1.333x larger (`tan 30° / tan 23.4°`), so the vertical-60 camera fix is the Swift
+parity behaviour, not a new composition: it was committed in this branch
+(`fd5f1dd`) instead of being parked, and the Findings, Approaches and Non-goals
+sections above are amended accordingly.
+
+Two further deviations from the first draft: the delivery is a sequence of
+commits on `fix/camera-framing` rather than one atomic commit, and Aizawa and
+Halvorsen are retuned to the seed-picked random instances 28 and 50 (azimuths
+315° and 185°) instead of the canonical parameters, because the Swift-era stills
+for those two used unpinned random draws.
