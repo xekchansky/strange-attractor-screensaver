@@ -28,8 +28,12 @@ struct Offscreen {
 /// offscreen texture or the swap chain view supplied per frame. With a count
 /// of one the resolve target is the render attachment itself, which is what
 /// the WebGL2 fallback and the noop backend need.
+///
+/// `depth_view` shares the multisample count so the depth test resolves the
+/// ribbon's self-overlap inside one pass.
 struct Attachment {
     multisample_view: Option<wgpu::TextureView>,
+    depth_view: wgpu::TextureView,
     offscreen: Option<Offscreen>,
 }
 
@@ -62,6 +66,19 @@ impl Attachment {
                 .create_view(&wgpu::TextureViewDescriptor::default())
         });
 
+        let depth_view = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("frame depth target"),
+                size: extent,
+                mip_level_count: 1,
+                sample_count,
+                dimension: wgpu::TextureDimension::D2,
+                format: crate::DEPTH_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
         let offscreen = offscreen.then(|| {
             let resolve_texture = device.create_texture(&wgpu::TextureDescriptor {
                 label: Some("frame resolve target"),
@@ -92,6 +109,7 @@ impl Attachment {
 
         Self {
             multisample_view,
+            depth_view,
             offscreen,
         }
     }
@@ -382,6 +400,16 @@ impl FrameRenderer {
                         store: wgpu::StoreOp::Store,
                     },
                 })],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.attachment.depth_view,
+                    // Every frame starts from the far plane; the ribbon writes
+                    // depth so later, farther triangles lose to nearer ones.
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: wgpu::StoreOp::Discard,
+                    }),
+                    stencil_ops: None,
+                }),
                 ..Default::default()
             });
             self.ribbon.draw(&mut pass);

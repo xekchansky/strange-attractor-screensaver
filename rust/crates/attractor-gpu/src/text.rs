@@ -54,6 +54,9 @@ impl TextOverlay {
         let cache = Cache::new(device);
         let viewport = Viewport::new(device, &cache);
         let mut atlas = TextAtlas::new(device, context.queue(), &cache, format);
+        // The overlay is drawn after the ribbon into the same pass, so it has
+        // to carry that pass's depth format. It compares `Always` and writes
+        // nothing: the text stays on top even where the ribbon is nearer.
         let renderer = TextRenderer::new(
             &mut atlas,
             device,
@@ -61,7 +64,13 @@ impl TextOverlay {
                 count: sample_count,
                 ..Default::default()
             },
-            None,
+            Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(false),
+                depth_compare: Some(wgpu::CompareFunction::Always),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
         );
 
         Self {

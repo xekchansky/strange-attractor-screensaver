@@ -124,7 +124,17 @@ impl RibbonRenderer {
                 cull_mode: None,
                 ..Default::default()
             },
-            depth_stencil: None,
+            // The ribbon is a 3D strip that crosses itself, so a fragment is
+            // visible only when nothing nearer was drawn before it. Without
+            // this the trail's own order (oldest first) decided the overlap
+            // and late, far passes painted over near ones.
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: crate::DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::Less),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
             multisample: wgpu::MultisampleState {
                 count: sample_count,
                 ..Default::default()

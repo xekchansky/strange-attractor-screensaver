@@ -27,6 +27,14 @@ pub use vertex::Vertex;
 
 /// The sRGB render target every capture uses.
 pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+/// Depth format of the frame target.
+///
+/// The ribbon is a 3D strip that crosses itself, so overlapping passes have to
+/// be resolved by distance rather than by the order they were rasterized. The
+/// Swift renderer got that for free from its `SCNMaterial`; here the pipeline
+/// carries an explicit depth attachment. `Depth24Plus` is supported by every
+/// backend, including the WebGL2 fallback.
+pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth24Plus;
 /// Multisample count of the ribbon and text pipelines.
 ///
 /// The Swift host snapshots with 4x multisampling, so edges get the same
