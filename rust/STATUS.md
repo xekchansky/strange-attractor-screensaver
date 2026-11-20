@@ -10,9 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I13 — documentation media refresh**
-  (2026-11-20)
-- Last completed change: **I13 — documentation media refresh** (2026-11-20)
+- Last completed iteration: **I14 — ribbon depth buffer** (2026-11-20)
+- Last completed change: **I14 — ribbon depth buffer** (2026-11-20)
 - Next iteration: none — the plan is complete. Open follow-ups are listed in
   the per-iteration notes below and in design §9.
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
@@ -21,7 +20,7 @@ file, and commit atomically.
   reviewer after I10 (design §6).
 - Android manual checklist: `shells/android/README.md`, scheduled with the
   reviewer after I11 (design §6).
-- Pre-migration visual reference: **`ef3d61b`**, the last commit whose
+- Pre-migration visual reference: **`fb781fe`**, the last commit whose
   `.saver` still rendered through SceneKit. The Rust host side-by-side pass is
   done for macOS (I7b); the catalog screenshots and hero GIF were re-captured
   from `attractor-cli` in I12 and are the new documentation baseline.
@@ -178,6 +177,7 @@ and I11 add them back against `attractor-wasm` and the Android shell.
 - [x] I12 — distribution, docs and cleanup (done; CI green, run 43520803196;
   release dry run pending)
 - [x] I13 — documentation media refresh (done; 2026-11-20)
+- [x] I14 — ribbon depth buffer (done; 2026-11-20)
 
 ## Swift oracle
 
@@ -185,7 +185,7 @@ The Swift tree is archived as the annotated git tag **`swift-oracle`**,
 created on the last
 commit that still carried `Core/`, `Render/` and `Demo/` (2026-11-14). The
 golden fixtures were generated from that tree on 2026-11-12 (the sources date
-back to `dfbadb8`, the last commit that touched `Core/Sources`), and the
+back to `29e7917`, the last commit that touched `Core/Sources`), and the
 generators (`FormulaFixtureDumpTests`, `NumericalFixtureDumpTests`,
 `ViewFixtureDumpTests`) are part of the tag. To reproduce a fixture, add a
 worktree for the tag and run the commands in the matching fixture README; a
@@ -232,7 +232,7 @@ plain `git checkout` of the tag is enough.
   written with `%.17g`, so they round-trip exactly. `tests/fixtures/README.md`
   documents the generator command. The Swift generator suite is skipped
   unless `ATTRACTOR_DUMP_FIXTURES=1`, so a normal `swift test` writes nothing.
-- **I2 ruling**: the oracle is pinned to `dfbadb8` (last `Core/Sources`
+- **I2 ruling**: the oracle is pinned to `29e7917` (last `Core/Sources`
   commit) rather than to the rust-port HEAD, because the fixtures depend on
   Swift sources only; the generator itself lands in the I2 commit. Cost if
   wrong: regenerating needs one extra file copy until I12 archives the
@@ -545,7 +545,7 @@ plain `git checkout` of the tag is enough.
 - **I7b ruling (SceneKit removal)**: "SceneKit renderer removed" is read as
   removed from the host path, not deleted from the repository. `Render/` and
   `Demo/` stay until I12 because the I7b verification requires `Demo` to build
-  and the visual reference is the Swift path pinned at `ef3d61b`; deleting
+  and the visual reference is the Swift path pinned at `fb781fe`; deleting
   them now would remove the oracle before the migration is accepted. Cost if
   wrong: the repository carries the SceneKit package for a few more
   iterations.
@@ -619,7 +619,7 @@ plain `git checkout` of the tag is enough.
   modes. The ubuntu `rust` job is unchanged. Locally the Win32 code was
   verified with the same clippy command against `x86_64-pc-windows-gnu` and
   the shell was exercised through `--self-test`; the first real Windows run was
-  CI run **43316581080** (push of `195d475`, 2026-11-12T22:05Z), which completed
+  CI run **43316581080** (push of `5013c0b`, 2026-11-12T22:05Z), which completed
   successfully in 6m36s with the `windows` job green.
 - **I8 deferred**: the settings window exposes only the attractor choice;
   signing, an installer and the `.scr` packaging step belong to I12, and the
@@ -699,7 +699,7 @@ plain `git checkout` of the tag is enough.
   Chromium aborts with `bootstrap_check_in … Permission denied (1100)` because
   Seatbelt denies the Mach-port rendezvous. CI is the first real browser run;
   the manual Chrome/Safari/Firefox checklist remains with the reviewer.
-- **I9 first browser run (CI 43500194026, `7dd7096`)**: `rust`, `windows` and
+- **I9 first browser run (CI 43500194026, `cb4129c`)**: `rust`, `windows` and
   the bundle build are green; the forced-WebGL2 test failed at
   `waitForFrames` with a bare 30 s timeout, and the automatic-backend test
   passed, so the page, the bundle and the frame loop work in headless
@@ -710,7 +710,7 @@ plain `git checkout` of the tag is enough.
   carries that state, a `webgl2`/`webgpu` probe of the page and the collected
   console errors. The successful automatic-backend test also prints the
   backend it picked, because that fact exists only in a green run.
-- **I9 WebGL2 device fix (CI 43501835180, `63d1cc0`)**: the instrumented run
+- **I9 WebGL2 device fix (CI 43501835180, `f20523f`)**: the instrumented run
   named the cause — the page reached `starting` and `start()` returned
   `cannot create a GPU device: Limit 'max_compute_workgroups_per_dimension'
   value 65535 is better than allowed 0`. WebGL2 has no compute support, so the
@@ -719,7 +719,7 @@ plain `git checkout` of the tag is enough.
   instead. `--use-angle=swiftshader` does provide WebGL2 in the headless
   runner (the probe reported `WebGL 2.0 (OpenGL ES 3.0 Chromium)`), so the
   test was exercising the fallback, not a missing platform feature.
-- **I9 CI green (43502605634, `d47538c`)**: all six jobs passed — the browser
+- **I9 CI green (43502605634, `30f6266`)**: all six jobs passed — the browser
   suite reports `2 passed (6.4s)`, covering the forced WebGL2 path and the
   automatic backend, and `rust`, `windows`, `Core tests`, `Render and Demo
   build` and `Catalog validation` are unchanged. The first WebGL2 rendering
@@ -769,7 +769,7 @@ plain `git checkout` of the tag is enough.
   winit presentation paths; the job fails rather than skipping when no
   adapter is found. Native Wayland and xscreensaver's `-window-id` preview
   remain on the manual checklist.
-- **I10 CI green (43507189418, `be48758`)**: all seven jobs passed on the
+- **I10 CI green (43507189418, `d5c2670`)**: all seven jobs passed on the
   first run. The `linux` job rendered the adapter self-test through
   `llvmpipe (LLVM 21.1.8, 256 bits)`, backend Vulkan, 6 763 lit pixels at
   640x480; the xscreensaver `-root` mode and the winit `--fullscreen` runner
@@ -786,7 +786,7 @@ plain `git checkout` of the tag is enough.
   window. The runner creates one fullscreen window per monitor; a Wayland
   compositor that rejects several fullscreen surfaces falls back to whatever
   winit maps, and the manual pass records how each compositor behaves.
-- **I10 review (`be48758`)**: an independent read-only review found no
+- **I10 review (`d5c2670`)**: an independent read-only review found no
   Critical or Important defects; the raw-handle constructor, the shared
   crate move and the CI job were all accepted as correct. Seven Minor
   findings are deferred; none blocks use:
@@ -851,7 +851,7 @@ plain `git checkout` of the tag is enough.
   NDK is not installed in the agent sandbox; CI installs it, builds the
   libraries first and uploads a complete APK. The emulator/phone pass is the
   remaining gate.
-- **I11 CI green (43514690865, `d3a51d5`)**: all eight jobs passed. The
+- **I11 CI green (43514690865, `ea8019c`)**: all eight jobs passed. The
   `android` job installed NDK 27.2, built `libattractor_ffi.so` for
   `arm64-v8a` and `x86_64`, linted the Android target, ran
   `assembleDebug lint` and uploaded a 23 MB APK; the artifact contains both
@@ -861,10 +861,10 @@ plain `git checkout` of the tag is enough.
   installs the legacy `tools` package that the current SDK repository no
   longer publishes; the job now uses the SDK the ubuntu image ships and
   calls its `sdkmanager` directly.
-- **I11 review (`48845e3`)**: an independent read-only review found no
+- **I11 review (`754b788`)**: an independent read-only review found no
   Critical defects. One Important — the NDK path depended on
   `ANDROID_SDK_ROOT` rather than the guaranteed `ANDROID_HOME` — was fixed
-  in `05b0a36`. Six Minor findings are deferred; none blocks use:
+  in `4d40b82`. Six Minor findings are deferred; none blocks use:
   1. a panic inside the player would unwind through `extern "system"`;
      `panic = "abort"` for the cdylib profile or `catch_unwind` would make
      it well defined;
@@ -1023,3 +1023,17 @@ plain `git checkout` of the tag is enough.
 - **I13 deferred**: the social preview card — build the seed-21 Aizawa variant
   and compare it with the current Swift-era card (`docs/images/social-preview.png`)
   before replacing it.
+- **I14 ribbon depth buffer**: the README hero showed far loops of the trail
+  painted over near ones. Root cause: the render pass carried no depth
+  attachment (`depth_stencil: None`), so overlapping passes were resolved by
+  rasterization order, and the strip is indexed oldest-first. The Swift
+  renderer never had the bug — its `SCNMaterial` writes and reads depth by
+  default — so this was a port regression, not a property of the geometry.
+  The frame now owns a `Depth24Plus` attachment at the pass's multisample
+  count, the ribbon writes and tests depth with `Less`, and the glyphon
+  overlay compares `Always` without writing, so it stays on top.
+  `crates/attractor-gpu/tests/occlusion.rs` reproduces the overlap: the trail
+  crosses the centre at `z = 0` and then at `z = -1`, spatial colouring puts
+  `z` in the blue channel, and the centre pixel must stay blue. The test was
+  green on a real GPU and a motion recording was reviewed; the stills and the
+  hero GIF were re-captured from the fixed renderer.

@@ -14,7 +14,7 @@ files by hand.
 
 ## Provenance
 
-- Generated from the Swift sources at commit `dfbadb8` (the last commit that
+- Generated from the Swift sources at commit `29e7917` (the last commit that
   touched `Core/Sources`) on 2026-11-12. The Swift tree is archived at the git
   tag `swift-oracle`; it is no longer part of the working tree.
 - Formula generator: `Core/Tests/AttractorCoreTests/FormulaFixtureDumpTests.swift`.
