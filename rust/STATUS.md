@@ -1037,3 +1037,10 @@ plain `git checkout` of the tag is enough.
   `z` in the blue channel, and the centre pixel must stay blue. The test was
   green on a real GPU and a motion recording was reviewed; the stills and the
   hero GIF were re-captured from the fixed renderer.
+- **I14 deferred**: the `moore_spiegel` still is the pre-I14 capture. With a
+  correct depth test its loops interleave at nearly the same depth in the left
+  funnel and read as a yellow-and-pink zebra, so the old frame was kept in
+  `docs/images` and left out of the re-capture set. The other eleven stills and
+  the hero were refreshed. To revisit: either pick an azimuth where the loops
+  do not interleave, or narrow the ribbon radius for this attractor; the
+  capture recipe itself is unchanged.
