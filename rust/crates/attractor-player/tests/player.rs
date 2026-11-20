@@ -323,3 +323,39 @@ fn hiding_the_overlay_inks_fewer_pixels_than_showing_it() {
         "the overlay must add ink: {hidden_pixels} hidden vs {shown_pixels} shown"
     );
 }
+
+fn player_with_colour_speed(seed: u64, speed: f64) -> Player {
+    let mut selection = lorenz();
+    selection.settings = attractor_core::SimulationSettings::new(
+        selection.settings.step_size,
+        selection.settings.simulation_speed,
+        selection.settings.camera_rotation_speed,
+        speed,
+        selection.settings.trail_length,
+        selection.settings.color_mode,
+    );
+    Player::new(
+        selection,
+        validated_catalog(),
+        pinned_options(),
+        SplitMix64::new(seed),
+    )
+    .expect("the player builds")
+}
+
+#[test]
+fn the_trail_colour_speed_shifts_the_gradient() {
+    let still = run_frames(5, 50, 30, pinned_options());
+    let mut player = player_with_colour_speed(5, 0.2);
+    player.warm_up(50).expect("warm-up stays healthy");
+    for _ in 0..30 {
+        player.tick(FRAME_INTERVAL).expect("frame advances");
+    }
+    let moved = player.geometry();
+    assert_eq!(still.positions(), moved.positions());
+    assert_ne!(
+        still.colors(),
+        moved.colors(),
+        "a non-zero trail colour speed must shift the gradient"
+    );
+}

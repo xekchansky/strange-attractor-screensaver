@@ -76,12 +76,19 @@ capture_args() {
     # previous azimuth 30) puts one spiral in the foreground at full size and
     # the other tiny behind it; a view along z at a low elevation shows both
     # side by side at nearly the same distance. The 5000-point default window
-    # also favours one lobe, so the trail is longer: 20000 points square both.
+    # also favours one lobe. A 20000-point trail squares both, but the slow
+    # outer loops then interleave with the fast lobes and read as a yellow-pink
+    # zebra in the left funnel; 12000 keeps the loops apart and the ribbon
+    # reads as one surface.
     # A finer step (0.003 instead of the 0.007 midpoint) shortens the chords
     # between trail points: the fast Moore–Spiegel loops looked like broken
-    # straight segments at 0.007.
+    # straight segments at 0.007. `--color-mode trail` is pinned so the rainbow
+    # runs along the ribbon, and the gradient phase is dialed with colour speed:
+    # the capture settles 90 ticks of 1/60 s, so the offset at the snapshot is
+    # speed × 1.5. Speed 0.4 puts the phase at 0.60, the yellow-to-violet ramp
+    # chosen for the README.
     moore_spiegel)
-      echo "-p R=250 -p T=10 --step 0.003 --trail-length 20000 --cam-azimuth 90 --cam-elevation 12 --cam-speed 0 --trail-color-speed 0" ;;
+      echo "-p R=250 -p T=10 --step 0.003 --trail-length 12000 --color-mode trail --cam-azimuth 90 --cam-elevation 12 --cam-speed 0 --trail-color-speed 0.4" ;;
     # Halvorsen's parameter is a single chaotic coefficient, so the catalogue
     # default is fine; the seed pins which instance and camera angle the README
     # shows. Seed 50 draws the dense symmetrical knot picked for the table.

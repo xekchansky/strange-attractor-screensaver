@@ -10,8 +10,8 @@ file, and commit atomically.
 ## Current state
 
 - Branch: `rust-port`
-- Last completed iteration: **I14 — ribbon depth buffer** (2026-11-20)
-- Last completed change: **I14 — ribbon depth buffer** (2026-11-20)
+- Last completed iteration: **I15 — Moore–Spiegel still** (2026-11-20)
+- Last completed change: **I15 — Moore–Spiegel still** (2026-11-20)
 - Next iteration: none — the plan is complete. Open follow-ups are listed in
   the per-iteration notes below and in design §9.
 - Windows manual checklist: `crates/attractor-windows-saver/README.md`,
@@ -178,6 +178,7 @@ and I11 add them back against `attractor-wasm` and the Android shell.
   release dry run pending)
 - [x] I13 — documentation media refresh (done; 2026-11-20)
 - [x] I14 — ribbon depth buffer (done; 2026-11-20)
+- [x] I15 — Moore–Spiegel still (done; 2026-11-20)
 
 ## Swift oracle
 
@@ -1037,10 +1038,14 @@ plain `git checkout` of the tag is enough.
   `z` in the blue channel, and the centre pixel must stay blue. The test was
   green on a real GPU and a motion recording was reviewed; the stills and the
   hero GIF were re-captured from the fixed renderer.
-- **I14 deferred**: the `moore_spiegel` still is the pre-I14 capture. With a
-  correct depth test its loops interleave at nearly the same depth in the left
-  funnel and read as a yellow-and-pink zebra, so the old frame was kept in
-  `docs/images` and left out of the re-capture set. The other eleven stills and
-  the hero were refreshed. To revisit: either pick an azimuth where the loops
-  do not interleave, or narrow the ribbon radius for this attractor; the
-  capture recipe itself is unchanged.
+- **I15 Moore–Spiegel still**: with the depth test in place the 20000-point
+  trail exposed its slow outer loops interleaving with the fast lobes in the
+  left funnel — the yellow-and-pink zebra from the I14 note. The lever turned
+  out to be the trail window, not the camera or the ribbon radius: a sweep of
+  2000–20000 showed 12000 is the longest window that keeps the loops apart, and
+  the recipe now uses it. The colour phase is deliberate too. The browser seed
+  drew `Spatial` mode, which by design ignores the colour offset, so the first
+  phase sweep produced identical frames; `--color-mode trail` is now pinned and
+  the still uses colour speed 0.4, which lands the offset at 0.60 after the
+  90-tick settle. `crates/attractor-cli/tests/color_speed.rs` pins the flag
+  through `prepare` so the same silent no-op cannot come back unnoticed.
